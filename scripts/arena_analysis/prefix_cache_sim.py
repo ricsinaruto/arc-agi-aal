@@ -62,6 +62,9 @@ def overlay(args):
                "mamba_demote_superseded": "demote" in args.patches}
     if "tail" in args.patches:
         options["request_end_tail"] = True
+    for name, key in (("keepboundary", "tail_keep_boundary"), ("keepalive", "tail_keepalive")):
+        if name in args.patches:
+            options[key] = True
     if any(options.values()):
         print(prefix_cache_patch.apply(out, out, options))
 
@@ -130,6 +133,8 @@ def run(a):
     from vllm.v1.request import Request
 
     s = make_scheduler(a)
+    if a.step_seconds is not None and getattr(s.kv_cache_manager, "_arc_tail", None) is not None:
+        s.kv_cache_manager._arc_tail.clock = lambda: step * a.step_seconds
     hash_fn = get_hash_fn_by_name("sha256")
     init_none_hash(hash_fn)
     unit = a.hash_unit or a.block  # --prefix-match-unit (hero-v2 precheck): hashes every `unit` tokens
@@ -292,7 +297,7 @@ def run(a):
                     game["tokens"] = list(act["req"].prompt_token_ids) + act["reply"]
                     game["n"] += 1
                     game["active"] = None
-                    game["wait"] = a.gap
+                    game["wait"] = a.idle_gap if game["id"] < a.idle_games else a.gap
         if step > 500000:
             raise SystemExit("no progress")
     pool = s.kv_cache_manager.block_pool
@@ -301,12 +306,19 @@ def run(a):
                   free_queue_dups=len(free_ids) - len(set(free_ids)), free_blocks=pool.get_num_free_blocks(),
                   prefix_hit_tokens=sum(v for v in hits.values() if v))
     labels, short, short_unit, above = Counter(), 0, 0, 0
+    # Per group of games (idle = the long-tool games, others = the churning ones): follow-up requests, tokens of the
+    # previous request's sequence that were not served, requests that lost at least one block of it, and requests
+    # served from the shared system prefix or less.
+    groups_report = {name: Counter() for name in ("idle", "others")}
     for game in games:
         log = game["log"]
         for n in range(1, len(log)):
             p, r = log[n - 1], log[n]
             ideal = min(p["P"] + p["G"], r["P"] - 1) // B * B
             short += max(0, ideal - r["H"])
+            report = groups_report["idle" if game["id"] < a.idle_games else "others"]
+            lost = max(0, min(p["P"] + p["G"], r["P"] - 1) - r["H"])
+            report.update(requests=1, lost_tokens=lost, lost_a_block=lost >= B, from_system_prefix=r["H"] <= a.system)
             # With a fine unit the previous prompt's last unit boundary is cached too (its partial tail).
             ideal_unit = max(ideal, min(p["P"], r["P"] - 1) // unit * unit)
             short_unit += max(0, ideal_unit - r["H"])
@@ -320,6 +332,8 @@ def run(a):
     tail = getattr(s.kv_cache_manager, "_arc_tail", None)
     if tail is not None:
         checks.update({"tail_" + k: v for k, v in tail.stats.items()})
+    if a.idle_games:
+        print({name: dict(c) for name, c in groups_report.items()})
     print({"hit_vs_ideal": dict(labels), "shortfall_tokens": short, "hash_unit": unit,
            "shortfall_vs_unit_ideal": short_unit, "hit_tokens_above_block_ideal": above, "steps": step,
            **dict(checks)})
@@ -331,7 +345,7 @@ def main():
     o = sub.add_parser("overlay")
     o.add_argument("--runtime", required=True, help="site-packages directory holding the pinned vllm package")
     o.add_argument("--out", required=True)
-    o.add_argument("patches", nargs="*", choices=("reclaim", "align", "keep", "demote", "tail"))
+    o.add_argument("patches", nargs="*", choices=("reclaim", "align", "keep", "demote", "tail", "keepboundary", "keepalive"))
     r = sub.add_parser("run")
     r.add_argument("--block", type=int, default=64)
     r.add_argument("--blocks", type=int, default=700)
@@ -345,6 +359,9 @@ def main():
     r.add_argument("--new-abs", type=int, nargs=2, default=(20, 140))
     r.add_argument("--reply-abs", type=int, nargs=2, default=(30, 160))
     r.add_argument("--seed", type=int, default=0)
+    r.add_argument("--idle-games", type=int, default=0, help="the first N games wait --idle-gap steps (a long tool)")
+    r.add_argument("--idle-gap", type=int, default=0)
+    r.add_argument("--step-seconds", type=float, default=None, help="tail index clock: seconds per step")
     r.add_argument("--sync", action="store_true")
     r.add_argument("--demote-min", type=int, default=None)
     r.add_argument("--tail-placement", choices=("front", "back", "swap"), default=None,

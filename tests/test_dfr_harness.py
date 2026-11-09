@@ -46,7 +46,7 @@ def board(*cells, value=9):
 
 def test_settings_schema():
     assert dfr.settings(None) is None and dfr.settings(False) is None and dfr.settings({}) is None
-    assert ALL == {flag: True for flag in dfr.FLAGS}
+    assert ALL == {flag: flag not in dfr.OPT_IN for flag in dfr.FLAGS}  # sweep is opt-in
     assert dfr.settings({"guards": True}) == {**{f: False for f in dfr.FLAGS}, "guards": True}
     assert dfr.settings({"guards": False}) is None
     with pytest.raises(ValueError, match="Unknown dfr_harness flags"):
@@ -713,3 +713,135 @@ def test_a_drain_stubs_the_surviving_turns_extra_images(tmp_path):
     assert agent.dfr_stats["history_images_stubbed"] == len(kept_users) - 1
     # Without a drain the same history is returned untouched.
     assert agent.drain_context(Analyzer(), messages, None, measure, measure(messages, None) + 1) is messages
+
+
+class ClickGame(Game):
+    """Clicks change nothing (executed no-ops) and are displayed with their cell; UP changes the interior."""
+
+    def __call__(self, actions):
+        (item,) = actions
+        result = super().__call__([{"action": "LEFT" if item["action"] == "MOUSE" else item["action"]}])
+        if item["action"] == "MOUSE":
+            shown = "MOUSE(row=%s, col=%s)" % (item["row"], item["col"])
+            result["action_result"].update(action_display=shown, executed_actions=[shown])
+        return result
+
+
+def test_sweep_lets_a_click_on_another_cell_follow_a_no_op_click_and_nothing_else():
+    click = "action([{'action': 'MOUSE', 'row': %d, 'col': %d}])\n"
+    box = make_sandbox(flags("guards", "sweep"), True)
+    try:
+        game = ClickGame(level=2)
+        out = run(box, click % (1, 1) + click % (2, 2) + click % (3, 3) + "print('swept')", game)
+        assert not out["error"] and out["stdout"] == "swept\n" and game.step == 3, out
+        assert [g["kind"] for g in box.dfr_guards] == ["sweep_exempt", "sweep_exempt"]
+        out = run(box, click % (1, 1) + click % (1, 1), game)  # the same cell again stays refused
+        assert "StaleStateActionError" in out["error"] and game.step == 4
+        out = run(box, click % (1, 1) + "action(['UP'])", game)  # a key after a no-op click stays refused
+        assert "StaleStateActionError" in out["error"] and game.step == 5
+        out = run(box, "action(['LEFT'])\n" + click % (1, 1), game)  # a click after a no-op key stays refused
+        assert "StaleStateActionError" in out["error"] and game.step == 6
+    finally:
+        box.close()
+    box = make_sandbox(flags("guards"), True)
+    try:
+        game = ClickGame(level=2)
+        out = run(box, click % (1, 1) + click % (2, 2), game)
+        assert "StaleStateActionError" in out["error"] and game.step == 1
+    finally:
+        box.close()
+    assert dfr.settings(True)["sweep"] is False and dfr.settings({"guards": True, "sweep": True})["sweep"] is True
+    labels = ["MOUSE(row=1, col=1)", "MOUSE(row=2, col=2)", "UP"]
+    noop = ("MOUSE(row=1, col=1)", {"gameplay_changed": False})
+    assert dfr.batch_stop(labels, 0, [noop]) is not None and dfr.batch_stop(labels, 0, [noop], sweep=True) is None
+    assert dfr.batch_stop(labels, 1, [noop, ("MOUSE(row=2, col=2)", {"gameplay_changed": False})], sweep=True)
+
+
+# --- hx4: transient effects (analysis 8a) and the RESET offer (8c) ---------------------------------------------------
+
+# b2-v71-24h-v1 clone k012 (cd82, DEV family), actions 1-67: the last click plays a 15-frame animation and ends on the
+# board it started from; v7.1 reported it as a NO-OP.
+TRANSIENT_GAME = "cd82-fb555c5d"
+TRANSIENT_PREFIX = (
+    "ACTION1 ACTION5 ACTION2 ACTION3 ACTION4 ACTION3 ACTION5 ACTION6@30,40 ACTION6@36,4 ACTION6@43,7 "
+    "ACTION6@7,10 ACTION3 ACTION3 ACTION4 ACTION4 ACTION4 ACTION6@41,29 ACTION1 ACTION2 ACTION1 ACTION1 "
+    "ACTION2 ACTION2 ACTION2 ACTION3 ACTION4 ACTION3 ACTION6@43,4 ACTION5 ACTION3 ACTION3 ACTION3 ACTION1 "
+    "ACTION1 ACTION1 ACTION4 ACTION6@36,4 ACTION5 ACTION6@47,4 ACTION4 ACTION5 ACTION6@41,4 ACTION2 "
+    "ACTION2 ACTION5 ACTION6@41,4 ACTION4 ACTION3 ACTION3 ACTION1 ACTION1 ACTION4 ACTION5 ACTION6@35,4 "
+    "ACTION4 ACTION2 ACTION2 ACTION3 ACTION5 ACTION6@47,4 ACTION4 ACTION5 ACTION3 ACTION4 ACTION5 ACTION2 "
+    "ACTION6@31,21 "
+).split()
+_ROOT = __import__("pathlib").Path(__file__).resolve().parents[1]  # a worktree sits three levels below the checkout
+ENVIRONMENTS = next((p for p in (_ROOT / "environment_files", _ROOT.parents[2] / "environment_files") if p.is_dir()),
+                    None)
+
+
+@pytest.mark.skipif(ENVIRONMENTS is None, reason="public environments unavailable")
+def test_a_recorded_animation_that_ends_on_its_starting_board_is_a_transient_effect(tmp_path):
+    from arcengine import GameAction
+
+    from arc_infra.arcade import make_arcade
+    from arena.level_points import replay
+
+    arc = make_arcade("offline", ENVIRONMENTS, tmp_path)
+    env = arc.make(TRANSIENT_GAME, scorecard_id=arc.open_scorecard(tags=["test"]), save_recording=False)
+    _, before = replay(env, TRANSIENT_PREFIX[:-1])
+    name, _, where = TRANSIENT_PREFIX[-1].partition("@")
+    x, y = (int(v) for v in where.split(","))
+    raw = env.step(GameAction[name], {"x": x, "y": y})
+    frames = [np.array(f, dtype=np.uint8) for f in raw.frame]
+    (start,) = dfr.normalize_frames([before])
+    summary = dfr.summarize_animation(dfr.collapse_frames(start, dfr.normalize_frames(frames)))
+    assert len(frames) == 15 and summary["transient_pixels"] == 98
+    assert dfr.gameplay_changed(before, frames[-1]) is False
+    plain = {"gameplay_changed": False, "animation": summary}
+    assert dfr.verdict(plain) == dfr.NOOP_VERDICT  # v7.1
+    assert dfr.verdict({**plain, "transient_effect": 98}).startswith("TRANSIENT EFFECT (animated: 98 cell(s)")
+    note = dfr.transient_note([{"step": 67, "label": "MOUSE(row=21, col=31)", "animation": summary}])
+    assert "step 67 MOUSE(row=21, col=31): 98 cells" in note and "NOT no-ops" in note and dfr.transient_note([]) == ""
+
+
+def test_transient_and_reset_offer_are_opt_in_and_reword_the_refusal():
+    assert dfr.settings(True)["transient"] is False and dfr.settings(True)["reset_offer"] is False
+    box = make_sandbox(flags("guards", "transient"), True)
+    try:
+        class Bump(Game):
+            def __call__(self, actions):
+                result = super().__call__(actions)
+                if actions[0]["action"] == "LEFT":
+                    result["action_result"]["transient_effect"] = 5
+                return result
+
+        out = run(box, "action(['LEFT'])\naction(['UP'])", Bump(level=2))
+        assert "played an animation and left the board area exactly as it was" in out["error"]
+        assert "was a no-op" not in out["error"]
+    finally:
+        box.close()
+    _, plain, _ = bootstraps()
+    assert "_DFR_STALE_TRANSIENT" in dfr.with_dfr(plain, flags("guards"))
+
+
+def test_border_revisit_tells_a_moving_edge_object_from_a_timer_bar():
+    assert dfr.settings(True)["border_moves"] is False
+    board = np.zeros((16, 16), dtype=np.uint8)
+    seen = None
+    for cell in range(5):  # a bar shrinking along the bottom row: each cell changes once
+        after = board.copy()
+        after[15, cell] = 3
+        revisit, seen = dfr.border_revisit(board, after, seen)
+        assert revisit is False and dfr.gameplay_changed(board, after) is False
+        board = after
+    board = np.zeros((16, 16), dtype=np.uint8)
+    board[1, 2] = 7  # an object on the edge ring moving right: it leaves the cell it entered
+    seen = None
+    moved = board.copy()
+    moved[1, 2], moved[1, 3] = 0, 7
+    revisit, seen = dfr.border_revisit(board, moved, seen)
+    assert revisit is False  # the first move looks like a bar step
+    again = moved.copy()
+    again[1, 3], again[1, 4] = 0, 7
+    revisit, seen = dfr.border_revisit(moved, again, seen)
+    assert revisit is True and dfr.gameplay_changed(moved, again) is False
+    inner = again.copy()
+    inner[8, 8] = 5  # interior changes never count as edge revisits
+    assert dfr.border_revisit(again, inner, None)[0] is False

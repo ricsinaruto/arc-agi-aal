@@ -64,6 +64,12 @@ CRITICAL_NOTE = ("CRITICAL: the last step failed (see `error`). Fix it within 1-
                  "else; do not rerun the same code unchanged.")
 
 
+SUMMARY_SCOPE_NOTE = (
+    "\n\nScope: the newest {messages} messages before this request stay in the context verbatim after your "
+    "summary. Summarize everything before them; do not repeat what those newest messages already say."
+)
+
+
 class ArenaDuckMixin:
     """Shared arena behaviour; ``attach(game, window, cap)`` must run before ``run()``."""
 
@@ -123,6 +129,8 @@ class ArenaDuckMixin:
     rejected_prompt_tokens = None
     # hero-v2 dfr_harness (arena.dfr_harness.settings), None on every earlier build.
     dfr = None
+    # rsi arm (arena.rsi_loop.settings): record, test queue, second reader; None on every other build.
+    rsi = None
     # hero-v2 dfr_loop (arena.dfr_loop.settings; v5), None on every earlier build.
     dloop = None
     # harness arm hx_harness (arena.hx_harness.settings), None on every earlier build.
@@ -136,11 +144,16 @@ class ArenaDuckMixin:
     lrule_detector = None
     lrule_pending = None
     lrule_stats = None
+    # hx4 fresh attempt (arena.fresh_attempt), None on every earlier build.
+    fresh = None
+    fresh_pending = None
+    fresh_stats = None
 
     def attach(self, game, *, window, cap, notes=None, memory=None, escalation=None, snapshot=None, harness=None,
                procedure=None, explorer=None, critical_errors=False, harness_v2=None, adaptive_thinking=None,
                worldmodel_notice=False, harness_fixes=None, parallel_samples=None, action_plans=False,
-               context_drain=None, dfr_harness=None, dfr_loop=None, hx_harness=None, loop_rule=None):
+               context_drain=None, dfr_harness=None, dfr_loop=None, hx_harness=None, loop_rule=None,
+               fresh_attempt=None, rsi_loop=None):
         self.game, self.window, self.cap = game, int(window), int(cap)
         # Per-game context window (fixed-2x-deep-explore): the scheduler moves a game between a 128K deep slot and a
         # 32K exploration slot; the compaction threshold follows ``game.window`` (``self.window`` stays the largest
@@ -235,7 +248,238 @@ class ArenaDuckMixin:
         self.apply_dfr_loop(dfr_loop)
         self.apply_hx_harness(hx_harness)
         self.apply_loop_rule(loop_rule)
+        self.apply_fresh_attempt(fresh_attempt)
+        self.apply_rsi_loop(rsi_loop)
         return self
+
+    # --- rsi arm: record, test queue, second reader (arena.rsi_loop) -----------------------------------------------
+
+    def apply_rsi_loop(self, value):
+        from . import rsi_loop
+
+        self.rsi = rsi_loop.settings(value)
+        if self.rsi is None:
+            return
+        if not isinstance(self, TransferDuckAgent):
+            raise ValueError("rsi_loop extends the corrected Duck agent (duck-transfer)")
+        self.rsi_record = rsi_loop.Record(self.sandbox.color_chars)
+        self.rsi_stats = rsi_loop.new_stats()
+        self.rsi_mark = None      # (levels, gameplay tokens at the level's first turn)
+        self.rsi_mode = None      # the level index (levels completed) that is past the stuck signal
+        self.rsi_carry = False    # the level before this one was past the signal: its record leads the new level
+        self.rsi_row = None
+        self.rsi_shown = None     # (block, (drains, compactions)) of the last block shown
+        self.rsi_reader_at = None  # tokens on the level at the last second-reader call
+        self.rsi_tails = []       # the ends of the last gameplay replies (the second reader's view of the claims)
+
+    async def rsi_check(self):
+        """Before a turn (event loop): feed the record, mark a new level, raise the stuck signal
+        (``rsi_loop.signal_tokens`` generated gameplay tokens on a level without a clear) and call the second reader
+        at the signal and every ``VERIFY_EVERY`` tokens after it."""
+        from . import rsi_loop
+
+        if self.obs is None or self.obs.state != "NOT_FINISHED":
+            return
+        self.rsi_record.update(self.duck_history, self.transition_results)
+        level, tokens = self.obs.levels, self.gameplay_completion_tokens
+        if self.rsi_mark is None or self.rsi_mark[0] != level:
+            cleared = self.rsi_mark is not None and level > self.rsi_mark[0]
+            if self.rsi_row is not None and cleared:
+                self.rsi_row["cleared"] = True
+            # what carries into a level: the record of a level that was past the signal, or earlier surprises
+            self.rsi_carry = cleared and (self.rsi_mode == self.rsi_mark[0]
+                                          or any(r["carry"] for r in self.rsi_record.results))
+            self.rsi_mark, self.rsi_mode, self.rsi_row, self.rsi_reader_at = (level, tokens), None, None, None
+            return
+        spent = tokens - self.rsi_mark[1]
+        if self.rsi_mode is None and spent >= rsi_loop.signal_tokens(level):
+            self.rsi_mode = level
+            self.rsi_row = {"level": level + 1, "at_tokens": int(spent), "at_step": self.steps, "tokens_after": 0,
+                            "cleared": False}
+            self.rsi_stats["signal_levels"] += 1
+            self.rsi_stats["levels"].append(self.rsi_row)
+            self.workspace.append("rsi_signal", step=self.steps, level=level + 1, tokens=int(spent))
+        if (self.rsi_mode == level and self.rsi["verify"]
+                and (self.rsi_reader_at is None or spent - self.rsi_reader_at >= rsi_loop.VERIFY_EVERY)):
+            self.rsi_reader_at = spent
+            await self.rsi_reader(spent)
+
+    async def rsi_reader(self, spent):
+        """The second reader: one tool-less request with a fresh context (the actor's carried claims, the record,
+        selected transitions, the board). Its tokens are charged to the game as ``rsi_reader``."""
+        from . import rsi_loop
+
+        record, stats, valid = self.rsi_record, self.rsi_stats, self.valid_actions()
+        knowledge, _ = self.fresh_beliefs()
+        grid = self.duck_history[-1].frame.grid
+        text = rsi_loop.reader_text(record, knowledge, valid, tokens=spent, grid=grid, recent=self.rsi_tails)
+        prompt = text
+        if not text_only(self.config.model):
+            prompt = [{"type": "text", "text": text + "\n\nThe board now:"},
+                      dfr_module.image_part(dfr_module.board_image_url(grid))]
+        stats["reader_calls"] += 1
+        try:
+            answer, data, seconds, _ = await self.aside_request(
+                [{"role": "system", "content": rsi_loop.reader_system()}], prompt, cap=self.rsi["cap"],
+                purpose="rsi_reader", thinking=self.rsi["thinking"], reasoning_effort=self.rsi["effort"])
+        except (TimeoutError, asyncio.CancelledError):
+            raise
+        except Exception as exc:  # noqa: BLE001 - the game goes on without a second reader
+            stats["reader_failed"] += 1
+            self.workspace.append("rsi_reader_failed", step=self.steps, error=f"{type(exc).__name__}: {exc}"[:300])
+            return
+        usage = data.get("usage") or {}
+        parsed = rsi_loop.parse_reader(answer, valid)
+        empty = not (parsed["rules"] or parsed["tests"] or parsed["goals"] or parsed["supported"])
+        stats["reader_empty"] += empty
+        stats["reader_tokens"] += int(usage.get("completion_tokens") or 0)
+        stats["reader_prompt_tokens"] += int(usage.get("prompt_tokens") or 0)
+        for key in ("rules", "tests", "goals"):
+            stats[f"reader_{key}"] += len(parsed[key])
+        stats["reader_supported"] += parsed["supported"]
+        if not empty:
+            record.take_reader(parsed, self.steps)
+            self.rsi_shown = None
+        self.workspace.append("rsi_reader", step=self.steps, level=self.obs.levels + 1, tokens=int(spent),
+                              seconds=round(seconds, 2), usage=usage, finish_reason=data["choices"][0].get(
+                                  "finish_reason"), prompt=text, answer=answer, empty=empty)
+
+    def rsi_turn_lines(self):
+        """``(leading, lines)`` of the next user turn: the record and the open tests. After a death (and at the
+        entry of a level that follows one past the signal) the block leads the turn; otherwise it is shown when it
+        differs from the last one shown or that one left the context."""
+        if self.obs is None:
+            return False, []
+        record, stats = self.rsi_record, self.rsi_stats
+        record.update(self.duck_history, self.transition_results)
+        lead, record.event = record.event, None
+        active = self.rsi_mode is not None and self.rsi_mode == self.obs.levels
+        if lead == "level":
+            carry, self.rsi_carry = self.rsi_carry, False
+            if not carry:
+                return False, []
+        elif not active:
+            return False, []
+        evidence = bool(self.dfr is not None and self.dfr.get("evidence")) and lead != "level"
+        flags = dict(self.rsi, record=self.rsi["record"] and lead != "level")
+        text, queue = record.block(flags, self.valid_actions(), lead=lead, evidence_shown=evidence)
+        marker = ((self.drain_stats or {}).get("drains", 0), getattr(self, "context_compactions", 0))
+        if text is None or (not lead and self.rsi_shown == (text, marker)):
+            return False, []
+        self.rsi_shown = (text, marker)
+        record.note_push(queue, "entry" if lead else "mid")
+        stats["blocks"] += 1
+        stats["block_chars"] += len(text)
+        if lead:
+            stats["entry_blocks"][lead] += 1
+        self.workspace.append("rsi_block", step=self.steps, level=self.obs.levels + 1, lead=lead, chars=len(text),
+                              tests=[[t["source"], t["text"][:160]] for t in queue])
+        return bool(lead), [text]
+
+    def rsi_report(self):
+        """The attempt's row: counters, pushed tests taken up within ``UPTAKE_ACTIONS`` actions by context."""
+        record = self.rsi_record
+        return {**self.rsi_stats, "uptake": record.uptake(), "results": len(record.results),
+                "restarts": len(record.lives), "flags": {k: self.rsi[k] for k in ("record", "tests", "verify")}}
+
+    # --- hx4 fresh attempt (arena.fresh_attempt) --------------------------------------------------------------------
+
+    def apply_fresh_attempt(self, value):
+        from .fresh_attempt import settings as fresh_settings
+
+        spec = fresh_settings(value)
+        if spec is not None and self.drain is None:
+            raise ValueError("fresh_attempt needs drain_half")
+        self.fresh = spec
+        self.fresh_pending = None
+        self.fresh_mark = None  # (level, gameplay tokens and actions at the level's (re)start, fresh attempts so far)
+        self.fresh_stats = None if spec is None else {"attempts": 0, "resets": 0, "tokens_freed": 0}
+
+    def fresh_beliefs(self):
+        """``(carried world model, note() entries)`` of the attempt that is being abandoned."""
+        knowledge = dict(getattr(getattr(self, "_analyzer", None), "_summarized_knowledge", None) or {})
+        return knowledge, dict(((self.sandbox.hx_state or {}).get("notes")) or {})
+
+    def fresh_due(self):
+        """True when the current level is past its fresh-attempt cutoff (any thread; no side effects)."""
+        from .fresh_attempt import cutoff
+
+        mark = self.fresh_mark if self.fresh is not None else None
+        if mark is None or self.obs is None or self.obs.state != "NOT_FINISHED" or mark[0] != self.obs.levels:
+            return False
+        limit = cutoff(self.fresh, mark[3])
+        return limit is not None and self.gameplay_completion_tokens - mark[1] >= limit
+
+    async def fresh_check(self):
+        """Before a turn (event loop, worker idle): start a fresh attempt when the level's cutoff has passed (or, with
+        ``at_start``, before the very first turn)."""
+        from .fresh_attempt import cutoff
+
+        if self.fresh is None or self.obs is None or self.obs.state != "NOT_FINISHED":
+            return
+        level, tokens = self.obs.levels, self.gameplay_completion_tokens
+        forced = False
+        if self.fresh_mark is None or self.fresh_mark[0] != level:
+            forced = self.fresh_mark is None and self.fresh["at_start"]
+            self.fresh_mark = (level, tokens, self.steps, 0)
+            if not forced:
+                return
+        _, start_tokens, start_steps, count = self.fresh_mark
+        limit = cutoff(self.fresh, count)
+        if not forced and (limit is None or tokens - start_tokens < limit):
+            return
+        await self.fresh_attempt(tokens - start_tokens, self.steps - start_steps, count)
+
+    async def fresh_attempt(self, tokens, actions, count):
+        from arc_infra.plans import Action
+
+        from .fresh_attempt import FIELDS, note_text
+
+        knowledge, notes = self.fresh_beliefs()
+        level = max(1, min(self.obs.total_levels, self.obs.levels + 1))
+        reset = bool(self.fresh["reset"]) and self.steps != self.level_start_step
+        if reset:
+            async with self.env_lock:
+                await self.step(Action("RESET"))
+            self.write_duck_state("RESET")
+            self.level_start_step = self.steps
+            self.stuck.reset_level()
+            self.fresh_stats["resets"] += 1
+        analyzer = getattr(self, "_analyzer", None)
+        if analyzer is not None:
+            for key, _ in FIELDS:
+                analyzer._summarized_knowledge[key] = ""
+        self.fresh_pending = note_text(self.fresh, level=level, tokens=tokens, actions=actions,
+                                       reset=reset or bool(self.fresh["reset"]), knowledge=knowledge, notes=notes)
+        self.fresh_mark = (self.obs.levels, self.gameplay_completion_tokens, self.steps, count + 1)
+        self.fresh_stats["attempts"] += 1
+        self.workspace.append("fresh_attempt", step=self.steps, level=level, tokens=int(tokens), actions=int(actions),
+                              number=count + 1, reset=reset, beliefs=self.fresh["beliefs"],
+                              belief_fields=sorted(k for k, v in knowledge.items() if v), notes=len(notes),
+                              note_chars=len(self.fresh_pending))
+
+    def fresh_context(self, messages, tools, measure):
+        """``[system, fresh-attempt note (+ the python inventory), current observation]`` (analyzer thread)."""
+        from .context_drain import DRAIN_NOTE
+        from .loop_rule import fresh_context
+
+        text, self.fresh_pending = self.fresh_pending, None
+        kept = fresh_context(list(messages[1:]), getattr(self, "is_observation", None))
+        if not kept:
+            kept = list(messages[-1:]) if len(messages) > 1 else []
+        before = measure(messages, tools)
+        dropped = len(messages) - 1 - len(kept)
+        note = self.drain_note(dropped, 0)  # the python note and inventory after the drain sentence
+        rest = note["content"][len(DRAIN_NOTE.format(messages=dropped, tokens=0)):]
+        note = {**note, "content": (text + "\n\n" + rest.lstrip()).rstrip()}
+        result = [messages[0], note, *kept]
+        after = measure(result, tools)
+        self.fresh_stats["tokens_freed"] += max(0, int(before) - int(after))
+        self.workspace.append("fresh_attempt_context", step=self.steps, tokens_before=int(before),
+                              tokens_after=int(after), messages_dropped=dropped)
+        if dropped > 0:
+            self.notify_context_drain(tokens_before=int(before), tokens_after=int(after))
+        return result
 
     # --- v7.1 strict degenerate-loop rule (arena.loop_rule) ---------------------------------------------------------
 
@@ -495,6 +739,9 @@ class ArenaDuckMixin:
 
         if len(messages) < 2:
             return messages
+        if self.fresh_pending is not None:
+            self.lrule_pending = None
+            return self.fresh_context(messages, tools, measure)
         if self.lrule_pending is not None:
             fresh = self.loop_fresh_context(messages, tools, measure)
             if fresh is not None:
@@ -693,6 +940,18 @@ class ArenaDuckMixin:
             self.sandbox.bootstrap = dfr_module.with_dfr(self.sandbox.bootstrap, self.dfr)
         if self.dfr["animation"]:
             self.sandbox.animation_handler = self.dfr_animation
+        if self.sc_on():
+            from . import sim_check
+
+            self.sandbox.bootstrap = sim_check.with_simcheck(self.sandbox.bootstrap)
+            self.sc_stats = sim_check.new_stats()
+            self.sc_mark = None     # (levels, gameplay tokens at the level's first turn)
+            self.sc_mode = None     # the level index (levels completed) that is past the stuck signal
+            self.sc_row = None      # ... and its row in sc_stats["levels"]
+            self.sc_notice = None   # the one-off notice of the next user turn
+            self.sc_marker = None   # (drains, compactions) when the contract was last shown
+            self.sc_seen_report = None
+            self.sc_runner_inner, self.sandbox_runner = self.sandbox_runner, self.sc_runner
         self.dfr_stats = {"diff_images": 0, "gameover_turns": 0, "gameover_images": 0, "noop_stops": 0,
                           "stale_refusals": 0, "terminal_refusals": 0, "animated_actions": 0,
                           "transient_actions": 0, "animation_reads": 0, "animation_openers": 0, "level_prompts": 0,
@@ -703,14 +962,109 @@ class ArenaDuckMixin:
         self.dfr_gameover_shown = None  # the reset step whose game-over block was shown
         self.dfr_gameover_images = []   # (label, url) for the coming observation
         self.dfr_noop_stops = []        # batch no-op stops since the last user turn
+        self.dfr_transients = []        # transient: actions since the last user turn that animated back to their board
         self.dfr_guards_seen = 0        # sandbox guard refusals already reported
         self.animation_record = None    # the last executed action's animation (their animation_record)
 
     def dfr_on(self, flag):
         return self.dfr is not None and self.dfr[flag]
 
+    # --- hx5 evidence table and model check (arena.sim_check) -----------------------------------------------------------
+
+    def sc_on(self):
+        return self.dfr is not None and bool(self.dfr.get("simcheck") or self.dfr.get("evidence"))
+
+    def sc_active(self):
+        """The current level is past the stuck signal."""
+        return self.sc_mode is not None and self.obs is not None and self.sc_mode == self.obs.levels
+
+    def sc_runner(self, *args, **kwargs):
+        """The sandbox runner with the level's stuck-signal flags in the call's state."""
+        state = kwargs.get("initial_state")
+        if isinstance(state, dict) and self.obs is not None:
+            on = self.sc_active()
+            kwargs["initial_state"] = {**state, "simcheck": {
+                "mode": on and bool(self.dfr.get("simcheck")), "table": on and bool(self.dfr.get("evidence")),
+                "level": self.obs.levels + 1}}
+        return self.sc_runner_inner(*args, **kwargs)
+
+    def sc_check(self):
+        """Before a turn (event loop): mark a new level; the stuck signal is ``MODE_TOKENS`` generated gameplay tokens
+        on a level without a clear (evidence line from then on; with ``simcheck`` the level enters model mode)."""
+        from . import sim_check
+
+        if self.obs is None or self.obs.state != "NOT_FINISHED":
+            return
+        level, tokens = self.obs.levels, self.gameplay_completion_tokens
+        if self.sc_mark is None or self.sc_mark[0] != level:
+            if self.sc_row is not None and self.sc_mark is not None and level > self.sc_mark[0]:
+                self.sc_row["cleared"] = True
+            self.sc_mark, self.sc_mode, self.sc_row = (level, tokens), None, None
+            return
+        spent = tokens - self.sc_mark[1]
+        if self.sc_mode is None and spent >= sim_check.MODE_TOKENS:
+            self.sc_mode = level
+            if self.dfr.get("simcheck"):
+                self.sc_notice = sim_check.notice(level + 1, spent)
+            self.sc_row = {"level": level + 1, "at_tokens": int(spent), "at_step": self.steps, "mode_tokens": 0,
+                           "unfit_tokens": 0, "fit": False, "cleared": False}
+            self.sc_stats["mode_levels"] += 1
+            self.sc_stats["levels"].append(self.sc_row)
+            self.workspace.append("simcheck_mode", step=self.steps, level=level + 1, tokens=int(spent))
+
+    def sc_turn_lines(self):
+        """The lines of the next user turn: the one-off notice, the evidence line, the model-check line."""
+        from . import sim_check
+
+        lines = []
+        marker = ((self.drain_stats or {}).get("drains", 0), getattr(self, "context_compactions", 0))
+        if self.sc_notice is None and self.sc_active() and self.dfr.get("simcheck") and marker != self.sc_marker:
+            self.sc_notice = sim_check.notice(self.obs.levels + 1)  # the contract left the context
+        if self.sc_notice is not None:
+            lines.append(self.sc_notice)
+            self.sc_stats["notice_chars"] += len(self.sc_notice)
+            self.sc_notice, self.sc_marker = None, marker
+        report = self.sandbox.sc_state or {}
+        if self.sc_active():
+            level = self.obs.levels + 1
+            if self.dfr.get("evidence"):
+                line = sim_check.evidence_line(report, level)
+                if line:
+                    lines.append(line)
+                    self.sc_stats["table_chars"] += len(line)
+            if self.dfr.get("simcheck"):
+                shown = report if report.get("mode") else {"mode": True, "ledger": {}, "fit": None}  # no call yet
+                line = sim_check.check_line(shown, level)
+                lines.append(line)
+                self.sc_stats["line_chars"] += len(line)
+                fit = shown.get("fit")
+                if fit:
+                    self.sc_stats["fit_last"] = [fit["exact"], fit["scored"]]
+                    if fit["ok"] and fit["scored"]:
+                        self.sc_row["fit"] = True
+        if report.get("events") and report is not self.sc_seen_report:
+            self.sc_seen_report = report
+            self.sc_stats["caps"] += sum(1 for e in report["events"] if e.get("kind") == "cap")
+            self.sc_stats["mismatches"] += sum(1 for e in report["events"] if e.get("kind") == "mismatch")
+        for key in ("registered", "solves", "frontiers", "checked_lists"):
+            self.sc_stats[key] = max(self.sc_stats[key], int(report.get(key) or 0))
+        return lines
+
+    def sc_note_reply(self, tokens):
+        """Generated gameplay tokens of a reply made past the stuck signal; ``unfit_tokens``: of those, the tokens
+        generated while no fitting model had been registered on the level (the harm case of the list cap)."""
+        if self.sc_active():
+            tokens = int(tokens or 0)
+            self.sc_stats["mode_tokens"] += tokens
+            self.sc_row["mode_tokens"] += tokens
+            if not self.sc_row["fit"]:
+                self.sc_stats["unfit_tokens"] += tokens
+                self.sc_row["unfit_tokens"] += tokens
+
     def valid_actions(self):
         names = super().valid_actions()
+        if self.dfr is not None and self.dfr.get("reset_offer") and "RESET" not in names:
+            names = [*names, "RESET"]
         if not self.dfr_on("actions"):
             return names
         return [dfr_module.UNDO[1] if name == dfr_module.UNDO[0] else name for name in names]
@@ -728,7 +1082,7 @@ class ArenaDuckMixin:
     def batch_stop(self, requested, position, verdicts):
         if not self.dfr_on("guards"):
             return super().batch_stop(requested, position, verdicts)
-        stop = dfr_module.batch_stop(requested, position, verdicts)
+        stop = dfr_module.batch_stop(requested, position, verdicts, sweep=bool(self.dfr.get("sweep")))
         if stop is not None:
             self.dfr_stats["noop_stops"] += 1
             self.dfr_noop_stops.append(stop)
@@ -740,6 +1094,19 @@ class ArenaDuckMixin:
         """Interior ``gameplay_changed`` (guards, animation) and the action's animation record (animation)."""
         if self.dfr["guards"] or self.dfr["animation"]:
             payload["gameplay_changed"] = dfr_module.gameplay_changed(before, self.obs.board)
+            if self.dfr.get("border_moves"):
+                # the edge-change memory lasts one level attempt: a new level, a RESET or a death starts it again
+                key = (self.obs.levels, self.level_start_step)
+                if (action.name == "RESET" or self.obs.state != "NOT_FINISHED"
+                        or getattr(self, "dfr_border_key", None) != key):
+                    self.dfr_border_key, self.dfr_border_seen = key, None
+                if action.name != "RESET":
+                    revisit, self.dfr_border_seen = dfr_module.border_revisit(
+                        before, self.obs.board, getattr(self, "dfr_border_seen", None))
+                    if revisit and payload["gameplay_changed"] is False:
+                        payload["gameplay_changed"] = True
+                        payload["edge_move"] = True
+                        self.dfr_stats["edge_moves"] = self.dfr_stats.get("edge_moves", 0) + 1
         if self.dfr["animation"] and action.name != "RESET":
             # Their solver: the auto-reset after a death never touches the record (it does not pass through here).
             (start,) = dfr_module.normalize_frames([before])
@@ -751,6 +1118,10 @@ class ArenaDuckMixin:
                 payload["animation"] = summary
                 self.dfr_stats["animated_actions"] += 1
                 self.dfr_stats["transient_actions"] += bool(summary.get("transient_pixels"))
+                if (self.dfr.get("transient") and summary.get("transient_pixels")
+                        and payload.get("gameplay_changed") is False):
+                    payload["transient_effect"] = int(summary["transient_pixels"])
+                    self.dfr_transients.append({"step": self.steps, "label": label, "animation": summary})
         self.dfr_last_action = {"step": self.steps, "label": label, "animation": payload.get("animation"),
                                 "gameplay_changed": payload.get("gameplay_changed")}
 
@@ -771,8 +1142,9 @@ class ArenaDuckMixin:
         guards = self.sandbox.dfr_guards
         fresh, self.dfr_guards_seen = guards[self.dfr_guards_seen:], len(guards)
         for item in fresh:
-            key = "stale_refusals" if item.get("kind") == "stale_state" else "terminal_refusals"
-            self.dfr_stats[key] += 1
+            key = {"stale_state": "stale_refusals", "sweep_exempt": "sweep_exemptions"}.get(item.get("kind"),
+                                                                                          "terminal_refusals")
+            self.dfr_stats[key] = self.dfr_stats.get(key, 0) + 1
         return fresh
 
     def dfr_rewrite(self, text, current_frame):
@@ -800,6 +1172,14 @@ class ArenaDuckMixin:
             if line:
                 notes.append(line)
                 self.dfr_stats["animation_openers"] += 1
+        if self.dfr.get("transient"):
+            # every such action but the last one, which the opener line above already describes
+            hidden = [t for t in self.dfr_transients if last is None or t["step"] != last["step"]]
+            self.dfr_transients = []
+            note = dfr_module.transient_note(hidden)
+            if note:
+                notes.append(note)
+                self.dfr_stats["transient_notes"] = self.dfr_stats.get("transient_notes", 0) + 1
         if self.dfr["guards"]:
             notes.extend(dfr_module.guard_notes(self.dfr_noop_stops, self.dfr_guard_stops()))
             self.dfr_noop_stops = []
@@ -930,6 +1310,8 @@ class ArenaDuckMixin:
     def analyzer_should_stop(self):
         if super().analyzer_should_stop():
             return True
+        if self.fresh_due():
+            return True  # the turn ends here; ``before_turn`` starts the fresh attempt
         if not self.loop_on("yield_tokens"):
             return False
         if self._analyzer._session_generated_tokens - self.loop_turn_tokens >= self.dloop["yield_tokens"]:
@@ -1020,7 +1402,8 @@ class ArenaDuckMixin:
                         if text.count(line) == 1), None)
             if old is None:
                 raise ValueError("dfr_loop: pinned image/history system line changed")
-            text = text.replace(old, loop_module.DRAIN_LINE, 1)
+            text = text.replace(old, loop_module.FRACTION_LINE if self.compaction_keep_fraction is not None
+                                else loop_module.DRAIN_LINE, 1)
         if spec["no_world_model"]:
             text = loop_module.world_model_free(text)
             # His ARC3_MEMORY_SECTIONS=off: nothing parsed, carried or shown; no cross-level hypothesis carry.
@@ -1426,6 +1809,11 @@ class ArenaDuckMixin:
             await self.hx_autoexplore()
         elif self.hx is not None and self.hx["stuckexplore"] and self.obs.state == "NOT_FINISHED":
             await self.hx_stuck_probe()
+        await self.fresh_check()
+        if self.sc_on():
+            self.sc_check()
+        if self.rsi is not None:
+            await self.rsi_check()
 
     def hx_skip_probes(self):
         """The stuck trackers skip the harness's own probe actions (they are not the model's attempts)."""
@@ -1562,6 +1950,15 @@ class ArenaDuckMixin:
 
     # Observations kept verbatim after a compaction (study ``compaction_keep_observations``).
     compaction_keep_observations = 1
+    compaction_keep_fraction = None
+    compaction_summary_cap = None
+    compaction_full_prefix = False
+    summary_scope = None
+
+    def fraction_measure(self, messages, tools):
+        # Fail closed on tokenizer failure; an estimate cannot enforce 90/10 retention.
+        future = asyncio.run_coroutine_threadsafe(self.exact_gameplay_tokens(messages, tools), self.loop)
+        return future.result(timeout=max(1, self.remaining()))
     # arena.keep_alive: (payload, admission count) of the gameplay request waiting for admission, and the monotonic time
     # of the game's last request end.
     cache_ping_request = None
@@ -1714,6 +2111,11 @@ class ArenaDuckMixin:
             self.level_snapshot_notice = None
         if getattr(self, "hx", None) is not None:
             notices.extend(self.hx_turn_lines())
+        if self.sc_on():
+            notices.extend(self.sc_turn_lines())
+        if self.rsi is not None:
+            leading, lines = self.rsi_turn_lines()
+            notices = lines + notices if leading else notices + lines
         return "\n".join(notices) or None
 
     def estimate_prompt_tokens(self, messages, tools):
@@ -1943,6 +2345,15 @@ class ArenaDuckMixin:
             self.last_gameplay_finish = reply.get("finish_reason")
             self.gameplay_replies += 1
             self.gameplay_completion_tokens += int((reply.get("usage") or {}).get("completion_tokens") or 0)
+            if self.sc_on():
+                self.sc_note_reply((reply.get("usage") or {}).get("completion_tokens"))
+            if self.rsi is not None and self.rsi_row is not None and self.rsi_mode == self.obs.levels:
+                self.rsi_row["tokens_after"] += int((reply.get("usage") or {}).get("completion_tokens") or 0)
+            if self.rsi is not None and self.rsi["verify"]:
+                from . import rsi_loop
+
+                tail = rsi_loop.reply_tail(reply.get("message") or {})
+                self.rsi_tails = [*self.rsi_tails, tail][-rsi_loop.CLAIM_REPLIES:] if tail else self.rsi_tails
         self.game.max_prompt_tokens = max(self.game.max_prompt_tokens, self.last_prompt_tokens)
         usage = reply.get("usage") or {}
         self.game.clock.charge(usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0), purpose)
@@ -1959,7 +2370,8 @@ class ArenaDuckMixin:
             self.chat_future = None
 
     async def aside_request(self, messages, prompt, *, cap, floor=256, purpose,
-                            record_purpose=None, allow_parked=False, gameplay_prefix=False, prefill=None):
+                            record_purpose=None, allow_parked=False, gameplay_prefix=False, prefill=None,
+                            thinking=False, reasoning_effort=None):
         """One tool-less, thinking-off request on ``messages`` plus ``prompt``, admitted through
         the gate and charged to the game's clock as ``purpose``: ``(text, data, seconds,
         estimate)``. ``allow_parked`` lets it out while the game is parked (notes at a park).
@@ -1982,6 +2394,7 @@ class ArenaDuckMixin:
             top_k=module._LOCAL_ANALYZER_TOP_K,
             **(self.gameplay_prefix_settings() if gameplay_prefix else {}),
             **({"prefill": prefill} if prefill is not None else {}),
+            **({"thinking": True, "reasoning_effort": reasoning_effort} if thinking else {}),
         )
         started = time.monotonic()
         slots = self.client.slots
@@ -2039,6 +2452,8 @@ class ArenaDuckMixin:
             prompt = handoff_prompt(DUCK_SUMMARY_PROMPT)
         if self.memory_block:
             prompt += MEMORY_COMPACTION_NOTE
+        if self.summary_scope:
+            prompt += SUMMARY_SCOPE_NOTE.format(messages=self.summary_scope)
         return prompt, bool(self.memory_block)
 
     async def summary_request(self, messages):
@@ -2056,7 +2471,7 @@ class ArenaDuckMixin:
         try:
             try:
                 text, data, seconds, estimate = await self.aside_request(
-                    messages, prompt, cap=self.cap, floor=2048, purpose="summary", record_purpose="compaction",
+                    messages, prompt, cap=self.compaction_summary_cap or self.cap, floor=2048, purpose="summary", record_purpose="compaction",
                     gameplay_prefix=gameplay_prefix, prefill=prefill,
                 )
             except httpx.HTTPStatusError as exc:
@@ -2068,7 +2483,7 @@ class ArenaDuckMixin:
                 self.workspace.append("compaction_prefix_refused", step=self.steps, status=exc.response.status_code)
                 prefill = None
                 text, data, seconds, estimate = await self.aside_request(
-                    messages, prompt, cap=self.cap, floor=2048, purpose="summary", record_purpose="compaction",
+                    messages, prompt, cap=self.compaction_summary_cap or self.cap, floor=2048, purpose="summary", record_purpose="compaction",
                 )
             if not text:
                 # 80k-three v1 (25 September): 1 of 22 compactions came back with no content (29 tokens)
@@ -2076,7 +2491,7 @@ class ArenaDuckMixin:
                 # back to a mechanical handoff; a game is never ended by a failed summary.
                 self.workspace.append("compaction_empty", step=self.steps, attempt=attempts, usage=data.get("usage", {}))
                 retry, data2, seconds2, _ = await self.aside_request(
-                    messages, prompt + SUMMARY_RETRY_SUFFIX, cap=self.cap, floor=2048,
+                    messages, prompt + SUMMARY_RETRY_SUFFIX, cap=self.compaction_summary_cap or self.cap, floor=2048,
                     purpose="summary", record_purpose="compaction", gameplay_prefix=gameplay_prefix,
                     prefill=prefill,
                 )
@@ -2225,8 +2640,14 @@ class ArenaDuckMixin:
             row["server_error_retries"] = self.server_error_retries
         if self.lrule is not None:
             row["loop_rule"] = {**self.lrule_stats, "action": self.lrule["action"]}
+        if self.fresh is not None:
+            row["fresh_attempt"] = dict(self.fresh_stats)
         if self.dfr is not None:
             row["dfr_harness"] = {**self.dfr_stats, "flags": dict(self.dfr)}
+            if self.sc_on():
+                row["sim_check"] = dict(self.sc_stats)
+        if self.rsi is not None:
+            row["rsi_loop"] = self.rsi_report()
         if self.dloop is not None:
             row["dfr_loop"] = {**self.loop_stats, "flags": dict(self.dloop)}
         if self.hx is not None:

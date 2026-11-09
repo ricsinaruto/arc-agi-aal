@@ -2446,8 +2446,6 @@ def start_server(
             root_record is not None
             and root_record["pgid"] == process.pid
             and root_record["sid"] == process.pid
-            and root_record["argv_sha256"] == hashlib.sha256(  # setsid runs before exec: wait for the exec'd argv
-                json.dumps(command, separators=(",", ":"), ensure_ascii=False).encode("utf-8")).hexdigest()
         ):
             break
         time.sleep(0.05)
@@ -2463,7 +2461,7 @@ def start_server(
         process.terminate()
         raise RuntimeError(
             "The live vLLM root argv did not match the exact launched command: "
-            f"{root_record['argv_sha256']} != {argv_sha256}; live cmdline {root_record['cmdline'][:400]!r}"
+            f"{root_record['argv_sha256']} != {argv_sha256}"
         )
     started_epoch = time.time()
     root_worker = {

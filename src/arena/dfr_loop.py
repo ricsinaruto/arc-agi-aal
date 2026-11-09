@@ -77,6 +77,12 @@ PUBLIC_IMAGE_LINE = (
     "- The newest user turn includes an image of the board as it was before this turn's actions (labelled with its "
     "step); earlier turns keep only a note that their image was omitted.\n"
 )
+FRACTION_LINE = (
+    "- Each user turn includes an image of the board as it was before that turn's actions (labelled with its step). "
+    "When context fills, the oldest 90% is replaced with your summary; the newest 10% stays verbatim, rounded to "
+    "complete observation/tool exchanges. The persistent Python interpreter and its variables survive. "
+    "The degenerate-loop escape hatch can clear the conversation while preserving Python state.\n"
+)
 DRAIN_LINE = (
     "- Each user turn includes an image of the board as it was before that turn's actions (labelled with its step). "
     "Earlier turns, their images and your earlier replies stay in the context verbatim until the context fills; then "

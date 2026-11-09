@@ -42,7 +42,22 @@ from collections import defaultdict
 
 import numpy as np
 
-FLAGS = ("vision", "guards", "actions", "level_prompt", "frame_diff", "animation")
+FLAGS = ("vision", "guards", "actions", "level_prompt", "frame_diff", "animation", "sweep", "transient", "reset_offer",
+         "border_moves", "simcheck", "evidence")
+# sweep (hx4, 7 October; never on with ``True``): after a no-op CLICK, a click on a DIFFERENT cell is executed (a click
+# sweep is a set of independent probes). Everything else after a no-op stays refused: the same click again, any key
+# after a no-op, any click after a no-op key. v7.1 DEV traces: 97 of 597 stale-state refusals were such clicks.
+# transient (hx4; v7.1 24 h analysis 8a): an action whose animation ends on the starting board is reported as a
+# transient effect, not as a no-op, for EVERY action of a python call (the animation line covered only the last one).
+# reset_offer (hx4; analysis 8c): RESET is listed among the valid actions and explained in one system line (it was
+# accepted but never offered: 0 manual resets in 68,471 actions of the v7.1 24 h run).
+# border_moves (hx4; analysis 8b): a change confined to the outer ring is a no-op only while it looks like a timer bar,
+# i.e. it touches cells that have not changed before in this level attempt. A change that touches an edge cell again
+# (an object moving along the edge) counts as a gameplay change (v7.1 counted every edge-only move as a no-op).
+# simcheck (hx5, 8 October; arena.sim_check): after a stuck signal the harness checks the agent's own model of the
+# level against the recorded transitions and runs action lists under that check. evidence: after the same signal, one
+# line per turn with the level's recorded counts per action (tries / changed / no-op, single-board no-ops flagged).
+OPT_IN = ("sweep", "transient", "reset_offer", "border_moves", "simcheck", "evidence")
 UPSCALE = 10            # their MULTIMODAL_UPSCALE
 BORDER = 4              # their ARC3_NOOP_GUARD_BORDER: the outer ring ignored by gameplay_changed
 GUARDS_FROM_LEVEL = 2   # their ARC3_GUARDS_FROM_LEVEL: the stale-state latch starts on level 2
@@ -60,7 +75,7 @@ def settings(value):
     if value is None or value is False:
         return None
     if value is True:
-        return {flag: True for flag in FLAGS}
+        return {flag: flag not in OPT_IN for flag in FLAGS}
     if not isinstance(value, dict):
         raise ValueError("dfr_harness is true/false or a dict of booleans over " + ", ".join(FLAGS))
     unknown = sorted(set(value) - set(FLAGS))
@@ -178,6 +193,27 @@ ANIMATION_ADDENDUM_TIMELINE = (
     "count per colour change, when there were too many cells to list).\n"
 )
 
+RESET_OFFER_ADDENDUM = (
+    "- `RESET` restarts the current level from its first board and costs one action. Use it when the level is in a "
+    "state you cannot recover from (pieces stuck, wrong irreversible move); do not spend the remaining step budget "
+    "to force a restart. It does nothing as the first action of a level.\n"
+)
+TRANSIENT_VERDICT = "TRANSIENT EFFECT (animated: {cells} cell(s) changed and changed back; final board unchanged)"
+
+
+def transient_note(items):
+    """One user-turn note for the executed actions of the last sequence that animated and ended on the board they
+    started from (``items``: ``{"step", "label", "animation"}``), or "" when there is none."""
+    if not items:
+        return ""
+    shown = "; ".join(f"step {i['step']} {i['label']}: {int(i['animation'].get('transient_pixels') or 0)} cells"
+                      f"{_bbox_phrase(i['animation'].get('transient_bbox'))}" for i in items[:6])
+    more = f" (+{len(items) - 6} more)" if len(items) > 6 else ""
+    return (f"These actions left the board area unchanged but were NOT no-ops: each played an animation in which cells "
+            f"changed and changed back: {shown}{more}. Do not conclude that they do nothing; replay one alone and "
+            "read `last_animation_timeline`.")
+
+
 DIFF_IMAGE_SYSTEM = (
     " Alongside the current grid image you receive a diff image: cells that "
     "changed since your previous analyzer turn are shown in their new true "
@@ -256,6 +292,8 @@ def system_prompt(text, block):
         runtime += GAMEPLAY_CHANGED_ADDENDUM
     if block["animation"]:
         runtime += ANIMATION_ADDENDUM + ANIMATION_ADDENDUM_TIMELINE
+    if block.get("reset_offer"):
+        runtime += RESET_OFFER_ADDENDUM
     if runtime:
         # The runtime-variable section ends "...are refreshed.\n" before the blank lines of the next section.
         text = _insert_before(text, MULTIMODAL_ANCHOR, "\n" + runtime.rstrip("\n"), "runtime variables")
@@ -347,6 +385,24 @@ def gameplay_changed(before, after, border=BORDER):
     return bool((a[border:rows - border, border:cols - border] != b[border:rows - border, border:cols - border]).any())
 
 
+def border_revisit(before, after, seen, border=BORDER):
+    """``(revisit, seen)`` for an action without an interior change: ``revisit`` is True when an edge-ring cell that
+    already changed earlier in this level attempt (``seen``, a boolean grid or None) changed again; ``seen`` is
+    returned with this action's edge changes added. A shrinking timer bar changes each cell once; a moving object
+    leaves the cells it entered."""
+    a, b = np.asarray(before), np.asarray(after)
+    if a.shape != b.shape or a.ndim != 2:
+        return False, None
+    diff = a != b
+    rows, cols = a.shape
+    if border > 0 and rows > 2 * border and cols > 2 * border:
+        diff = diff.copy()
+        diff[border:rows - border, border:cols - border] = False
+    if seen is None or seen.shape != diff.shape:
+        seen = np.zeros(diff.shape, dtype=bool)
+    return bool((diff & seen).any()), seen | diff
+
+
 NOOP_VERDICT = "NO-OP (executed, no change inside the board area)"
 
 
@@ -359,18 +415,27 @@ def verdict(payload):
     if payload.get("level_completed"):
         return "LEVEL COMPLETED"
     changed = payload.get("gameplay_changed")
+    if changed is False and payload.get("transient_effect"):
+        return TRANSIENT_VERDICT.format(cells=payload["transient_effect"])
     if changed is False:
         return NOOP_VERDICT
     return "effect" if changed is True else "executed"
 
 
-def batch_stop(requested, position, verdicts):
+def click_sweep(previous, following):
+    """True when ``following`` is a click on another cell than the click ``previous`` (labels as displayed)."""
+    return str(previous).startswith("MOUSE(") and str(following).startswith("MOUSE(") and previous != following
+
+
+def batch_stop(requested, position, verdicts, sweep=False):
     """The batch no-op stop after the action at ``position`` (0-based in ``requested``, the requested labels), or
     None. ``verdicts`` is one ``(label, payload or None)`` per action tried so far (None: refused, never executed).
     Fires only when a batch of two or more has actions left after an executed action without an interior change."""
     label, payload = verdicts[-1]
     total = len(requested)
     if total < 2 or payload is None or payload.get("gameplay_changed") is not False or position >= total - 1:
+        return None
+    if sweep and click_sweep(requested[position], requested[position + 1]):
         return None
     executed = sum(1 for _, item in verdicts if item is not None)
     index = position + 1
@@ -662,6 +727,13 @@ STALE_DETAIL = (
     "been halted here. Re-read current_frame and last_action_result, work out why nothing moved, then act on what "
     "you find. (StaleStateActionError can be caught if a snippet has good reason to keep acting through no-ops.)"
 )
+STALE_DETAIL_TRANSIENT = (
+    "{action} was not executed. The action immediately before it, {previous}, played an animation and left the board "
+    "area exactly as it was (cells changed and changed back; it was not a no-op), so positions and paths computed "
+    "for the actions after it may be wrong, which is why execution has been halted here. Read "
+    "`last_animation_timeline` to see what {previous} did, then act on what you find. (StaleStateActionError can be "
+    "caught if a snippet has good reason to keep acting.)"
+)
 TERMINAL_DETAIL = {
     "game_over": ("the previous action reported game_over. The level is reset to its start before your next turn, so "
                   "the board you planned against is gone and this action was not executed. The next turn begins from "
@@ -677,6 +749,7 @@ TERMINAL_DETAIL = {
 CHILD_BLOCK = r'''
     _DFR_FLAGS = __DFR_FLAGS__
     _DFR_STALE_DETAIL = __DFR_STALE__
+    _DFR_STALE_TRANSIENT = __DFR_STALE_T__
     _DFR_TERMINAL_DETAIL = __DFR_TERMINAL__
     _DFR = {"stale": None, "terminal": None, "events": [], "views": []}
 
@@ -714,11 +787,18 @@ CHILD_BLOCK = r'''
                 raise TerminalStateActionError(_DFR_TERMINAL_DETAIL[_DFR["terminal"]])
             frame = runtime_globals.get("current_frame")
             level = int(getattr(frame, "level", 0) or 0)
+            if (_DFR["stale"] is not None and items and _DFR_FLAGS.get("sweep")
+                    and _DFR["stale"].startswith("MOUSE(") and _dfr_display(items[0]).startswith("MOUSE(")
+                    and _dfr_display(items[0]) != _DFR["stale"]):
+                _DFR["events"].append({"kind": "sweep_exempt", "action": _dfr_display(items[0]),
+                                       "previous": _DFR["stale"], "level": level})
+                _DFR["stale"] = None
             if _DFR["stale"] is not None and items and level >= __DFR_FROM_LEVEL__:
                 shown = _dfr_display(items[0])
                 _DFR["events"].append({"kind": "stale_state", "action": shown, "previous": _DFR["stale"],
                                        "level": level, "skipped": [_dfr_display(i) for i in items]})
-                raise StaleStateActionError(_DFR_STALE_DETAIL.format(action=shown, previous=_DFR["stale"]))
+                detail = _DFR_STALE_TRANSIENT if _DFR.get("stale_transient") else _DFR_STALE_DETAIL
+                raise StaleStateActionError(detail.format(action=shown, previous=_DFR["stale"]))
         for view in _DFR["views"]:
             view.invalidate()
         result = _dfr_inner_action(actions)
@@ -734,6 +814,7 @@ CHILD_BLOCK = r'''
                 executed = result.get("executed_actions")
                 _DFR["stale"] = str(executed[-1] if isinstance(executed, list) and executed
                                     else result.get("action_display") or "?")
+                _DFR["stale_transient"] = bool(result.get("transient_effect"))
         return result
 
     runtime_globals["action"] = action
@@ -892,8 +973,11 @@ def with_dfr(bootstrap, block):
     if "_DFR_FLAGS = " in bootstrap:
         raise ValueError("dfr_harness: the sandbox code is already installed")
     flags = {key: bool(block[key]) for key in ("guards", "frame_diff", "animation")}
+    if block.get("sweep"):
+        flags["sweep"] = True
     child = (CHILD_BLOCK.replace("__DFR_FLAGS__", repr(flags))
              .replace("__DFR_STALE__", repr(STALE_DETAIL))
+             .replace("__DFR_STALE_T__", repr(STALE_DETAIL_TRANSIENT))
              .replace("__DFR_TERMINAL__", json.dumps(TERMINAL_DETAIL, ensure_ascii=False))
              .replace("__DFR_FROM_LEVEL__", str(int(GUARDS_FROM_LEVEL))))
     text = _pinned(bootstrap, ANCHOR, child.lstrip("\n") + ANCHOR, "loop")

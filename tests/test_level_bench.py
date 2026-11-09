@@ -87,8 +87,8 @@ def test_settings_validation_and_seeded_plan():
     points = [{"id": f"g{i}-L1"} for i in range(5)]
     first = level_bench.plan(points, 2, 0)
     assert first == level_bench.plan(points, 2, 0) and len(first) == 10
-    assert [p for p, _ in first] == [0] * 5 + [1] * 5
-    assert sorted(pt["id"] for _, pt in first[:5]) == sorted(pt["id"] for pt in points)
+    assert [p for p, _, _ in first] == [0] * 5 + [1] * 5
+    assert sorted(pt["id"] for _, pt, _ in first[:5]) == sorted(pt["id"] for pt in points)
 
 
 def attempt(point, outcome, tokens, clear=None, score=0.0, level=1, requests=4, noaction=1):
@@ -302,6 +302,12 @@ def test_modal_level_bench_test_kind():
             exec(compile(ast.Module(body=[node], type_ignores=[]), "modal_validation", "exec"), ns)
     assert ns["validation_timeout"]("arena", "level-bench") == 3600
     assert ns["arena_arguments"]("level-bench") == ["--trial", "level-bench"]
+    assert ns["arena_arguments"]("hx4-level") == ["--trial", "level-bench"]
+    ns["hx4_study"] = lambda: {"notebook_seconds": 2280}
+    assert ns["validation_timeout"]("arena", "hx4-level") == 2580
+    assert ns["arena_arguments"]("hx4-quality") == ["--trial", "duck-transfer"]
+    ns["hx4_study"] = lambda: {"notebook_seconds": 10300}
+    assert ns["validation_timeout"]("arena", "hx4-quality") == 10600
 
 
 def test_bootstrap_echoes_only_bench_lines(tmp_path, capsys, monkeypatch):
@@ -381,3 +387,296 @@ def test_cli_runs_the_level_bench_trial_without_the_arena_wall_check(tmp_path, m
     trial = record["trials"][0]
     assert trial["status"] == "complete" and trial["report"] == {"status": "complete", "summary": {"clears": 3}}
     assert seen["deadline_epoch"] == pytest.approx(start + 1200, abs=1) and seen["games_dir"] == "games"
+
+
+V71 = {
+    "harness_fixes": {"fixes": ["exact_trigger", "summary_guard", "inventory", "cap_followup", "stuck_notice", "sandbox",
+                                "timeout_interrupt", "prompt_text", "summary_headroom", "text_count"],
+                      "summary_room_tokens": 4096, "inventory_max_tokens": 1536, "inventory_receipts": 12,
+                      "stuck_turns": 16, "stuck_notice_turns": 8, "stuck_no_change_actions": 5,
+                      "interrupt_grace_seconds": 3.0},
+    "drain_half": {"drain_tokens": 59392, "turn_cap": 150, "turn_drain": 30, "coalesce": True,
+                   "tool_output_tokens": 3072, "middle_truncation": True, "drop_malformed": True, "note": True},
+    "hx_harness": {"toolbox": True, "reflect": True, "economy": True, "memo": True, "reflect_style": 2, "memo_once": 1},
+    "dfr_harness": {"vision": True, "guards": True, "actions": True, "level_prompt": True, "frame_diff": True,
+                    "animation": True},
+    "dfr_loop": {"prompt_fix": True, "yield_tokens": 0, "no_world_model": False, "action_feedback": False,
+                 "inventory_animation": True},
+    "loop_rule": {"action": "fresh_context", "streak": 20, "mean_completion": 300, "similarity": 0.9},
+    "budget_clock": "tokens", "reasoning_history": "verbatim", "compaction_thinking": "prefilled-empty",
+}
+
+
+class PrefixBenchArcade(BenchArcade):
+    """One prefix action reaches level 2; the attempt's first action clears it."""
+
+    def make(self, game_id, **kwargs):
+        board = np.zeros((64, 64), dtype=np.uint8)
+        second = board.copy()
+        second[5, 5] = 3
+        third = second.copy()
+        third[9, 9] = 4
+        return FakeEnv([observation(board), observation(second, levels=1),
+                        *(observation(third, levels=2) for _ in range(10))])
+
+
+def test_plan_rotates_arms_over_points_and_passes():
+    points = [{"id": f"p{i}"} for i in range(3)]
+    arms = [{"name": "a"}, {"name": "b"}]
+    work = level_bench.plan(points, 2, 0, arms, first_pass=1)
+    assert len(work) == 12 and {w[0] for w in work} == {1, 2}
+    assert {(w[0], w[1]["id"], w[2]["name"]) for w in work} == {(p, f"p{i}", a) for p in (1, 2) for i in range(3)
+                                                                 for a in "ab"}
+    first = work[:3]  # the first third of a pass already holds both arms
+    assert {w[2]["name"] for w in first} == {"a", "b"}
+    assert level_bench.plan(points, 1, 0)[0][2]["name"] == "base"
+    mixed = points + [{"id": "d0", "deep_tokens": 150000}]
+    split = level_bench.plan(mixed, 1, 0, [{"name": "a", "points": "start"}, {"name": "b", "points": "deep"}, {"name": "c"}])
+    assert sorted((w[1]["id"], w[2]["name"]) for w in split) == sorted(
+        [(f"p{i}", a) for i in range(3) for a in "ac"] + [("d0", "b"), ("d0", "c")])
+    games = [{"id": "x", "game": "aa11-1"}, {"id": "y", "game": "bb22-1"}]
+    only = level_bench.plan(games, 1, 0, [{"name": "a"}, {"name": "b", "games": ["bb22"]}])
+    assert sorted((w[1]["id"], w[2]["name"]) for w in only) == [("x", "a"), ("y", "a"), ("y", "b")]
+
+
+async def test_arms_run_the_v71_harness_with_warm_notes_and_replayed_history(tmp_path, monkeypatch):
+    import arc_infra.metrics
+
+    monkeypatch.setattr(arc_infra.metrics, "GpuMonitor", QuietMonitor)
+    board = np.zeros((64, 64), dtype=np.uint8)
+    second = board.copy()
+    second[5, 5] = 3
+    point = {"id": "aa11-L2", "game": "aa11-00000000", "split": "dev", "level_index": 1, "level": 2, "total_levels": 5,
+             "baseline_actions": 2, "prefix": ["ACTION1"], "prefix_actions": 1, "board_hash": board_hash(second),
+             "warm": {"cross_level_notes": "Prior-level hypotheses: the red key opens doors.",
+                      "notes": {"mech": "UP moves the cursor"}}}
+    path = tmp_path / "points.json"
+    path.write_text(json.dumps({"schema": 1, "points": [point]}))
+    calls = {}
+
+    def handler(request):
+        if request.url.path.endswith("/tokenize"):
+            return httpx.Response(200, json={"count": 1000, "max_model_len": 131072})
+        payload = json.loads(request.content)
+        text = json.dumps(payload["messages"])
+        arm = next(a for a in ("cold", "notes", "hist") if f"ARM-{a}" in text) if "ARM-" in text else None
+        seen = calls.setdefault(id(request.extensions.get("x", request)), [])
+        seen.append(payload)
+        n = sum(1 for m in payload["messages"] if m["role"] == "assistant")
+        code = ("print('HIST', len(history), current_frame.step, current_frame.level, len(transitions));"
+                "print('NOTES', sorted(note('zz', '1')))") if n == 0 else "action([{'action':'UP'}])"
+        return httpx.Response(200, json=tool_reply(code, call_id=f"c{n}",
+                                                   usage={"completion_tokens": 300, "prompt_tokens": 4000}).json())
+
+    study = {"completion_cap": 4096, "reasoning_effort": "xhigh", "temperature": 0.7, "generation_slots": 4,
+             "server": {"mtp_tokens": 1, "max_model_len": 131072}, "wall_seconds": 60, **V71,
+             "level_bench": {"start_points": str(path), "capacity_tokens": 2000000, "window": 130816,
+                             "token_budget": 5000, "concurrency": 4, "passes": 1, "min_wall_seconds": 5,
+                             "launch_cutoff_seconds": 0, "progress_seconds": 1, "serving": "test",
+                             "arms": [{"name": "cold"}, {"name": "notes", "warm": True},
+                                      {"name": "hist", "history": True},
+                                      {"name": "both", "warm": True, "history": True,
+                                       "study": {"hx_harness": {**V71["hx_harness"], "reflect": False}}}]}}
+    bench = level_bench.LevelBench(study, {"name": "level-bench", "kind": "level-bench"}, source=ROOT,
+                                   games_dir=None, output=tmp_path / "out", server_dir=tmp_path,
+                                   base_url="http://127.0.0.1:9/v1", deadline_epoch=time.time() + 120,
+                                   log=lambda *a, **k: None, arcade=PrefixBenchArcade(),
+                                   transport=httpx.MockTransport(handler))
+    report = await bench.run()
+    rows = {r["arm"]: r for r in report["attempts"]}
+    assert set(rows) == {"cold", "notes", "hist", "both"}, report["task_errors"]
+    assert all(r["outcome"] == "cleared" and r["actions"] == 1 for r in rows.values()), rows
+    assert report["summary"]["by_arm"]["both"]["clears"] == 1
+    logs = {arm: (tmp_path / "out/attempts" / rows[arm]["label"] / "log.jsonl").read_text() for arm in rows}
+    transcripts = {arm: (tmp_path / "out/attempts" / rows[arm]["label"] / "duck-transcript.txt").read_text()
+                   for arm in rows}
+    assert "HIST 1 0 2 0" in logs["cold"] and "HIST 1 0 2 0" in logs["notes"]
+    assert "HIST 2 1 2 1" in logs["hist"] and "HIST 2 1 2 1" in logs["both"]   # seed frame + the replayed action
+    assert "'mech', 'zz'" in logs["notes"] and "'mech', 'zz'" in logs["both"] and "'mech'" not in logs["cold"]
+    for arm in ("notes", "both"):
+        assert "Cross-level notes: Prior-level hypotheses: the red key opens doors." in transcripts[arm]
+        assert "Your notes from the earlier levels: mech: UP moves the cursor" in transcripts[arm]
+    assert "red key" not in transcripts["cold"] and "red key" not in transcripts["hist"]
+    assert bench.attempts[0]["agent"].hx["reflect"] in (True, False)
+    by = {a["arm"]: a["agent"] for a in bench.attempts}
+    assert by["both"].hx["reflect"] is False and by["cold"].hx["reflect"] is True and by["cold"].drain is not None
+
+
+class DeepBenchArcade(BenchArcade):
+    """ACTION1 reaches level 2, ACTION4 moves inside it; a reset returns to its first board; the next action clears."""
+
+    def __init__(self):
+        super().__init__()
+        self.envs = []
+
+    def make(self, game_id, **kwargs):
+        board = np.zeros((64, 64), dtype=np.uint8)
+        start = board.copy()
+        start[5, 5] = 3
+        inside = start.copy()
+        inside[20, 20] = 6
+        won = start.copy()
+        won[9, 9] = 4
+
+        class Env(FakeEnv):
+            def reset(self):
+                self.reset_count += 1
+                self.observation_space = raw(observation(start, levels=1))
+                return self.observation_space
+
+        from conftest import raw
+
+        env = Env([observation(board), observation(start, levels=1), observation(inside, levels=1),
+                   *(observation(won, levels=2) for _ in range(10))])
+        self.envs.append(env)
+        return env
+
+
+async def test_fresh_attempt_restarts_with_the_earlier_beliefs_as_suspects(tmp_path, monkeypatch):
+    import arc_infra.metrics
+
+    from arena import fresh_attempt
+
+    monkeypatch.setattr(arc_infra.metrics, "GpuMonitor", QuietMonitor)
+    start = np.zeros((64, 64), dtype=np.uint8)
+    start[5, 5] = 3
+    inside = start.copy()
+    inside[20, 20] = 6
+    point = {"id": "aa11-L2-deep", "game": "aa11-00000000", "split": "dev", "level_index": 1, "level": 2,
+             "total_levels": 5, "baseline_actions": 2, "prefix": ["ACTION1", "ACTION4"], "prefix_actions": 2,
+             "level_start_actions": 1, "board_hash": board_hash(inside),
+             "warm": {"cross_level_notes": "", "notes": {"mech": "UP moves the cursor"},
+                      "knowledge": {"goal_model": "fill the blue slot", "world_model": "the red block is immovable"}}}
+    path = tmp_path / "points.json"
+    path.write_text(json.dumps({"schema": 1, "points": [point]}))
+    requests = []
+
+    def handler(request):
+        if request.url.path.endswith("/tokenize"):
+            return httpx.Response(200, json={"count": 1000, "max_model_len": 131072})
+        payload = json.loads(request.content)
+        requests.append(payload)
+        text = json.dumps(payload["messages"])
+        n = sum(1 for m in payload["messages"] if m["role"] == "assistant")
+        act = "[Fresh attempt]" in text or n >= 5
+        code = "action([{'action':'UP'}])" if act else "print('LOOK', current_frame.step, len(history))"
+        return httpx.Response(200, json=tool_reply(code, call_id=f"c{len(requests)}", content="World model: wall.",
+                                                   usage={"completion_tokens": 300, "prompt_tokens": 4000}).json())
+
+    study = {"completion_cap": 4096, "reasoning_effort": "xhigh", "temperature": 0.7, "generation_slots": 4,
+             "server": {"mtp_tokens": 1, "max_model_len": 131072}, "wall_seconds": 60, **V71,
+             "level_bench": {"start_points": str(path), "capacity_tokens": 2000000, "window": 130816,
+                             "token_budget": 5000, "concurrency": 1, "passes": 1, "min_wall_seconds": 5,
+                             "launch_cutoff_seconds": 0, "progress_seconds": 1, "serving": "test",
+                             "arms": [{"name": "cont", "warm": True, "history": True},
+                                      {"name": "refute", "warm": True, "history": True,
+                                       "study": {"fresh_attempt": {"at_start": True}}},
+                                      {"name": "amnesia", "history": True, "reset": True},
+                                      {"name": "periodic", "warm": True, "history": True,
+                                       "study": {"fresh_attempt": {"tokens": 1000}}}]}}
+    arcade = DeepBenchArcade()
+    bench = level_bench.LevelBench(study, {"name": "level-bench", "kind": "level-bench"}, source=ROOT,
+                                   games_dir=None, output=tmp_path / "out", server_dir=tmp_path,
+                                   base_url="http://127.0.0.1:9/v1", deadline_epoch=time.time() + 120,
+                                   log=lambda *a, **k: None, arcade=arcade, transport=httpx.MockTransport(handler))
+    report = await bench.run()
+    rows = {r["arm"]: r for r in report["attempts"]}
+    assert all(r["outcome"] == "cleared" for r in rows.values()), (rows, report["task_errors"])
+    order = [a["arm"] for a in sorted(bench.attempts, key=lambda a: a["index"])]
+    resets = dict(zip(order, (env.reset_count for env in arcade.envs)))
+    assert resets == {"cont": 0, "refute": 1, "amnesia": 1, "periodic": 1}
+    assert {arm: rows[arm]["actions"] for arm in rows} == {"cont": 1, "refute": 2, "amnesia": 2, "periodic": 2}
+    logs = {arm: [json.loads(line) for line in (tmp_path / "out/attempts" / rows[arm]["label"] / "log.jsonl").open()]
+            for arm in rows}
+    first = {}
+    for payload in requests:
+        text = json.dumps(payload["messages"])
+        key = ("refute" if "[Fresh attempt]" in text and len(payload["messages"]) == 3 and "A long earlier" in text
+               else "cont" if "Goal model: fill the blue slot" in text else None)
+        if key and key not in first:
+            first[key] = payload["messages"]
+    note = first["refute"][1]["content"]
+    assert note.startswith("[Fresh attempt] A long earlier attempt went into level 2")
+    assert "reset to its starting board" in note and "Treat every line as a suspect" in note
+    assert "- Goal: fill the blue slot" in note and "- World: the red block is immovable" in note
+    assert "- Note mech: UP moves the cursor" in note and "Live python definitions" in note or "python" in note
+    assert "Goal model: fill the blue slot" not in json.dumps(first["refute"][2])  # no carried model beside the note
+    assert "Goal model: fill the blue slot" in json.dumps(first["cont"])
+    fresh = [r for r in logs["periodic"] if r["kind"] == "fresh_attempt"]
+    assert len(fresh) == 1 and fresh[0]["reset"] and fresh[0]["tokens"] >= 1000 and fresh[0]["number"] == 1
+    assert "world_model" in fresh[0]["belief_fields"]
+    assert [r["kind"] for r in logs["periodic"]].count("fresh_attempt_context") == 1
+    assert not [r for r in logs["cont"] if r["kind"] == "fresh_attempt"]
+    assert fresh_attempt.cutoff(fresh_attempt.settings({"tokens": 1000, "growth": 2, "max": 2}), 1) == 2000
+    assert fresh_attempt.cutoff(fresh_attempt.settings({"tokens": 1000, "max": 2}), 2) is None
+    with pytest.raises(ValueError):
+        fresh_attempt.settings({"beliefs": "keep"})
+
+
+async def test_lead_points_let_the_agent_play_the_levels_before_the_target(tmp_path, monkeypatch):
+    import arc_infra.metrics
+
+    monkeypatch.setattr(arc_infra.metrics, "GpuMonitor", QuietMonitor)
+    point = {"id": "aa11-L2-lead1", "game": "aa11-00000000", "split": "dev", "level_index": 0, "level": 2,
+             "lead_levels": 1, "total_levels": 5, "baseline_actions": 2, "prefix": [], "prefix_actions": 0,
+             "board_hash": board_hash(np.zeros((64, 64), dtype=np.uint8)), "warm": {}}
+    path = tmp_path / "points.json"
+    path.write_text(json.dumps({"schema": 1, "points": [point]}))
+    acting = {"on": True}
+
+    def handler(request):
+        if request.url.path.endswith("/tokenize"):
+            return httpx.Response(200, json={"count": 1000, "max_model_len": 131072})
+        code = "action([{'action':'UP'}])" if acting["on"] else "print('LOOK')"
+        return httpx.Response(200, json=tool_reply(code, call_id="c", content="World model: wall.",
+                                                   usage={"completion_tokens": 300, "prompt_tokens": 4000}).json())
+
+    def run(name, lead_budget):
+        study = {"completion_cap": 4096, "reasoning_effort": "xhigh", "temperature": 0.7, "generation_slots": 4,
+                 "server": {"mtp_tokens": 1, "max_model_len": 131072}, "wall_seconds": 60, **V71,
+                 "level_bench": {"start_points": str(path), "capacity_tokens": 2000000, "window": 130816,
+                                 "token_budget": 5000, "concurrency": 1, "passes": 1, "min_wall_seconds": 5,
+                                 "launch_cutoff_seconds": 0, "progress_seconds": 1, "serving": "test",
+                                 "lead_token_budget": lead_budget,
+                                 "arms": [{"name": "lead", "points": "lead"}, {"name": "start", "points": "start"}]}}
+        return level_bench.LevelBench(study, {"name": "level-bench", "kind": "level-bench"}, source=ROOT,
+                                      games_dir=None, output=tmp_path / name, server_dir=tmp_path,
+                                      base_url="http://127.0.0.1:9/v1", deadline_epoch=time.time() + 120,
+                                      log=lambda *a, **k: None, arcade=DeepBenchArcade(),
+                                      transport=httpx.MockTransport(handler)).run()
+
+    report = await run("a", 2000)
+    (row,) = report["attempts"]  # the start-only arm takes no lead point
+    assert (row["arm"], row["outcome"], row["level"]) == ("lead", "cleared", 2), (row, report["task_errors"])
+    assert (row["lead_tokens"], row["lead_actions"], row["actions"]) == (300, 1, 2)
+    assert row["tokens_to_clear"] == row["completion_tokens"] == 600
+    acting["on"] = False
+    report = await run("b", 500)
+    (row,) = report["attempts"]
+    assert row["outcome"] == "lead_out" and row["completion_tokens"] == 0 and row["lead_tokens"] >= 500
+    assert report["summary"]["attempts_completed"] == 0
+
+
+def test_enter_arms_and_play_through_points():
+    from arena import level_bench as lb
+
+    base = {"start_points": "x.json"}
+    arms = [{"name": "keep", "points": "game"}, {"name": "clear", "points": "game", "enter": "clear"},
+            {"name": "restart", "points": "game", "enter": "restart"}, {"name": "both", "points": "game", "enter": "both"}]
+    assert lb.settings({**base, "arms": arms})["arms"] == arms
+    for bad in ({"name": "a", "enter": "clear"}, {"name": "a", "points": "start", "enter": "clear"},
+                {"name": "a", "points": "game", "enter": "wipe"}):
+        with pytest.raises(ValueError):
+            lb.settings({**base, "arms": [bad]})
+    points = [{"id": f"g{i}-game", "game": f"g{i}aa-x", "through": True} for i in range(4)]
+    assert {lb.point_kind(p) for p in points} == {"game"}
+    work = lb.plan(points, 3, 0, arms)
+    assert len(work) == 48
+    counts = {}
+    for _, point, arm in work:
+        counts[(point["id"], arm["name"])] = counts.get((point["id"], arm["name"]), 0) + 1
+    assert set(counts.values()) == {3} and len(counts) == 16
+    # the first 16 launches (one pass) hold every game under every arm once
+    assert len({(p["id"], a["name"]) for _, p, a in work[:16]}) == 16
+    assert "note() entries" in lb.ENTER_RESTART_NOTE and "note() entries" in lb.ENTER_BOTH_NOTE
+    assert "python session is unchanged" in lb.ENTER_CLEAR_NOTE
