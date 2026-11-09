@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -225,6 +226,54 @@ def lab_overrides(environ=None):
     return result
 
 
+def use_model_files(recipe, working, model_files):
+    """RSI loop (server.model_files, e.g. "/serve/candidate/weights"): files that replace or add to the pinned
+    checkpoint's (requantized or pruned shards, a new index or quantization config). The server loads a merged folder
+    (links to the base files, the candidate's files in their place); the pinned identity check runs on the base
+    checkpoint only, and the replaced files are listed (path, size) in the model check."""
+    files_root = Path(str(model_files))
+    if not files_root.is_dir():
+        raise ValueError('server.model_files: a folder of model files (e.g. /serve/candidate/weights)')
+    resolve, verify = recipe.resolve_model_dir, recipe.verify_model
+    merged = Path(working) / 'model-merged'
+    base_dir = {}
+
+    def merged_resolve():
+        base = resolve()
+        base_dir['path'] = base
+        shutil.rmtree(merged, ignore_errors=True)
+        merged.mkdir(parents=True)
+        for item in base.iterdir():
+            (merged / item.name).symlink_to(item)
+        for path in sorted(p for p in files_root.rglob('*') if p.is_file()):
+            rel = path.relative_to(files_root)
+            parent = merged
+            for part in rel.parts[:-1]:  # a linked base folder becomes a real one holding links
+                folder = parent / part
+                if folder.is_symlink():
+                    original = folder.resolve()
+                    folder.unlink()
+                    folder.mkdir()
+                    for item in original.iterdir():
+                        (folder / item.name).symlink_to(item)
+                folder.mkdir(exist_ok=True)
+                parent = folder
+            target = merged / rel
+            if target.is_symlink() or target.exists():
+                target.unlink()
+            target.symlink_to(path)
+        return merged
+
+    def merged_verify(model_dir, **kwargs):
+        check = verify(base_dir.get('path') or resolve(), **kwargs)
+        check['model_files'] = [{'path': str(p.relative_to(files_root)), 'bytes': p.stat().st_size}
+                                for p in sorted(files_root.rglob('*')) if p.is_file()]
+        return check
+
+    recipe.resolve_model_dir = merged_resolve
+    recipe.verify_model = merged_verify
+
+
 def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_skipped_blocks=False,
               graph_metrics=False, speculative=None, scheduling_policy=None, torch_profiler=False,
               dense_kernels=None, serving_kernels=None, draft_head=None, stack_kernels=None, expert_capture=False,
@@ -232,7 +281,7 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
               ready_guard_seconds=None, expert_prune=None, expert_prune_sha256=None, prefix_cache=None, prompt_tokens_details=False,
               stall_dump_seconds=None, prefix_match_unit=None, warm_prompt_logprobs=False, research_checkpoint=None,
               graph_capture_sizes=None, setup_timeouts=None, renderer_num_workers=None,
-              mm_processor_cache_gb=None):
+              mm_processor_cache_gb=None, model_files=None):
     if research_checkpoint is not None and (expert_overlay is not None or expert_prune is not None):
         raise ValueError('A research checkpoint cannot use the base Flash expert overlay or pruning mask')
     if type(warm_prompt_logprobs) is not bool:
@@ -250,8 +299,8 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
     if renderer_num_workers is not None and (type(renderer_num_workers) is not int or not 1 <= renderer_num_workers <= 16):
         raise ValueError('renderer_num_workers is an integer 1..16')
     if mm_processor_cache_gb is not None and (type(mm_processor_cache_gb) not in (int, float)
-                                              or not 0 <= mm_processor_cache_gb <= 4):
-        raise ValueError('mm_processor_cache_gb is a number of GiB in 0..4 (vLLM default 4)')
+                                              or not 0 <= mm_processor_cache_gb <= 32):
+        raise ValueError('mm_processor_cache_gb is a number of GiB in 0..32 (vLLM default 4)')
     dense_kernels = validate_dense_kernels(dense_kernels)
     draft_head = validate_draft_head(draft_head)
     expert_overlay = expert_overlay_module.validate(expert_overlay)
@@ -288,11 +337,14 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
         os.environ[recipe.MAX_CUDAGRAPH_CAPTURE_SIZE_ENV] = str(graph_capture_size)
     graph_capture_sizes = validate_graph_capture_sizes(graph_capture_sizes, graph_capture_size)
     os.environ["VLLM_SERVER_DEV_MODE"] = "1"  # localhost-only cache reset after serving probes
+    if model_files is not None:
+        use_model_files(recipe, working, model_files)
     extract = recipe.verify_and_extract_runtime
 
     def wrapped_extract(*args, **kwargs):
         result = extract(*args, **kwargs)
-        apply(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working)
+        apply(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working,
+              **({'state_cotenant': True} if prefix_cache and prefix_cache.get('state_cotenant') else {}))
         if reclaim_skipped_blocks:
             apply_reclamation(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working)
         if prefix_cache is not None:
@@ -609,7 +661,8 @@ def main():
               expert_prune=with_stall_dump(bundle_expert_prune(prune_spec, Path(args.study).parent.parent),
                                            lab.get('stall_dump_seconds')),
               expert_prune_sha256=(prune_spec or {}).get('sha256'),
-              research_checkpoint=study.get('research_checkpoint')))
+              research_checkpoint=study.get('research_checkpoint'),
+              model_files=study['server'].get('model_files')))
     budget = BlockBudget.load(args.working, study['kv_margin'])
     (Path(args.working) / 'cache-layout.json').write_text(json.dumps(budget.layout, indent=2))
 

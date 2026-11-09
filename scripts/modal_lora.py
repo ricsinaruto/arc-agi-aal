@@ -107,8 +107,7 @@ def bound_usd(mode, spec, ledger):
 
 
 def committed_usd(ledger):
-    from arc_infra.runops.records import row_cost
-    return ledger["infrastructure_reserve_usd"] + sum(row_cost(r)[0] for r in ledger["runs"])
+    return ledger["infrastructure_reserve_usd"] + sum(r["charged_bound_usd"] for r in ledger["runs"])
 
 
 def reserve_lora(root, run_id, mode, spec, *, extra=None):

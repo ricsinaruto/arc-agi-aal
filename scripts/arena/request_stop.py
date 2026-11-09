@@ -19,15 +19,6 @@ import time
 VOLUME = "arc-prolong-runs"
 
 
-def volume_for(target):
-    """The run's own volume when its record names one (per-run volumes, 28 Oct), else the shared one."""
-    try:
-        from arc_infra.runops import volfetch
-        return volfetch.route(VOLUME, target)
-    except ImportError:
-        return VOLUME
-
-
 def remote_path(run_id):
     return f"validation/{run_id}/arena/live/stop-request"
 
@@ -40,16 +31,15 @@ def main(argv=None):
     args = ap.parse_args(argv)
     payload = json.dumps({"reason": args.reason, "epoch": round(time.time(), 1)}) + "\n"
     target = remote_path(args.run_id)
-    vol = volume_for(target)
     if args.dry_run:
-        print(json.dumps({"volume": vol, "path": target, "payload": payload.strip(), "dry_run": True}))
+        print(json.dumps({"volume": VOLUME, "path": target, "payload": payload.strip(), "dry_run": True}))
         return
     import modal
 
-    volume = modal.Volume.from_name(vol)
+    volume = modal.Volume.from_name(VOLUME)
     with volume.batch_upload(force=True) as batch:
         batch.put_file(io.BytesIO(payload.encode()), target)
-    print(json.dumps({"volume": vol, "path": target, "requested": True}))
+    print(json.dumps({"volume": VOLUME, "path": target, "requested": True}))
 
 
 if __name__ == "__main__":

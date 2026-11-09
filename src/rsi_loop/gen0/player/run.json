@@ -1,0 +1,29 @@
+{
+ "argv": [
+  "node",
+  "/candidate/prime-agent/packages/coding-agent/dist/bundle/cli.js",
+  "--mode",
+  "rpc",
+  "--autonomous",
+  "--provider",
+  "rsi",
+  "--model",
+  "flash",
+  "--thinking",
+  "xhigh",
+  "--autonomous-max-turns",
+  "100000",
+  "--autonomous-max-continuations",
+  "100000",
+  "--autonomous-max-tokens",
+  "100000000",
+  "--autonomous-timeout-ms",
+  "86400000"
+ ],
+ "env": {
+  "PRIME_AGENT_KERNEL_PYTHON": "/opt/rsi-runtime/kernel/bin/python",
+  "PI_OFFLINE": "1",
+  "PRIME_AGENT_INTERNAL_LEGACY_OWNED_WORKER_FRONTEND": "1"
+ },
+ "concurrency": 14
+}

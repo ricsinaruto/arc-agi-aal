@@ -1,0 +1,230 @@
+{
+ "schema": 1,
+ "rule": "play-through: a fresh game for the whole token budget, every level counted",
+ "split": "dev",
+ "points": [
+  {
+   "id": "cd82-game",
+   "game": "cd82-fb555c5d",
+   "split": "dev",
+   "level_index": 0,
+   "level": 1,
+   "through": true,
+   "total_levels": 6,
+   "baselines": [
+    55,
+    8,
+    41,
+    21,
+    23,
+    23
+   ],
+   "baseline_actions": null,
+   "prefix_actions": 0,
+   "board_hash": "99fd10040f997fa962f5225c",
+   "prefix": []
+  },
+  {
+   "id": "cn04-game",
+   "game": "cn04-2fe56bfb",
+   "split": "dev",
+   "level_index": 0,
+   "level": 1,
+   "through": true,
+   "total_levels": 6,
+   "baselines": [
+    29,
+    54,
+    85,
+    300,
+    208,
+    113
+   ],
+   "baseline_actions": null,
+   "prefix_actions": 0,
+   "board_hash": "d4d6e120075af89b65196bbd",
+   "prefix": []
+  },
+  {
+   "id": "ft09-game",
+   "game": "ft09-0d8bbf25",
+   "split": "dev",
+   "level_index": 0,
+   "level": 1,
+   "through": true,
+   "total_levels": 6,
+   "baselines": [
+    43,
+    12,
+    23,
+    28,
+    65,
+    37
+   ],
+   "baseline_actions": null,
+   "prefix_actions": 0,
+   "board_hash": "b438b837b72e01eaa2c5ddd5",
+   "prefix": []
+  },
+  {
+   "id": "lp85-game",
+   "game": "lp85-305b61c3",
+   "split": "dev",
+   "level_index": 0,
+   "level": 1,
+   "through": true,
+   "total_levels": 8,
+   "baselines": [
+    17,
+    38,
+    31,
+    16,
+    41,
+    60,
+    26,
+    159
+   ],
+   "baseline_actions": null,
+   "prefix_actions": 0,
+   "board_hash": "4b773aebd57bbf9b02c0478a",
+   "prefix": []
+  },
+  {
+   "id": "ls20-game",
+   "game": "ls20-9607627b",
+   "split": "dev",
+   "level_index": 0,
+   "level": 1,
+   "through": true,
+   "total_levels": 7,
+   "baselines": [
+    22,
+    123,
+    73,
+    84,
+    96,
+    192,
+    186
+   ],
+   "baseline_actions": null,
+   "prefix_actions": 0,
+   "board_hash": "724dc665c206d3821de20cf7",
+   "prefix": []
+  },
+  {
+   "id": "re86-game",
+   "game": "re86-8af5384d",
+   "split": "dev",
+   "level_index": 0,
+   "level": 1,
+   "through": true,
+   "total_levels": 8,
+   "baselines": [
+    26,
+    42,
+    86,
+    108,
+    189,
+    139,
+    424,
+    241
+   ],
+   "baseline_actions": null,
+   "prefix_actions": 0,
+   "board_hash": "ffe99dd8bfbeb0a714ccdbc3",
+   "prefix": []
+  },
+  {
+   "id": "sb26-game",
+   "game": "sb26-7fbdac44",
+   "split": "dev",
+   "level_index": 0,
+   "level": 1,
+   "through": true,
+   "total_levels": 8,
+   "baselines": [
+    18,
+    28,
+    18,
+    19,
+    31,
+    23,
+    58,
+    18
+   ],
+   "baseline_actions": null,
+   "prefix_actions": 0,
+   "board_hash": "2cfcaf1eac165d4d57749fea",
+   "prefix": []
+  },
+  {
+   "id": "sk48-game",
+   "game": "sk48-d8078629",
+   "split": "dev",
+   "level_index": 0,
+   "level": 1,
+   "through": true,
+   "total_levels": 8,
+   "baselines": [
+    61,
+    177,
+    101,
+    103,
+    230,
+    181,
+    125,
+    92
+   ],
+   "baseline_actions": null,
+   "prefix_actions": 0,
+   "board_hash": "30f305e31db95a3745ac4b95",
+   "prefix": []
+  },
+  {
+   "id": "vc33-game",
+   "game": "vc33-5430563c",
+   "split": "dev",
+   "level_index": 0,
+   "level": 1,
+   "through": true,
+   "total_levels": 7,
+   "baselines": [
+    7,
+    18,
+    44,
+    61,
+    131,
+    34,
+    152
+   ],
+   "baseline_actions": null,
+   "prefix_actions": 0,
+   "board_hash": "d2ba5a5dbb949ef0353fec8c",
+   "prefix": []
+  },
+  {
+   "id": "wa30-game",
+   "game": "wa30-ee6fef47",
+   "split": "dev",
+   "level_index": 0,
+   "level": 1,
+   "through": true,
+   "total_levels": 9,
+   "baselines": [
+    71,
+    119,
+    183,
+    98,
+    368,
+    68,
+    79,
+    442,
+    415
+   ],
+   "baseline_actions": null,
+   "prefix_actions": 0,
+   "board_hash": "4f359f1e24ac7e4da94b867d",
+   "prefix": []
+  }
+ ]
+}

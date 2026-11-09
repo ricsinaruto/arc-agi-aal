@@ -234,7 +234,7 @@ EXPERT_INT3_GROUPS = (16,)
 # verify-path drift at the MTP-0 noise. Needs mtp_prefix_cache in practice (keep/demote and the EAGLE drop).
 MTP_DEPTHS = (1, 2)
 MTP_KERNELS = {"mamba_ssm_cache_dtype": "bfloat16", "draft_experts": "nvfp4", "draft_vocab": "arena16k"}
-MTP_LADDER = (1, 2, 4, 8, 16, 24, 30, 32, 36, 40, 44)
+MTP_LADDER = (1, 2, 4, 8, 16, 24, 30, 32, 36, 40, 44, *range(48, 93, 4))  # 48+: stream sweep (7 October)
 MTP_FIXED_BLOCKS_PER_TOKEN = 4  # 4 GDN groups x one more state page per draft token
 # Wide decode tiles (throughput arm, 3 October): the dense-overlay keys the ``wide_tiles`` component adds.
 WIDE_TILES = {"mid_wide": True, "mid_wide_shapes": [[448, 2560]], "mid_wide_buckets": [40, 48, 56, 64, 72]}
@@ -763,6 +763,9 @@ def compose(hero, components=None, *, served_blocks=None):
         tiles = WIDE_TILES_MTP2 if (selected.get("mtp_tokens") or 0) >= 2 else WIDE_TILES
         if 2 * (selected.get("focus_slots") or 0) > WIDE_TILES["mid_wide_buckets"][-1]:
             tiles = {**tiles, "mid_wide_buckets": WIDE_TILES_MTP2["mid_wide_buckets"]}  # > 36 MTP-1 streams: to 96 rows
+        rows = ((selected.get("mtp_tokens") or 0) + 1) * ((selected.get("focus_slots") or 0) + (selected.get("spare_sequences") or 4))
+        if rows > 96:  # stream sweep (7 October): buckets of 8 up to the largest decode batch
+            tiles = {**tiles, "mid_wide_buckets": list(range(40, -(-rows // 8) * 8 + 1, 8))}
         spec = _prune_spec(selected["expert_prune"]) if selected.get("expert_prune") else None
         if spec is None or spec["fraction"] != 0.125:
             # Match the router output, including the unpruned 512-expert model.

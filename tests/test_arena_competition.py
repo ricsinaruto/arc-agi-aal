@@ -543,9 +543,8 @@ def test_gpu_memory_utilization_build_option_sets_every_trial_server_env(tmp_pat
             builder.build('gpu-util-bad', output=tmp_path / 'bad', gpu_memory_utilization=bad, **kwargs)
 
 
-@pytest.mark.parametrize('flag, rerun, gateway', [(False, False, False), (True, False, True), (True, 'rehearsal', True),
-                                                   (False, 'rehearsal', False), (True, 'hidden', False)])
-def test_preview_live_score_peeks_the_local_gateway_outside_the_hidden_rerun(monkeypatch, tmp_path, flag, rerun,
+@pytest.mark.parametrize('flag, rerun, gateway', [(False, False, False), (True, False, True), (True, True, False)])
+def test_preview_live_score_peeks_the_local_gateway_only_outside_a_rerun(monkeypatch, tmp_path, flag, rerun,
                                                                          gateway):
     from arc_agi import scorecard as sc
     from taaf import competition_arcade
@@ -572,12 +571,12 @@ def test_preview_live_score_peeks_the_local_gateway_outside_the_hidden_rerun(mon
     roster = [NS(game_id=f'clone-{i}') for i in range(110)]
     monkeypatch.setattr(competition, 'gateway_arcade', lambda *a: NS(get_environments=lambda: roster,
                                                                      open_scorecard=lambda **kw: 'c1'))
-    if rerun:  # rehearsal: a local server with the rerun flag (peeks with the flag); hidden: the gateway
+    if rerun:  # the rerun rehearsal: a local server, but the rerun flag is set
         monkeypatch.setenv('KAGGLE_IS_COMPETITION_RERUN', '1')
     else:
         monkeypatch.delenv('KAGGLE_IS_COMPETITION_RERUN', raising=False)
     settings = {**SETTINGS, **({'preview_live_score': True} if flag else {}),
-                **({'rehearsal': True} if rerun == 'rehearsal' else {})}
+                **({'rehearsal': True} if rerun else {})}
     with competition.open_arcade({**study(), 'competition': settings}, 'games', tmp_path) as (resolved, owner):
         card = owner.open_scorecard()
         assert (owner.local_gateway is not None) is gateway

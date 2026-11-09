@@ -70,8 +70,7 @@ def reserve(run_id, kind, storage_usd=STORAGE_USD, authorization=None):
         active = sum(r.get("kind") == "research-pilot" and r.get("state") == "reserved" for r in d["runs"])
         if GPU and active >= 3:  # at most three pilot GPUs; the 9 h runs have priority
             raise RuntimeError("Three research pilot reservations active; reconcile before another")
-        from arc_infra.runops.records import row_cost
-        used = d["infrastructure_reserve_usd"] + sum(row_cost(r)[0] for r in d["runs"])
+        used = d["infrastructure_reserve_usd"] + sum(r["charged_bound_usd"] for r in d["runs"])
         if used + bound > d["cap_usd"]:
             raise RuntimeError(f"Cap: {used}+{bound}>{d['cap_usd']}")
         d["runs"].append({"run_id": run_id, "state": "reserved",
@@ -363,6 +362,7 @@ def overlaydiff(run_id: str, name: str, group: int, source: str, shard: str):
 
     sys.path.insert(0, "/opt/src")
     import torch
+
     from safetensors import safe_open
 
     from arena import expert_3bit_overlay as ov

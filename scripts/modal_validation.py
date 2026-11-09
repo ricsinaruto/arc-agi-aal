@@ -21,7 +21,52 @@ if KIND not in {"arena", "sglang", "vllm"}:
 TEST = os.environ.get("ARC_VALIDATION_TEST", "smoke")
 
 
+HX4_TRANCHE_USD = 200.0  # harness arm, 7 October tranche (run ids hx4-)
+HX_PREFIXES = ("hx4-", "hx5-", "hx6-", "hx7-")
+PRIME_CAP_USD = 300.0  # Prime arm: run ids prime-, Modal and Nebius rows, dry runs included
+RSI_CAP_USD = 500.0 # RSI loop arm (cap raised to; was): run ids rsi-
+ARM_CAPS = {"prime-": 300.0, "rsi-": 500.0}  # literal: the Nebius launcher only loads literal constants
+
+
+def prime_spent(data, prefix="prime-"):
+    """An arm's reservations in the ledger ``data``: every row of its run-id prefix, Modal and Nebius."""
+    rows = [*data.get("runs", []), *(data.get("nebius") or {}).get("runs", [])]
+    return sum(r["charged_bound_usd"] for r in rows if r["run_id"].startswith(prefix))
+
+
+def validate_arm_cap(run_id, seconds):
+    """A prime- run must fit the Prime arm's own cap (a bundle check, so the Nebius launcher applies it too, before it
+    reserves). The run's bound is estimated at the newest Nebius row's hourly rate, the Modal ledger rate without
+    one. No ledger beside the launcher (the Modal container): nothing to check."""
+    prefix = next((p for p in ARM_CAPS if run_id.startswith(p)), None)
+    if prefix is None:
+        return
+    path = Path(os.environ.get("ARC_VALIDATION_ROOT") or ".") / "docs/spend.json"
+    if not path.is_file():
+        return
+    data = json.loads(path.read_text())
+    rates = [r["rate_usd_per_hour"] for r in (data.get("nebius") or {}).get("runs", []) if r.get("rate_usd_per_hour")]
+    rate = rates[-1] / 3600 if rates else 0.000842 + 16 * 0.0000131 + 192 * 0.00000222
+    spent, bound = prime_spent(data, prefix), (seconds + 60) * rate * 1.15
+    if spent + bound > ARM_CAPS[prefix]:
+        raise RuntimeError(f"{prefix} arm cap: ${spent:.2f} + ${bound:.2f} exceeds ${ARM_CAPS[prefix]:.0f}")
+
+
+def hx4_study():
+    bundle = (Path(os.environ.get("ARC_VALIDATION_BUNDLE", "")).resolve() if modal.is_local()
+              else Path("/opt/arc-validation"))
+    return json.loads((bundle / "configs/comparison.json").read_text())
+
+
 def validation_timeout(kind, test):
+    if kind == "arena" and test in ("hx4-level", "hx4-quality"):
+        # Stuck-level bench (harness arm, 7 October): the bundle's notebook_seconds (setup + bench wall) + 300 s.
+        # hx4-quality: a copy of a throughput-arm quality-protocol bundle (quality_eval version 2, DEV rep4) with
+        # harness flags changed; same rule as that arm's quality-fixed-replicated (notebook + 300 s, 8 CPUs).
+        study = hx4_study()
+        if study.get("rsi_loop"):  # the RSI loop: up to 24 h
+            return min(86400, int(study["notebook_seconds"]) + 300)
+        return min(14400, int(study["notebook_seconds"]) + 300)
     choices = {
         ("vllm", "duck-transfer-mxfp8"): 2100,
         ("arena", "smoke"): 1680,
@@ -265,8 +310,10 @@ def arena_arguments(test):
         return []  # both agents, each receives the full independent 1800 seconds
     if test in ("evolve", "evolve-rehearsal"):
         return ["--evolve"]
-    if test == "level-bench":
+    if test in ("level-bench", "hx4-level"):
         return ["--trial", "level-bench"]
+    if test == "hx4-quality":
+        return ["--trial", "duck-transfer"]
     raise ValueError(f"Unsupported arena test: {test}")
 
 
@@ -274,7 +321,7 @@ TIMEOUT = validation_timeout(KIND, TEST)
 # Container CPU ceiling (cores). 8 everywhere, 16 for the oversubscribed follow-ups (29 September): 38 / 24 concurrent
 # Duck streams on 110 sandboxes beside the vLLM API server and engine, against 23-25 in every earlier run; no host CPU
 # telemetry exists to show 8 is enough, and the ceiling adds to a 2 h bound.
-CPU_CEILING = 16 if TEST in ("hero-v2-int4-streams", "hero-v2-128k-streams", "hero-v2-blocks") else 8
+CPU_CEILING = 16 if TEST in ("hero-v2-int4-streams", "hero-v2-128k-streams", "hero-v2-blocks", "hx4-level") else 8
 if TEST in ("hero-v2-samples-plans", "campaign-9h"):
     CPU_CEILING = 16  # run B's ceiling: 24 focus streams (+ their sibling requests) on 110 sandboxes
 # Manual graceful stop (arena.early_stop): the runs-volume request and the local file the trial checks.
@@ -320,17 +367,33 @@ def reserve(run_id, kind, seconds, *, test="smoke"):
         cpu = globals().get("CPU_CEILING", 8)  # the tests exec reserve() alone
         rate = 0.000842 + cpu * 0.0000131 + 192 * 0.00000222
         bound = (seconds + 60) * rate * 1.15
-        from arc_infra.runops.records import row_cost
-        committed = data["infrastructure_reserve_usd"] + sum(row_cost(r)[0] for r in data["runs"])
+        committed = data["infrastructure_reserve_usd"] + sum(r["charged_bound_usd"] for r in data["runs"])
         if committed + bound > data["cap_usd"]:
             raise RuntimeError(f"Spend cap: ${committed:.2f} + ${bound:.2f} required")
         if any(r["run_id"] == run_id for r in data["runs"]):
             raise ValueError("Run already reserved; inspect saved call instead of relaunching")
+        if test == "hx4-level" and run_id.startswith(tuple(ARM_CAPS)):
+            prefix = next(p for p in ARM_CAPS if run_id.startswith(p))
+            if prime_spent(data, prefix) + bound > ARM_CAPS[prefix]:
+                raise RuntimeError(f"{prefix} arm cap: ${prime_spent(data, prefix):.2f} + ${bound:.2f} exceeds "
+                                   f"${ARM_CAPS[prefix]:.0f}")
+        elif test in ("hx4-level", "hx4-quality"):
+            if not run_id.startswith(HX_PREFIXES):
+                raise ValueError("hx4 runs use hx4- run ids (hx4-level also takes the Prime arm's prime- ids)")
+            spent = sum(r["charged_bound_usd"] for r in data["runs"] if r["run_id"].startswith(HX_PREFIXES))
+            if spent + bound > HX4_TRANCHE_USD:
+                raise RuntimeError(f"hx4 tranche: ${spent:.2f} + ${bound:.2f} exceeds ${HX4_TRANCHE_USD:.0f}")
         data["runs"].append({
             "run_id": run_id, "state": "reserved", "kind": kind,
             "charged_bound_usd": bound, "max_seconds": seconds,
             "gpu": "RTX-PRO-6000", "cpu_ceiling": cpu, "memory_ceiling_gib": 192,
             "authorization": (
+                "Prime arm, one RTX PRO 6000 at a time"
+                if run_id.startswith("prime-") else
+                "RSI loop arm, one RTX PRO 6000 at a time"
+                if run_id.startswith("rsi-") else
+                "harness arm restart (hx4), 1 RTX PRO 6000 at a time, <= of new reservations"
+                if test in ("hx4-level", "hx4-quality") else
                 "up to four research GPUs, pilot <= one hour including setup, "
                 if test == "research-model" else
                 "seven nine-hour Modal benchmarks plus user-requested additional nine-hour arms, cumulative cap"
@@ -845,6 +908,28 @@ def benchmark(run_id: str):
                 if (study['trials'] != [{'name': 'level-bench', 'kind': 'level-bench'}] or not study.get('level_bench')
                         or not (source / study['level_bench']['start_points']).is_file()):
                     raise ValueError('The level-bench test requires the level-bench study and its start points')
+            if TEST == 'hx4-quality':
+                study = json.loads((source / 'configs/comparison.json').read_text())
+                quality = study.get('quality_eval') or {}
+                if ([(t['name'], t['kind']) for t in study['trials']] != [('duck-transfer', 'duck-transfer')]
+                        or not run_id.startswith(('hx4-', 'hx5-', 'hx6-', 'hx7-')) or quality.get('version') != 2
+                        or quality.get('split') != 'dev10'
+                        or (study.get('competition') or {}).get('preview_seconds') != study.get('wall_seconds')
+                        or study.get('notebook_seconds', 10 ** 6) > 12900):
+                    raise ValueError('hx4-quality needs a DEV quality-protocol bundle (quality_eval version 2, one '
+                                     'Duck trial, notebook <= 12,900 s) and an hx4- run id')
+            if TEST == 'hx4-level':
+                study = json.loads((source / 'configs/comparison.json').read_text())
+                bench = study.get('level_bench') or {}
+                if ([(t['name'], t['kind']) for t in study['trials']] != [('level-bench', 'level-bench')]
+                        or not run_id.startswith((*HX_PREFIXES, *ARM_CAPS))
+                        or bool(study.get('rsi_loop')) != run_id.startswith('rsi-')
+                        or not (source / bench.get('start_points', '-')).is_file()
+                        or bench.get('concurrency', 10 ** 6) > study['active_limit']):
+                    raise ValueError('hx4-level needs a build_hx4.py bundle (level-bench trial, start points, '
+                                     'no more workers than KV-gate streams) and an hx4- or prime- run id; '
+                                     'rsi- ids for, and only for, RSI loop bundles')
+                validate_arm_cap(run_id, TIMEOUT)
             if TEST == 'bench-ab':
                 study = json.loads((source / 'configs/comparison.json').read_text())
                 if not study.get('serving_ab') or {t['kind'] for t in study['trials']} != {'serving-bench'}:
@@ -1222,6 +1307,8 @@ def main(run_id: str = "", probe_only: bool = False):
               }.get(TEST, "docs/validation-20260922")
     if TEST in ("campaign-9h", "research-model", "decode-sweep", "spec-sweep"):
         folder = "docs/validation-20260930"
+    if TEST in ("hx4-level", "hx4-quality"):
+        folder = "docs/validation-20261007"
     if TEST in ("competition-preview", "competition-preview-1h", "competition-preview-4h", "competition-preview-8h"):
         folder = "docs/validation-20261001"
     record = ROOT / folder / f"modal-{run_id}.json"

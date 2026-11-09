@@ -1,0 +1,39 @@
+{
+ "providers": {
+  "rsi": {
+   "baseUrl": "http://127.0.0.1:18080/v1",
+   "apiKey": "RSI_PROXY_KEY",
+   "api": "openai-completions",
+   "models": [
+    {
+     "id": "Qwen/Qwen3.8-Flash-Next-NVFP4",
+     "name": "flash",
+     "reasoning": true,
+     "thinkingLevelMap": {
+      "minimal": "low",
+      "low": "low",
+      "medium": "medium",
+      "high": "xhigh",
+      "xhigh": "xhigh"
+     },
+     "input": [
+      "text"
+     ],
+     "contextWindow": 130816,
+     "maxTokens": 16384,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     },
+     "compat": {
+      "supportsDeveloperRole": false,
+      "supportsStore": false,
+      "supportsReasoningEffort": true
+     }
+    }
+   ]
+  }
+ }
+}

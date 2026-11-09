@@ -1404,7 +1404,8 @@ def runtime_environment(
     env.pop("PYTORCH_ALLOC_CONF", None)
     env["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:False"
     env["PYTHONPATH"] = os.pathsep.join(
-        [str(cutlass_nested), str(site)]
+        ([env["RSI_PYTHON_BOOT"]] if env.get("RSI_PYTHON_BOOT") else [])  # RSI loop: per-module overlay first
+        + [str(cutlass_nested), str(site)]
         + ([env["PYTHONPATH"]] if env.get("PYTHONPATH") else [])
     )
     env["PATH"] = os.pathsep.join(
@@ -2446,8 +2447,6 @@ def start_server(
             root_record is not None
             and root_record["pgid"] == process.pid
             and root_record["sid"] == process.pid
-            and root_record["argv_sha256"] == hashlib.sha256(  # setsid runs before exec: wait for the exec'd argv
-                json.dumps(command, separators=(",", ":"), ensure_ascii=False).encode("utf-8")).hexdigest()
         ):
             break
         time.sleep(0.05)
@@ -2463,7 +2462,7 @@ def start_server(
         process.terminate()
         raise RuntimeError(
             "The live vLLM root argv did not match the exact launched command: "
-            f"{root_record['argv_sha256']} != {argv_sha256}; live cmdline {root_record['cmdline'][:400]!r}"
+            f"{root_record['argv_sha256']} != {argv_sha256}"
         )
     started_epoch = time.time()
     root_worker = {

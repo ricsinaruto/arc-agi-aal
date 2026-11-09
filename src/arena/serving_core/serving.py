@@ -173,13 +173,18 @@ def start(working, input_root, *, kv_cache_memory_bytes=0, generation_slots=8,
     try:
         verify_hardware()
         stage = "sandbox"
-        jail = Jail() if needed() else None
-        probe = worker_probe(working, jail)
-        if probe.returncode or '"type": "ready"' not in probe.stdout:
-            raise RuntimeError(
-                "Linux sandbox preflight failed before GPU model startup: " + probe.stderr
-            )
-        sandbox_result = json.loads(probe.stdout.splitlines()[0])
+        if os.environ.get("ARENA_SKIP_WORKER_PROBE") == "1":
+            # RSI loop stacks started as an unprivileged user: no Duck code-execution workers run on this server
+            # (its sandbox preflight needs root for the chroot jail).
+            sandbox_result = {"skipped": "ARENA_SKIP_WORKER_PROBE"}
+        else:
+            jail = Jail() if needed() else None
+            probe = worker_probe(working, jail)
+            if probe.returncode or '"type": "ready"' not in probe.stdout:
+                raise RuntimeError(
+                    "Linux sandbox preflight failed before GPU model startup: " + probe.stderr
+                )
+            sandbox_result = json.loads(probe.stdout.splitlines()[0])
         stage = "server_startup"
         os.environ[GPU_MEMORY_UTILIZATION_ENV] = utilization
         bundle = stage_fork_bundle(input_root, working / "fork-bundle")
