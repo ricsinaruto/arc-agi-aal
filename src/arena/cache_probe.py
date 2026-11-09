@@ -10,7 +10,6 @@ from pathlib import Path
 import httpx
 from PIL import Image
 
-from arc_infra import KEEPALIVE_EXPIRY
 from arc_infra.metrics import GpuMonitor
 from arc_infra.model_templates import template_kwargs, text_only
 from arc_infra.serving import MODEL
@@ -53,9 +52,7 @@ async def run(server_dir, study, base_url):
     await monitor.sample()
     sampling = asyncio.create_task(monitor.run())
     try:
-        # Idle connections retire before the server's 5 s keep-alive closes them (a reused one fails the probe).
-        limits = httpx.Limits(keepalive_expiry=KEEPALIVE_EXPIRY)
-        async with asyncio.timeout(270), httpx.AsyncClient(timeout=240, trust_env=False, limits=limits) as client:
+        async with asyncio.timeout(270), httpx.AsyncClient(timeout=240, trust_env=False) as client:
             async def request(index, words):
                 body = payload(index, words, model=study.get('served_model', MODEL))
                 token_body = {k: body[k] for k in ('model', 'messages', 'chat_template_kwargs')}

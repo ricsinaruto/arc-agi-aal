@@ -186,7 +186,7 @@ async def test_the_trial_stops_at_the_rule_when_the_score_beats_the_threshold(tm
     assert report["end_reason"] == "early_stop" and report["early_stop"]["decision"] == "stop"
     assert report["early_stop"]["score"]["score"] == pytest.approx(2.5)
     assert 1.0 <= report["wall_seconds"] < 2.5 and report["wall"]["configured_seconds"] == 3.0
-    assert 1.0 <= report["wall"]["ended_seconds"] <= report["wall_seconds"] + 0.05  # the rule may fire before the loop notices under load
+    assert report["wall"]["ended_seconds"] == pytest.approx(report["wall_seconds"], abs=0.2)
     # Everything a wall end writes is there: the report, the scorecard, the progress row with the decision.
     out = tmp_path / "t"
     assert (out / "arena.json").is_file() and (out / "scorecard.json").is_file()

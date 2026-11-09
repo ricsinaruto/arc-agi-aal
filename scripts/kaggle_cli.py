@@ -51,10 +51,7 @@ def main():
         if sys.argv[1:2] == ["--python"]:
             command = [sys.executable, *sys.argv[2:]]
         else:
-            # the repo venv carries the pinned kaggle; -P keeps the repo's kaggle/ dir from shadowing the package
-            py = ROOT / ".venv/bin/python"
-            command = [str(py) if py.exists() else sys.executable, "-P", "-c", "from kaggle.cli import main; main()",
-                       *sys.argv[1:]]
+            command = [sys.executable, "-c", "from kaggle.cli import main; main()", *sys.argv[1:]]
         result = subprocess.run(command, env=env, capture_output=True)
         for data, stream in ((result.stdout, sys.stdout), (result.stderr, sys.stderr)):
             stream.write(data.decode(errors="replace").replace(token, "[REDACTED]"))

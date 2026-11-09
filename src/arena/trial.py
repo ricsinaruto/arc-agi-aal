@@ -26,12 +26,11 @@ from .compaction import DEFAULT_COMPACTION_THINKING
 from .early_stop import EarlyStop, end_trial, stop_paths
 from .early_stop import settings as early_stop_settings
 from .gate import BackgroundLane, GateSlot, KVGate
-from .live_progress import LiveProgress
+from .live_progress import LiveProgress, serving_check
 from .live_progress import settings as live_settings
 from .report import game_row, trial_report
 from .scheduler import GameRecord, Scheduler
-
-TICK_SECONDS = 1.0  # the scheduler tick (the audit allows a switch 1.1 s after its trigger); tests shorten it
+from .trim_bed import settings as trim_settings
 
 KINDS = ("duck-transfer", "duck-public")
 READY_TIMEOUT = 600
@@ -428,7 +427,7 @@ class Trial:
         try:
             while wall.remaining() > 0 and any(not t.done() for t in tasks):
                 await asyncio.wait([t for t in tasks if not t.done()],
-                                   timeout=min(TICK_SECONDS, max(0.05, wall.remaining())),
+                                   timeout=min(1.0, max(0.05, wall.remaining())),
                                    return_when=asyncio.FIRST_COMPLETED)
                 scheduler.tick()
                 if lane is not None:
@@ -544,6 +543,7 @@ class Trial:
             progress["parked_depth"] = [g.game_id for g in scheduler.dw_waiting() if g.levels >= 1]
         if getattr(self, "live", None) is not None:
             progress["live"] = self.live.fields(wall.elapsed())
+            progress["live"]["serving"] = serving_check(progress.get("gate"), progress["live"].get("engine"))
         workers = getattr(self, "duck_workers", None)
         if workers and (self.study.get("parallel_samples") or self.study.get("action_plans")
                         or self.study.get("drain_half") or self.study.get("loop_rule")):
@@ -688,6 +688,17 @@ class Trial:
                          hx_harness=self.study.get("hx_harness") or None,
                          loop_rule=self.study.get("loop_rule") or None)
             agent.compaction_keep_observations = int(self.study.get("compaction_keep_observations", 1))
+            agent.compaction_keep_fraction = self.study.get("compaction_keep_fraction")
+            agent.compaction_summary_cap = self.study.get("compaction_summary_cap")
+            agent.compaction_full_prefix = bool(self.study.get("compaction_full_prefix"))
+            agent.trim = trim_settings(self.study.get("trim"))
+            stagger = self.study.get("first_trigger_stagger")
+            if stagger is not None:
+                # Game i's first drain / compaction triggers at min + (1 - min) x frac(i x golden ratio) of the budget.
+                low = float(stagger["min_fraction"])
+                if not 0.3 <= low < 1:
+                    raise ValueError("first_trigger_stagger.min_fraction is in [0.3, 1)")
+                agent.first_trigger_fraction = low + (1 - low) * ((len(agents) * 0.6180339887498949) % 1.0)
             agent.compaction_thinking = self.study.get("compaction_thinking", DEFAULT_COMPACTION_THINKING)
             if getattr(self, "compaction_preflight", None) is not None:
                 agent.compaction_thinking = self.compaction_preflight["mode"]  # "gameplay" if the preflight failed
