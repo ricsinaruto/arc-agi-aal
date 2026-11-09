@@ -1,0 +1,72 @@
+{"t": 1792835001.0, "m": {"infra.running": 0.0, "infra.waiting": 0.0}}
+{"t": 1792835059.0, "m": {"infra.running": 0.0, "infra.waiting": 0.0}}
+{"t": 1792835103.0, "m": {"infra.running": 0.0, "infra.waiting": 0.0}}
+{"t": 1792835001.0, "m": {"infra.vram_cap_gib": 268.6}}
+{"t": 1792835162.0, "m": {"infra.running": 0.0, "infra.waiting": 0.0}}
+{"t": 1792835209.0, "m": {"infra.running": 0.0, "infra.waiting": 0.0}}
+{"t": 1792835103.0, "m": {"infra.gpu_util.0": 0.0, "infra.vram_gib.0": 0.0, "infra.gpu_util.1": 1.0, "infra.vram_gib.1": 24.7112, "infra.vram_cap_gib": 268.6}}
+{"t": 1792835209.0, "m": {"infra.gpu_util.0": 0.0, "infra.vram_gib.0": 51.8398, "infra.gpu_util.1": 2.0, "infra.vram_gib.1": 109.589, "infra.vram_cap_gib": 268.6}}
+{"t": 1792835275.0, "m": {"infra.running": 0.0, "infra.waiting": 0.0}}
+{"t": 1792835344.0, "m": {"infra.running": 0.0, "infra.waiting": 0.0}}
+{"t": 1792835275.0, "m": {"infra.gpu_util.0": 0.0, "infra.vram_gib.0": 51.8398, "infra.gpu_util.1": 2.0, "infra.vram_gib.1": 109.589, "infra.vram_cap_gib": 268.6}}
+{"t": 1792835416.0, "m": {"infra.running": 0.0, "infra.waiting": 0.0}}
+{"t": 1792835344.0, "m": {"infra.gpu_util.0": 1.0, "infra.vram_gib.0": 51.8398, "infra.gpu_util.1": 2.0, "infra.vram_gib.1": 109.589, "infra.vram_cap_gib": 268.6}}
+{"t": 1792835416.0, "m": {"infra.gpu_util.0": 1.0, "infra.vram_gib.0": 51.8398, "infra.gpu_util.1": 2.0, "infra.vram_gib.1": 109.589, "infra.vram_cap_gib": 268.6}}
+{"t": 1792835489.0, "m": {"infra.running": 0.0, "infra.waiting": 0.0}}
+{"t": 1792835548.0, "m": {"infra.running": 0.0, "infra.waiting": 0.0}}
+{"t": 1792835594.0, "m": {"infra.kv_frac": 0.0, "infra.running": 0.0, "infra.waiting": 0.0}}
+{"t": 1792835489.0, "m": {"infra.gpu_util.0": 2.0, "infra.vram_gib.0": 69.0302, "infra.gpu_util.1": 1.0, "infra.vram_gib.1": 109.589, "infra.vram_cap_gib": 268.6}}
+{"t": 1792835594.0, "m": {"infra.gpu_util.0": 11.0, "infra.vram_gib.0": 221.326, "infra.gpu_util.1": 0.0, "infra.vram_gib.1": 87.8322, "infra.vram_cap_gib": 268.6}}
+{"t": 1792835648.0, "m": {"infra.kv_frac": 0.0294669, "infra.running": 13.0, "infra.waiting": 0.0, "infra.gen_tok_s": 330.9}}
+{"t": 1792835689.0, "m": {"infra.kv_frac": 0.0318778, "infra.running": 11.0, "infra.waiting": 0.0, "infra.gen_tok_s": 755.4}}
+{"t": 1792835689.0, "m": {"infra.gpu_util.0": 16.0, "infra.vram_gib.0": 221.326, "infra.gpu_util.1": 0.0, "infra.vram_gib.1": 87.8322, "infra.vram_cap_gib": 268.6}}
+{"t": 1792835768.0, "m": {"infra.kv_frac": 0.0597375, "infra.running": 12.0, "infra.waiting": 0.0, "infra.gen_tok_s": 820.1}}
+{"t": 1792835836.0, "m": {"infra.kv_frac": 0.0896062, "infra.running": 16.0, "infra.waiting": 0.0, "infra.gen_tok_s": 841.5}}
+{"t": 1792835768.0, "m": {"infra.gpu_util.0": 38.0, "infra.vram_gib.0": 221.326, "infra.gpu_util.1": 1.0, "infra.vram_gib.1": 91.0554, "infra.vram_cap_gib": 268.6}}
+{"t": 1792835836.0, "m": {"infra.gpu_util.0": 71.0, "infra.vram_gib.0": 221.326, "infra.gpu_util.1": 5.0, "infra.vram_gib.1": 91.0554, "infra.vram_cap_gib": 268.6}}
+{"t": 1792835901.0, "m": {"infra.kv_frac": 0.102197, "infra.running": 16.0, "infra.waiting": 0.0, "infra.gen_tok_s": 1024.9}}
+{"t": 1792835973.0, "m": {"infra.kv_frac": 0.128181, "infra.running": 18.0, "infra.waiting": 0.0, "infra.gen_tok_s": 1027.7}}
+{"t": 1792835901.0, "m": {"infra.gpu_util.0": 71.0, "infra.vram_gib.0": 221.326, "infra.gpu_util.1": 5.0, "infra.vram_gib.1": 91.0554, "infra.vram_cap_gib": 268.6}}
+{"t": 1792835973.0, "m": {"infra.gpu_util.0": 90.0, "infra.vram_gib.0": 221.326, "infra.gpu_util.1": 5.0, "infra.vram_gib.1": 91.0554, "infra.vram_cap_gib": 268.6}}
+{"t": 1792836043.0, "m": {"infra.kv_frac": 0.14037, "infra.running": 18.0, "infra.waiting": 0.0, "infra.gen_tok_s": 1120.4}}
+{"t": 1792836043.0, "m": {"infra.gpu_util.0": 87.0, "infra.vram_gib.0": 221.326, "infra.gpu_util.1": 0.0, "infra.vram_gib.1": 56.1374, "infra.vram_cap_gib": 268.6}}
+{"t": 1792836142.0, "m": {"infra.kv_frac": 0.155505, "infra.running": 20.0, "infra.waiting": 0.0, "infra.gen_tok_s": 1261.0}}
+{"t": 1792836237.0, "m": {"infra.kv_frac": 0.208679, "infra.running": 27.0, "infra.waiting": 0.0, "infra.gen_tok_s": 1251.0}}
+{"t": 1792836142.0, "m": {"infra.gpu_util.0": 87.0, "infra.vram_gib.0": 221.326, "infra.gpu_util.1": 0.0, "infra.vram_gib.1": 56.1374, "infra.vram_cap_gib": 268.6}}
+{"t": 1792836346.0, "m": {"infra.kv_frac": 0.23962, "infra.running": 32.0, "infra.waiting": 0.0, "infra.gen_tok_s": 1381.8}}
+{"t": 1792836237.0, "m": {"infra.gpu_util.0": 86.0, "infra.vram_gib.0": 221.326, "infra.gpu_util.1": 3.0, "infra.vram_gib.1": 195.272, "infra.vram_cap_gib": 268.6}}
+{"t": 1792836346.0, "m": {"infra.gpu_util.0": 85.0, "infra.vram_gib.0": 221.326, "infra.gpu_util.1": 15.0, "infra.vram_gib.1": 196.615, "infra.vram_cap_gib": 268.6}}
+{"t": 1792836440.0, "m": {"infra.kv_frac": 0.160461, "infra.running": 21.0, "infra.waiting": 0.0, "infra.gen_tok_s": 1981.87}}
+{"t": 1792836440.0, "m": {"infra.gpu_util.0": 88.0, "infra.vram_gib.0": 221.326, "infra.gpu_util.1": 53.0, "infra.vram_gib.1": 196.615, "infra.vram_cap_gib": 268.6}}
+{"t": 1792836541.0, "m": {"infra.kv_frac": 0.247254, "infra.running": 38.0, "infra.waiting": 0.0, "infra.gen_tok_s": 2113.65}}
+{"t": 1792836653.0, "m": {"infra.kv_frac": 0.231851, "infra.running": 31.0, "infra.waiting": 0.0, "infra.gen_tok_s": 2404.61}}
+{"t": 1792836541.0, "m": {"infra.gpu_util.0": 89.0, "infra.vram_gib.0": 221.326, "infra.gpu_util.1": 88.0, "infra.vram_gib.1": 196.615, "infra.vram_cap_gib": 268.6}}
+{"t": 1792836788.0, "m": {"infra.kv_frac": 0.234262, "infra.running": 43.0, "infra.waiting": 0.0, "infra.gen_tok_s": 2337.23}}
+{"t": 1792836653.0, "m": {"infra.gpu_util.0": 89.0, "infra.vram_gib.0": 221.326, "infra.gpu_util.1": 92.0, "infra.vram_gib.1": 196.615, "infra.vram_cap_gib": 268.6}}
+{"t": 1792836919.0, "m": {"infra.kv_frac": 0.194616, "infra.running": 44.0, "infra.waiting": 0.0, "infra.gen_tok_s": 2542.18}}
+{"t": 1792836788.0, "m": {"infra.gpu_util.0": 86.0, "infra.vram_gib.0": 221.326, "infra.gpu_util.1": 89.0, "infra.vram_gib.1": 196.615, "infra.vram_cap_gib": 268.6}}
+{"t": 1792836919.0, "m": {"infra.gpu_util.0": 87.0, "infra.vram_gib.0": 221.326, "infra.gpu_util.1": 88.0, "infra.vram_gib.1": 196.615, "infra.vram_cap_gib": 268.6}}
+{"t": 1792837080.0, "m": {"infra.kv_frac": 0.258237, "infra.running": 46.0, "infra.waiting": 0.0, "infra.gen_tok_s": 2714.71}}
+{"t": 1792837251.0, "m": {"infra.kv_frac": 0.227431, "infra.running": 52.0, "infra.waiting": 0.0, "infra.gen_tok_s": 2496.72}}
+{"t": 1792837080.0, "m": {"infra.gpu_util.0": 90.0, "infra.vram_gib.0": 221.326, "infra.gpu_util.1": 87.0, "infra.vram_gib.1": 197.69, "infra.vram_cap_gib": 268.6}}
+{"t": 1792837415.0, "m": {"infra.kv_frac": 0.217118, "infra.running": 45.0, "infra.waiting": 0.0, "infra.gen_tok_s": 2514.83}}
+{"t": 1792837251.0, "m": {"infra.gpu_util.0": 90.0, "infra.vram_gib.0": 221.326, "infra.gpu_util.1": 88.0, "infra.vram_gib.1": 197.69, "infra.vram_cap_gib": 268.6}}
+{"t": 1792837415.0, "m": {"infra.gpu_util.0": 90.0, "infra.vram_gib.0": 221.326, "infra.gpu_util.1": 87.0, "infra.vram_gib.1": 197.69, "infra.vram_cap_gib": 268.6}}
+{"t": 1792837584.0, "m": {"infra.kv_frac": 0.176802, "infra.running": 58.0, "infra.waiting": 0.0, "infra.gen_tok_s": 2791.67}}
+{"t": 1792837818.0, "m": {"infra.kv_frac": 0.229172, "infra.running": 65.0, "infra.waiting": 0.0, "infra.gen_tok_s": 2682.34}}
+{"t": 1792837584.0, "m": {"infra.gpu_util.0": 89.0, "infra.vram_gib.0": 221.326, "infra.gpu_util.1": 89.0, "infra.vram_gib.1": 199.033, "infra.vram_cap_gib": 268.6}}
+{"t": 1792838004.0, "m": {"infra.kv_frac": 0.258907, "infra.running": 61.0, "infra.waiting": 0.0, "infra.gen_tok_s": 2737.18}}
+{"t": 1792837818.0, "m": {"infra.gpu_util.0": 90.0, "infra.vram_gib.0": 221.326, "infra.gpu_util.1": 90.0, "infra.vram_gib.1": 199.033, "infra.vram_cap_gib": 268.6}}
+{"t": 1792838186.0, "m": {"infra.kv_frac": 0.206536, "infra.running": 21.0, "infra.waiting": 0.0, "infra.gen_tok_s": 1374.21}}
+{"t": 1792838004.0, "m": {"infra.gpu_util.0": 91.0, "infra.vram_gib.0": 225.893, "infra.gpu_util.1": 72.0, "infra.vram_gib.1": 201.45, "infra.vram_cap_gib": 268.6}}
+{"t": 1792838186.0, "m": {"infra.gpu_util.0": 87.0, "infra.vram_gib.0": 237.442, "infra.gpu_util.1": 37.0, "infra.vram_gib.1": 201.45, "infra.vram_cap_gib": 268.6}}
+{"t": 1792838376.0, "m": {"infra.kv_frac": 0.377846, "infra.running": 36.0, "infra.waiting": 0.0, "infra.gen_tok_s": 1705.0}}
+{"t": 1792838570.0, "m": {"infra.kv_frac": 0.472676, "infra.running": 51.0, "infra.waiting": 0.0, "infra.gen_tok_s": 1874.8}}
+{"t": 1792838376.0, "m": {"infra.gpu_util.0": 87.0, "infra.vram_gib.0": 237.442, "infra.gpu_util.1": 49.0, "infra.vram_gib.1": 203.599, "infra.vram_cap_gib": 268.6}}
+{"t": 1792838797.0, "m": {"infra.kv_frac": 0.0934905, "infra.running": 9.0, "infra.waiting": 0.0, "infra.gen_tok_s": 1837.2}}
+{"t": 1792838570.0, "m": {"infra.gpu_util.0": 87.0, "infra.vram_gib.0": 237.442, "infra.gpu_util.1": 29.0, "infra.vram_gib.1": 209.777, "infra.vram_cap_gib": 268.6}}
+{"t": 1792838797.0, "m": {"infra.gpu_util.0": 86.0, "infra.vram_gib.0": 237.442, "infra.gpu_util.1": 60.0, "infra.vram_gib.1": 212.463, "infra.vram_cap_gib": 268.6}}
+{"t": 1792839020.0, "m": {"infra.kv_frac": 0.184972, "infra.running": 16.0, "infra.waiting": 0.0, "infra.gen_tok_s": 1684.5}}
+{"t": 1792839020.0, "m": {"infra.gpu_util.0": 77.0, "infra.vram_gib.0": 237.442, "infra.gpu_util.1": 64.0, "infra.vram_gib.1": 216.76, "infra.vram_cap_gib": 268.6}}
+{"t": 1792839147.6, "m": {"train.step": 1.0, "train.lr": 2.5e-05, "train.grad_norm": 0.043016, "train.policy_loss": -0.004166, "train.entropy": 0.33754, "train.tokens": 1366150.0, "train.tries": 83.0, "train.update_norm_step": 0.703574, "train.approx_kl": 6.069e-05, "train.clip_frac": 0.0506, "time.checkpoint_s": 39.8, "train.age_median": 0.0, "train.age_max": 0.0, "time.train_s": 564.3, "infra.peak_alloc_gib": 216.63, "infra.gpu_util.trainer_mean": 83.7, "play.clear_rate": 0.673684, "play.band_frac": 0.5, "play.groups": 8.0}}
+{"t": 1792839265.0, "m": {"infra.kv_frac": 0.0139298, "infra.running": 1.0, "infra.waiting": 0.0, "infra.gen_tok_s": 1034.3}}

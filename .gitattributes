@@ -1,0 +1,2 @@
+# Preserve exact upstream bytes in the pinned dependency records.
+kaggle/runtime-pins/** -whitespace

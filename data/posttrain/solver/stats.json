@@ -1,0 +1,2042 @@
+{
+ "source": "solver",
+ "split": "train",
+ "games": 30,
+ "records": 262,
+ "actions": 1592,
+ "prompt_tokens_estimate": 1452288,
+ "completion_tokens_estimate": 25209,
+ "images": 1388,
+ "token_estimate": "text characters / 4.1 + 64 per board image (posttrain.sft_records)",
+ "per_game": {
+  "q001-c8ba2de3": {
+   "levels": 4,
+   "actions": [
+    10,
+    13,
+    40,
+    33
+   ],
+   "baseline_actions": [
+    10,
+    13,
+    40,
+    33
+   ],
+   "records": 14,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 8310,
+   "per_level": {
+    "1": {
+     "actions": 10,
+     "records": 2,
+     "prompt_tokens_estimate": 8714,
+     "completion_tokens_estimate": 155
+    },
+    "2": {
+     "actions": 13,
+     "records": 2,
+     "prompt_tokens_estimate": 9903,
+     "completion_tokens_estimate": 167
+    },
+    "3": {
+     "actions": 40,
+     "records": 5,
+     "prompt_tokens_estimate": 30312,
+     "completion_tokens_estimate": 433
+    },
+    "4": {
+     "actions": 33,
+     "records": 5,
+     "prompt_tokens_estimate": 38307,
+     "completion_tokens_estimate": 413
+    }
+   }
+  },
+  "q002-4ec7e433": {
+   "levels": 4,
+   "actions": [
+    4,
+    5,
+    7,
+    8
+   ],
+   "baseline_actions": [
+    4,
+    5,
+    7,
+    8
+   ],
+   "records": 4,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 5251,
+   "per_level": {
+    "1": {
+     "actions": 4,
+     "records": 1,
+     "prompt_tokens_estimate": 4196,
+     "completion_tokens_estimate": 117
+    },
+    "2": {
+     "actions": 5,
+     "records": 1,
+     "prompt_tokens_estimate": 4521,
+     "completion_tokens_estimate": 131
+    },
+    "3": {
+     "actions": 7,
+     "records": 1,
+     "prompt_tokens_estimate": 4867,
+     "completion_tokens_estimate": 159
+    },
+    "4": {
+     "actions": 8,
+     "records": 1,
+     "prompt_tokens_estimate": 5251,
+     "completion_tokens_estimate": 172
+    }
+   }
+  },
+  "q003-fa4c376b": {
+   "levels": 5,
+   "actions": [
+    5,
+    13,
+    12,
+    19,
+    22
+   ],
+   "baseline_actions": [
+    5,
+    13,
+    12,
+    19,
+    22
+   ],
+   "records": 11,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 7241,
+   "per_level": {
+    "1": {
+     "actions": 5,
+     "records": 1,
+     "prompt_tokens_estimate": 4200,
+     "completion_tokens_estimate": 75
+    },
+    "2": {
+     "actions": 13,
+     "records": 2,
+     "prompt_tokens_estimate": 9267,
+     "completion_tokens_estimate": 166
+    },
+    "3": {
+     "actions": 12,
+     "records": 2,
+     "prompt_tokens_estimate": 10472,
+     "completion_tokens_estimate": 159
+    },
+    "4": {
+     "actions": 19,
+     "records": 3,
+     "prompt_tokens_estimate": 17983,
+     "completion_tokens_estimate": 243
+    },
+    "5": {
+     "actions": 22,
+     "records": 3,
+     "prompt_tokens_estimate": 20757,
+     "completion_tokens_estimate": 250
+    }
+   }
+  },
+  "q004-c194034b": {
+   "levels": 5,
+   "actions": [
+    5,
+    7,
+    11,
+    8,
+    10
+   ],
+   "baseline_actions": [
+    5,
+    7,
+    11,
+    8,
+    10
+   ],
+   "records": 7,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 5950,
+   "per_level": {
+    "1": {
+     "actions": 5,
+     "records": 1,
+     "prompt_tokens_estimate": 4200,
+     "completion_tokens_estimate": 76
+    },
+    "2": {
+     "actions": 7,
+     "records": 1,
+     "prompt_tokens_estimate": 4473,
+     "completion_tokens_estimate": 83
+    },
+    "3": {
+     "actions": 11,
+     "records": 2,
+     "prompt_tokens_estimate": 9828,
+     "completion_tokens_estimate": 158
+    },
+    "4": {
+     "actions": 8,
+     "records": 1,
+     "prompt_tokens_estimate": 5350,
+     "completion_tokens_estimate": 89
+    },
+    "5": {
+     "actions": 10,
+     "records": 2,
+     "prompt_tokens_estimate": 11591,
+     "completion_tokens_estimate": 153
+    }
+   }
+  },
+  "q005-6c347d0d": {
+   "levels": 5,
+   "actions": [
+    11,
+    14,
+    17,
+    20,
+    23
+   ],
+   "baseline_actions": [
+    11,
+    14,
+    17,
+    20,
+    23
+   ],
+   "records": 13,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 7905,
+   "per_level": {
+    "1": {
+     "actions": 11,
+     "records": 2,
+     "prompt_tokens_estimate": 8716,
+     "completion_tokens_estimate": 155
+    },
+    "2": {
+     "actions": 14,
+     "records": 2,
+     "prompt_tokens_estimate": 9907,
+     "completion_tokens_estimate": 169
+    },
+    "3": {
+     "actions": 17,
+     "records": 3,
+     "prompt_tokens_estimate": 17162,
+     "completion_tokens_estimate": 238
+    },
+    "4": {
+     "actions": 20,
+     "records": 3,
+     "prompt_tokens_estimate": 19916,
+     "completion_tokens_estimate": 244
+    },
+    "5": {
+     "actions": 23,
+     "records": 3,
+     "prompt_tokens_estimate": 22720,
+     "completion_tokens_estimate": 260
+    }
+   }
+  },
+  "q007-3f6c1b1e": {
+   "levels": 4,
+   "actions": [
+    7,
+    9,
+    14,
+    7
+   ],
+   "baseline_actions": [
+    7,
+    9,
+    14,
+    7
+   ],
+   "records": 6,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 5704,
+   "per_level": {
+    "1": {
+     "actions": 7,
+     "records": 1,
+     "prompt_tokens_estimate": 4202,
+     "completion_tokens_estimate": 88
+    },
+    "2": {
+     "actions": 9,
+     "records": 2,
+     "prompt_tokens_estimate": 9302,
+     "completion_tokens_estimate": 154
+    },
+    "3": {
+     "actions": 14,
+     "records": 2,
+     "prompt_tokens_estimate": 10498,
+     "completion_tokens_estimate": 171
+    },
+    "4": {
+     "actions": 7,
+     "records": 1,
+     "prompt_tokens_estimate": 5704,
+     "completion_tokens_estimate": 86
+    }
+   }
+  },
+  "q008-219f83f1": {
+   "levels": 5,
+   "actions": [
+    9,
+    11,
+    8,
+    10,
+    12
+   ],
+   "baseline_actions": [
+    9,
+    11,
+    8,
+    10,
+    12
+   ],
+   "records": 9,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 6607,
+   "per_level": {
+    "1": {
+     "actions": 9,
+     "records": 2,
+     "prompt_tokens_estimate": 8714,
+     "completion_tokens_estimate": 155
+    },
+    "2": {
+     "actions": 11,
+     "records": 2,
+     "prompt_tokens_estimate": 9900,
+     "completion_tokens_estimate": 163
+    },
+    "3": {
+     "actions": 8,
+     "records": 1,
+     "prompt_tokens_estimate": 5391,
+     "completion_tokens_estimate": 92
+    },
+    "4": {
+     "actions": 10,
+     "records": 2,
+     "prompt_tokens_estimate": 11691,
+     "completion_tokens_estimate": 160
+    },
+    "5": {
+     "actions": 12,
+     "records": 2,
+     "prompt_tokens_estimate": 12890,
+     "completion_tokens_estimate": 167
+    }
+   }
+  },
+  "q010-70e3829b": {
+   "levels": 5,
+   "actions": [
+    7,
+    10,
+    6,
+    11,
+    10
+   ],
+   "baseline_actions": [
+    7,
+    10,
+    6,
+    11,
+    10
+   ],
+   "records": 8,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 6306,
+   "per_level": {
+    "1": {
+     "actions": 7,
+     "records": 1,
+     "prompt_tokens_estimate": 4202,
+     "completion_tokens_estimate": 82
+    },
+    "2": {
+     "actions": 10,
+     "records": 2,
+     "prompt_tokens_estimate": 9281,
+     "completion_tokens_estimate": 153
+    },
+    "3": {
+     "actions": 6,
+     "records": 1,
+     "prompt_tokens_estimate": 5075,
+     "completion_tokens_estimate": 92
+    },
+    "4": {
+     "actions": 11,
+     "records": 2,
+     "prompt_tokens_estimate": 11082,
+     "completion_tokens_estimate": 169
+    },
+    "5": {
+     "actions": 10,
+     "records": 2,
+     "prompt_tokens_estimate": 12295,
+     "completion_tokens_estimate": 167
+    }
+   }
+  },
+  "q011-582cc975": {
+   "levels": 5,
+   "actions": [
+    4,
+    5,
+    10,
+    13,
+    12
+   ],
+   "baseline_actions": [
+    4,
+    5,
+    10,
+    13,
+    12
+   ],
+   "records": 8,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 6820,
+   "per_level": {
+    "1": {
+     "actions": 4,
+     "records": 1,
+     "prompt_tokens_estimate": 4196,
+     "completion_tokens_estimate": 117
+    },
+    "2": {
+     "actions": 5,
+     "records": 1,
+     "prompt_tokens_estimate": 4521,
+     "completion_tokens_estimate": 131
+    },
+    "3": {
+     "actions": 10,
+     "records": 2,
+     "prompt_tokens_estimate": 10125,
+     "completion_tokens_estimate": 260
+    },
+    "4": {
+     "actions": 13,
+     "records": 2,
+     "prompt_tokens_estimate": 11645,
+     "completion_tokens_estimate": 301
+    },
+    "5": {
+     "actions": 12,
+     "records": 2,
+     "prompt_tokens_estimate": 13226,
+     "completion_tokens_estimate": 287
+    }
+   }
+  },
+  "q012-4d4f24c6": {
+   "levels": 5,
+   "actions": [
+    4,
+    6,
+    9,
+    5,
+    9
+   ],
+   "baseline_actions": [
+    4,
+    6,
+    9,
+    5,
+    9
+   ],
+   "records": 7,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 6340,
+   "per_level": {
+    "1": {
+     "actions": 4,
+     "records": 1,
+     "prompt_tokens_estimate": 4196,
+     "completion_tokens_estimate": 117
+    },
+    "2": {
+     "actions": 6,
+     "records": 1,
+     "prompt_tokens_estimate": 4521,
+     "completion_tokens_estimate": 144
+    },
+    "3": {
+     "actions": 9,
+     "records": 2,
+     "prompt_tokens_estimate": 10163,
+     "completion_tokens_estimate": 245
+    },
+    "4": {
+     "actions": 5,
+     "records": 1,
+     "prompt_tokens_estimate": 5604,
+     "completion_tokens_estimate": 131
+    },
+    "5": {
+     "actions": 9,
+     "records": 2,
+     "prompt_tokens_estimate": 12289,
+     "completion_tokens_estimate": 245
+    }
+   }
+  },
+  "q014-a3191849": {
+   "levels": 5,
+   "actions": [
+    7,
+    7,
+    8,
+    7,
+    7
+   ],
+   "baseline_actions": [
+    7,
+    7,
+    8,
+    7,
+    7
+   ],
+   "records": 5,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 5753,
+   "per_level": {
+    "1": {
+     "actions": 7,
+     "records": 1,
+     "prompt_tokens_estimate": 4196,
+     "completion_tokens_estimate": 158
+    },
+    "2": {
+     "actions": 7,
+     "records": 1,
+     "prompt_tokens_estimate": 4580,
+     "completion_tokens_estimate": 158
+    },
+    "3": {
+     "actions": 8,
+     "records": 1,
+     "prompt_tokens_estimate": 4964,
+     "completion_tokens_estimate": 172
+    },
+    "4": {
+     "actions": 7,
+     "records": 1,
+     "prompt_tokens_estimate": 5369,
+     "completion_tokens_estimate": 159
+    },
+    "5": {
+     "actions": 7,
+     "records": 1,
+     "prompt_tokens_estimate": 5753,
+     "completion_tokens_estimate": 159
+    }
+   }
+  },
+  "q016-fb8b5e28": {
+   "levels": 5,
+   "actions": [
+    9,
+    9,
+    9,
+    12,
+    22
+   ],
+   "baseline_actions": [
+    9,
+    9,
+    9,
+    12,
+    22
+   ],
+   "records": 11,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 7194,
+   "per_level": {
+    "1": {
+     "actions": 9,
+     "records": 2,
+     "prompt_tokens_estimate": 8707,
+     "completion_tokens_estimate": 149
+    },
+    "2": {
+     "actions": 9,
+     "records": 2,
+     "prompt_tokens_estimate": 9868,
+     "completion_tokens_estimate": 150
+    },
+    "3": {
+     "actions": 9,
+     "records": 2,
+     "prompt_tokens_estimate": 11033,
+     "completion_tokens_estimate": 150
+    },
+    "4": {
+     "actions": 12,
+     "records": 2,
+     "prompt_tokens_estimate": 12205,
+     "completion_tokens_estimate": 161
+    },
+    "5": {
+     "actions": 22,
+     "records": 3,
+     "prompt_tokens_estimate": 20604,
+     "completion_tokens_estimate": 250
+    }
+   }
+  },
+  "q017-b0e60f45": {
+   "levels": 5,
+   "actions": [
+    8,
+    8,
+    11,
+    12,
+    16
+   ],
+   "baseline_actions": [
+    8,
+    8,
+    11,
+    12,
+    16
+   ],
+   "records": 8,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 7003,
+   "per_level": {
+    "1": {
+     "actions": 8,
+     "records": 1,
+     "prompt_tokens_estimate": 4196,
+     "completion_tokens_estimate": 172
+    },
+    "2": {
+     "actions": 8,
+     "records": 1,
+     "prompt_tokens_estimate": 4599,
+     "completion_tokens_estimate": 172
+    },
+    "3": {
+     "actions": 11,
+     "records": 2,
+     "prompt_tokens_estimate": 10421,
+     "completion_tokens_estimate": 273
+    },
+    "4": {
+     "actions": 12,
+     "records": 2,
+     "prompt_tokens_estimate": 11941,
+     "completion_tokens_estimate": 287
+    },
+    "5": {
+     "actions": 16,
+     "records": 2,
+     "prompt_tokens_estimate": 13546,
+     "completion_tokens_estimate": 342
+    }
+   }
+  },
+  "q019-810bf976": {
+   "levels": 5,
+   "actions": [
+    6,
+    11,
+    12,
+    9,
+    11
+   ],
+   "baseline_actions": [
+    6,
+    11,
+    12,
+    9,
+    11
+   ],
+   "records": 9,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 6566,
+   "per_level": {
+    "1": {
+     "actions": 6,
+     "records": 1,
+     "prompt_tokens_estimate": 4200,
+     "completion_tokens_estimate": 80
+    },
+    "2": {
+     "actions": 11,
+     "records": 2,
+     "prompt_tokens_estimate": 9275,
+     "completion_tokens_estimate": 158
+    },
+    "3": {
+     "actions": 12,
+     "records": 2,
+     "prompt_tokens_estimate": 10464,
+     "completion_tokens_estimate": 160
+    },
+    "4": {
+     "actions": 9,
+     "records": 2,
+     "prompt_tokens_estimate": 11648,
+     "completion_tokens_estimate": 149
+    },
+    "5": {
+     "actions": 11,
+     "records": 2,
+     "prompt_tokens_estimate": 12817,
+     "completion_tokens_estimate": 156
+    }
+   }
+  },
+  "q020-38389cf6": {
+   "levels": 5,
+   "actions": [
+    10,
+    10,
+    14,
+    15,
+    21
+   ],
+   "baseline_actions": [
+    10,
+    10,
+    14,
+    15,
+    21
+   ],
+   "records": 11,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 7265,
+   "per_level": {
+    "1": {
+     "actions": 10,
+     "records": 2,
+     "prompt_tokens_estimate": 8710,
+     "completion_tokens_estimate": 153
+    },
+    "2": {
+     "actions": 10,
+     "records": 2,
+     "prompt_tokens_estimate": 9887,
+     "completion_tokens_estimate": 159
+    },
+    "3": {
+     "actions": 14,
+     "records": 2,
+     "prompt_tokens_estimate": 11092,
+     "completion_tokens_estimate": 171
+    },
+    "4": {
+     "actions": 15,
+     "records": 2,
+     "prompt_tokens_estimate": 12330,
+     "completion_tokens_estimate": 171
+    },
+    "5": {
+     "actions": 21,
+     "records": 3,
+     "prompt_tokens_estimate": 20821,
+     "completion_tokens_estimate": 251
+    }
+   }
+  },
+  "q101-d8be35ca": {
+   "levels": 4,
+   "actions": [
+    10,
+    13,
+    40,
+    33
+   ],
+   "baseline_actions": [
+    10,
+    13,
+    40,
+    33
+   ],
+   "records": 14,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 8296,
+   "per_level": {
+    "1": {
+     "actions": 10,
+     "records": 2,
+     "prompt_tokens_estimate": 8711,
+     "completion_tokens_estimate": 155
+    },
+    "2": {
+     "actions": 13,
+     "records": 2,
+     "prompt_tokens_estimate": 9905,
+     "completion_tokens_estimate": 166
+    },
+    "3": {
+     "actions": 40,
+     "records": 5,
+     "prompt_tokens_estimate": 30281,
+     "completion_tokens_estimate": 430
+    },
+    "4": {
+     "actions": 33,
+     "records": 5,
+     "prompt_tokens_estimate": 38264,
+     "completion_tokens_estimate": 410
+    }
+   }
+  },
+  "q102-ba06bc23": {
+   "levels": 4,
+   "actions": [
+    4,
+    5,
+    7,
+    8
+   ],
+   "baseline_actions": [
+    4,
+    5,
+    7,
+    8
+   ],
+   "records": 4,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 5251,
+   "per_level": {
+    "1": {
+     "actions": 4,
+     "records": 1,
+     "prompt_tokens_estimate": 4196,
+     "completion_tokens_estimate": 117
+    },
+    "2": {
+     "actions": 5,
+     "records": 1,
+     "prompt_tokens_estimate": 4521,
+     "completion_tokens_estimate": 131
+    },
+    "3": {
+     "actions": 7,
+     "records": 1,
+     "prompt_tokens_estimate": 4867,
+     "completion_tokens_estimate": 159
+    },
+    "4": {
+     "actions": 8,
+     "records": 1,
+     "prompt_tokens_estimate": 5251,
+     "completion_tokens_estimate": 172
+    }
+   }
+  },
+  "q103-eca75392": {
+   "levels": 5,
+   "actions": [
+    5,
+    13,
+    12,
+    19,
+    22
+   ],
+   "baseline_actions": [
+    5,
+    13,
+    12,
+    19,
+    22
+   ],
+   "records": 11,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 7242,
+   "per_level": {
+    "1": {
+     "actions": 5,
+     "records": 1,
+     "prompt_tokens_estimate": 4200,
+     "completion_tokens_estimate": 76
+    },
+    "2": {
+     "actions": 13,
+     "records": 2,
+     "prompt_tokens_estimate": 9268,
+     "completion_tokens_estimate": 165
+    },
+    "3": {
+     "actions": 12,
+     "records": 2,
+     "prompt_tokens_estimate": 10477,
+     "completion_tokens_estimate": 160
+    },
+    "4": {
+     "actions": 19,
+     "records": 3,
+     "prompt_tokens_estimate": 17988,
+     "completion_tokens_estimate": 242
+    },
+    "5": {
+     "actions": 22,
+     "records": 3,
+     "prompt_tokens_estimate": 20755,
+     "completion_tokens_estimate": 251
+    }
+   }
+  },
+  "q104-996915fe": {
+   "levels": 5,
+   "actions": [
+    5,
+    7,
+    11,
+    8,
+    10
+   ],
+   "baseline_actions": [
+    5,
+    7,
+    11,
+    8,
+    10
+   ],
+   "records": 7,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 5951,
+   "per_level": {
+    "1": {
+     "actions": 5,
+     "records": 1,
+     "prompt_tokens_estimate": 4200,
+     "completion_tokens_estimate": 79
+    },
+    "2": {
+     "actions": 7,
+     "records": 1,
+     "prompt_tokens_estimate": 4477,
+     "completion_tokens_estimate": 84
+    },
+    "3": {
+     "actions": 11,
+     "records": 2,
+     "prompt_tokens_estimate": 9841,
+     "completion_tokens_estimate": 155
+    },
+    "4": {
+     "actions": 8,
+     "records": 1,
+     "prompt_tokens_estimate": 5352,
+     "completion_tokens_estimate": 87
+    },
+    "5": {
+     "actions": 10,
+     "records": 2,
+     "prompt_tokens_estimate": 11592,
+     "completion_tokens_estimate": 153
+    }
+   }
+  },
+  "q105-8e7c61b4": {
+   "levels": 5,
+   "actions": [
+    11,
+    14,
+    17,
+    20,
+    23
+   ],
+   "baseline_actions": [
+    11,
+    14,
+    17,
+    20,
+    23
+   ],
+   "records": 13,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 7874,
+   "per_level": {
+    "1": {
+     "actions": 11,
+     "records": 2,
+     "prompt_tokens_estimate": 8716,
+     "completion_tokens_estimate": 155
+    },
+    "2": {
+     "actions": 14,
+     "records": 2,
+     "prompt_tokens_estimate": 9907,
+     "completion_tokens_estimate": 166
+    },
+    "3": {
+     "actions": 17,
+     "records": 3,
+     "prompt_tokens_estimate": 17136,
+     "completion_tokens_estimate": 230
+    },
+    "4": {
+     "actions": 20,
+     "records": 3,
+     "prompt_tokens_estimate": 19859,
+     "completion_tokens_estimate": 242
+    },
+    "5": {
+     "actions": 23,
+     "records": 3,
+     "prompt_tokens_estimate": 22643,
+     "completion_tokens_estimate": 252
+    }
+   }
+  },
+  "q107-c44a3706": {
+   "levels": 4,
+   "actions": [
+    7,
+    9,
+    14,
+    7
+   ],
+   "baseline_actions": [
+    7,
+    9,
+    14,
+    7
+   ],
+   "records": 6,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 5664,
+   "per_level": {
+    "1": {
+     "actions": 7,
+     "records": 1,
+     "prompt_tokens_estimate": 4202,
+     "completion_tokens_estimate": 81
+    },
+    "2": {
+     "actions": 9,
+     "records": 2,
+     "prompt_tokens_estimate": 9274,
+     "completion_tokens_estimate": 145
+    },
+    "3": {
+     "actions": 14,
+     "records": 2,
+     "prompt_tokens_estimate": 10439,
+     "completion_tokens_estimate": 162
+    },
+    "4": {
+     "actions": 7,
+     "records": 1,
+     "prompt_tokens_estimate": 5664,
+     "completion_tokens_estimate": 85
+    }
+   }
+  },
+  "q108-5be004f9": {
+   "levels": 5,
+   "actions": [
+    9,
+    11,
+    8,
+    10,
+    12
+   ],
+   "baseline_actions": [
+    9,
+    11,
+    8,
+    10,
+    12
+   ],
+   "records": 9,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 6566,
+   "per_level": {
+    "1": {
+     "actions": 9,
+     "records": 2,
+     "prompt_tokens_estimate": 8706,
+     "completion_tokens_estimate": 151
+    },
+    "2": {
+     "actions": 11,
+     "records": 2,
+     "prompt_tokens_estimate": 9873,
+     "completion_tokens_estimate": 158
+    },
+    "3": {
+     "actions": 8,
+     "records": 1,
+     "prompt_tokens_estimate": 5370,
+     "completion_tokens_estimate": 89
+    },
+    "4": {
+     "actions": 10,
+     "records": 2,
+     "prompt_tokens_estimate": 11631,
+     "completion_tokens_estimate": 155
+    },
+    "5": {
+     "actions": 12,
+     "records": 2,
+     "prompt_tokens_estimate": 12813,
+     "completion_tokens_estimate": 163
+    }
+   }
+  },
+  "q110-9103d655": {
+   "levels": 5,
+   "actions": [
+    7,
+    10,
+    6,
+    11,
+    10
+   ],
+   "baseline_actions": [
+    7,
+    10,
+    6,
+    11,
+    10
+   ],
+   "records": 8,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 6309,
+   "per_level": {
+    "1": {
+     "actions": 7,
+     "records": 1,
+     "prompt_tokens_estimate": 4202,
+     "completion_tokens_estimate": 85
+    },
+    "2": {
+     "actions": 10,
+     "records": 2,
+     "prompt_tokens_estimate": 9294,
+     "completion_tokens_estimate": 153
+    },
+    "3": {
+     "actions": 6,
+     "records": 1,
+     "prompt_tokens_estimate": 5080,
+     "completion_tokens_estimate": 94
+    },
+    "4": {
+     "actions": 11,
+     "records": 2,
+     "prompt_tokens_estimate": 11096,
+     "completion_tokens_estimate": 170
+    },
+    "5": {
+     "actions": 10,
+     "records": 2,
+     "prompt_tokens_estimate": 12305,
+     "completion_tokens_estimate": 163
+    }
+   }
+  },
+  "q111-43994785": {
+   "levels": 5,
+   "actions": [
+    4,
+    5,
+    10,
+    13,
+    12
+   ],
+   "baseline_actions": [
+    4,
+    5,
+    10,
+    13,
+    12
+   ],
+   "records": 8,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 6820,
+   "per_level": {
+    "1": {
+     "actions": 4,
+     "records": 1,
+     "prompt_tokens_estimate": 4196,
+     "completion_tokens_estimate": 117
+    },
+    "2": {
+     "actions": 5,
+     "records": 1,
+     "prompt_tokens_estimate": 4521,
+     "completion_tokens_estimate": 131
+    },
+    "3": {
+     "actions": 10,
+     "records": 2,
+     "prompt_tokens_estimate": 10125,
+     "completion_tokens_estimate": 260
+    },
+    "4": {
+     "actions": 13,
+     "records": 2,
+     "prompt_tokens_estimate": 11645,
+     "completion_tokens_estimate": 301
+    },
+    "5": {
+     "actions": 12,
+     "records": 2,
+     "prompt_tokens_estimate": 13226,
+     "completion_tokens_estimate": 287
+    }
+   }
+  },
+  "q112-25b4d8d4": {
+   "levels": 5,
+   "actions": [
+    4,
+    6,
+    9,
+    5,
+    9
+   ],
+   "baseline_actions": [
+    4,
+    6,
+    9,
+    5,
+    9
+   ],
+   "records": 7,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 6338,
+   "per_level": {
+    "1": {
+     "actions": 4,
+     "records": 1,
+     "prompt_tokens_estimate": 4196,
+     "completion_tokens_estimate": 117
+    },
+    "2": {
+     "actions": 6,
+     "records": 1,
+     "prompt_tokens_estimate": 4521,
+     "completion_tokens_estimate": 144
+    },
+    "3": {
+     "actions": 9,
+     "records": 2,
+     "prompt_tokens_estimate": 10163,
+     "completion_tokens_estimate": 245
+    },
+    "4": {
+     "actions": 5,
+     "records": 1,
+     "prompt_tokens_estimate": 5604,
+     "completion_tokens_estimate": 131
+    },
+    "5": {
+     "actions": 9,
+     "records": 2,
+     "prompt_tokens_estimate": 12287,
+     "completion_tokens_estimate": 243
+    }
+   }
+  },
+  "q114-3a47b6af": {
+   "levels": 5,
+   "actions": [
+    7,
+    7,
+    8,
+    7,
+    7
+   ],
+   "baseline_actions": [
+    7,
+    7,
+    8,
+    7,
+    7
+   ],
+   "records": 5,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 5753,
+   "per_level": {
+    "1": {
+     "actions": 7,
+     "records": 1,
+     "prompt_tokens_estimate": 4196,
+     "completion_tokens_estimate": 158
+    },
+    "2": {
+     "actions": 7,
+     "records": 1,
+     "prompt_tokens_estimate": 4580,
+     "completion_tokens_estimate": 158
+    },
+    "3": {
+     "actions": 8,
+     "records": 1,
+     "prompt_tokens_estimate": 4964,
+     "completion_tokens_estimate": 172
+    },
+    "4": {
+     "actions": 7,
+     "records": 1,
+     "prompt_tokens_estimate": 5369,
+     "completion_tokens_estimate": 159
+    },
+    "5": {
+     "actions": 7,
+     "records": 1,
+     "prompt_tokens_estimate": 5753,
+     "completion_tokens_estimate": 159
+    }
+   }
+  },
+  "q116-8bd6b053": {
+   "levels": 5,
+   "actions": [
+    9,
+    9,
+    9,
+    12,
+    22
+   ],
+   "baseline_actions": [
+    9,
+    9,
+    9,
+    12,
+    22
+   ],
+   "records": 11,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 7192,
+   "per_level": {
+    "1": {
+     "actions": 9,
+     "records": 2,
+     "prompt_tokens_estimate": 8706,
+     "completion_tokens_estimate": 149
+    },
+    "2": {
+     "actions": 9,
+     "records": 2,
+     "prompt_tokens_estimate": 9867,
+     "completion_tokens_estimate": 149
+    },
+    "3": {
+     "actions": 9,
+     "records": 2,
+     "prompt_tokens_estimate": 11031,
+     "completion_tokens_estimate": 150
+    },
+    "4": {
+     "actions": 12,
+     "records": 2,
+     "prompt_tokens_estimate": 12204,
+     "completion_tokens_estimate": 161
+    },
+    "5": {
+     "actions": 22,
+     "records": 3,
+     "prompt_tokens_estimate": 20599,
+     "completion_tokens_estimate": 252
+    }
+   }
+  },
+  "q117-6b352e65": {
+   "levels": 5,
+   "actions": [
+    8,
+    8,
+    11,
+    12,
+    16
+   ],
+   "baseline_actions": [
+    8,
+    8,
+    11,
+    12,
+    16
+   ],
+   "records": 8,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 7003,
+   "per_level": {
+    "1": {
+     "actions": 8,
+     "records": 1,
+     "prompt_tokens_estimate": 4196,
+     "completion_tokens_estimate": 172
+    },
+    "2": {
+     "actions": 8,
+     "records": 1,
+     "prompt_tokens_estimate": 4599,
+     "completion_tokens_estimate": 172
+    },
+    "3": {
+     "actions": 11,
+     "records": 2,
+     "prompt_tokens_estimate": 10421,
+     "completion_tokens_estimate": 273
+    },
+    "4": {
+     "actions": 12,
+     "records": 2,
+     "prompt_tokens_estimate": 11941,
+     "completion_tokens_estimate": 287
+    },
+    "5": {
+     "actions": 16,
+     "records": 2,
+     "prompt_tokens_estimate": 13546,
+     "completion_tokens_estimate": 342
+    }
+   }
+  },
+  "q119-217e7715": {
+   "levels": 5,
+   "actions": [
+    6,
+    11,
+    12,
+    9,
+    11
+   ],
+   "baseline_actions": [
+    6,
+    11,
+    12,
+    9,
+    11
+   ],
+   "records": 9,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 6564,
+   "per_level": {
+    "1": {
+     "actions": 6,
+     "records": 1,
+     "prompt_tokens_estimate": 4200,
+     "completion_tokens_estimate": 83
+    },
+    "2": {
+     "actions": 11,
+     "records": 2,
+     "prompt_tokens_estimate": 9284,
+     "completion_tokens_estimate": 158
+    },
+    "3": {
+     "actions": 12,
+     "records": 2,
+     "prompt_tokens_estimate": 10471,
+     "completion_tokens_estimate": 161
+    },
+    "4": {
+     "actions": 9,
+     "records": 2,
+     "prompt_tokens_estimate": 11658,
+     "completion_tokens_estimate": 148
+    },
+    "5": {
+     "actions": 11,
+     "records": 2,
+     "prompt_tokens_estimate": 12817,
+     "completion_tokens_estimate": 151
+    }
+   }
+  },
+  "q120-b79ff550": {
+   "levels": 5,
+   "actions": [
+    10,
+    10,
+    14,
+    15,
+    21
+   ],
+   "baseline_actions": [
+    10,
+    10,
+    14,
+    15,
+    21
+   ],
+   "records": 11,
+   "summary_records": 0,
+   "max_prompt_tokens_estimate": 7202,
+   "per_level": {
+    "1": {
+     "actions": 10,
+     "records": 2,
+     "prompt_tokens_estimate": 8710,
+     "completion_tokens_estimate": 151
+    },
+    "2": {
+     "actions": 10,
+     "records": 2,
+     "prompt_tokens_estimate": 9872,
+     "completion_tokens_estimate": 146
+    },
+    "3": {
+     "actions": 14,
+     "records": 2,
+     "prompt_tokens_estimate": 11033,
+     "completion_tokens_estimate": 160
+    },
+    "4": {
+     "actions": 15,
+     "records": 2,
+     "prompt_tokens_estimate": 12234,
+     "completion_tokens_estimate": 165
+    },
+    "5": {
+     "actions": 21,
+     "records": 3,
+     "prompt_tokens_estimate": 20645,
+     "completion_tokens_estimate": 244
+    }
+   }
+  }
+ },
+ "eval_split": {
+  "source": "solver",
+  "split": "eval",
+  "games": 10,
+  "records": 78,
+  "actions": 486,
+  "prompt_tokens_estimate": 418015,
+  "completion_tokens_estimate": 8038,
+  "images": 358,
+  "token_estimate": "text characters / 4.1 + 64 per board image (posttrain.sft_records)",
+  "per_game": {
+   "q006-a3e60ccd": {
+    "levels": 4,
+    "actions": [
+     5,
+     4,
+     9,
+     5
+    ],
+    "baseline_actions": [
+     5,
+     4,
+     9,
+     5
+    ],
+    "records": 5,
+    "summary_records": 0,
+    "max_prompt_tokens_estimate": 5584,
+    "per_level": {
+     "1": {
+      "actions": 5,
+      "records": 1,
+      "prompt_tokens_estimate": 4196,
+      "completion_tokens_estimate": 131
+     },
+     "2": {
+      "actions": 4,
+      "records": 1,
+      "prompt_tokens_estimate": 4541,
+      "completion_tokens_estimate": 117
+     },
+     "3": {
+      "actions": 9,
+      "records": 2,
+      "prompt_tokens_estimate": 10125,
+      "completion_tokens_estimate": 245
+     },
+     "4": {
+      "actions": 5,
+      "records": 1,
+      "prompt_tokens_estimate": 5584,
+      "completion_tokens_estimate": 131
+     }
+    }
+   },
+   "q009-6696a439": {
+    "levels": 5,
+    "actions": [
+     8,
+     8,
+     9,
+     10,
+     11
+    ],
+    "baseline_actions": [
+     8,
+     8,
+     9,
+     10,
+     11
+    ],
+    "records": 8,
+    "summary_records": 0,
+    "max_prompt_tokens_estimate": 6240,
+    "per_level": {
+     "1": {
+      "actions": 8,
+      "records": 1,
+      "prompt_tokens_estimate": 4200,
+      "completion_tokens_estimate": 90
+     },
+     "2": {
+      "actions": 8,
+      "records": 1,
+      "prompt_tokens_estimate": 4493,
+      "completion_tokens_estimate": 85
+     },
+     "3": {
+      "actions": 9,
+      "records": 2,
+      "prompt_tokens_estimate": 9860,
+      "completion_tokens_estimate": 143
+     },
+     "4": {
+      "actions": 10,
+      "records": 2,
+      "prompt_tokens_estimate": 11004,
+      "completion_tokens_estimate": 150
+     },
+     "5": {
+      "actions": 11,
+      "records": 2,
+      "prompt_tokens_estimate": 12170,
+      "completion_tokens_estimate": 149
+     }
+    }
+   },
+   "q013-91bc7865": {
+    "levels": 5,
+    "actions": [
+     6,
+     11,
+     18,
+     13,
+     15
+    ],
+    "baseline_actions": [
+     6,
+     11,
+     18,
+     13,
+     15
+    ],
+    "records": 10,
+    "summary_records": 0,
+    "max_prompt_tokens_estimate": 6921,
+    "per_level": {
+     "1": {
+      "actions": 6,
+      "records": 1,
+      "prompt_tokens_estimate": 4200,
+      "completion_tokens_estimate": 82
+     },
+     "2": {
+      "actions": 11,
+      "records": 2,
+      "prompt_tokens_estimate": 9282,
+      "completion_tokens_estimate": 156
+     },
+     "3": {
+      "actions": 18,
+      "records": 3,
+      "prompt_tokens_estimate": 16173,
+      "completion_tokens_estimate": 240
+     },
+     "4": {
+      "actions": 13,
+      "records": 2,
+      "prompt_tokens_estimate": 12302,
+      "completion_tokens_estimate": 165
+     },
+     "5": {
+      "actions": 15,
+      "records": 2,
+      "prompt_tokens_estimate": 13517,
+      "completion_tokens_estimate": 166
+     }
+    }
+   },
+   "q015-544a385b": {
+    "levels": 5,
+    "actions": [
+     7,
+     8,
+     15,
+     8,
+     15
+    ],
+    "baseline_actions": [
+     7,
+     8,
+     15,
+     8,
+     15
+    ],
+    "records": 7,
+    "summary_records": 0,
+    "max_prompt_tokens_estimate": 6045,
+    "per_level": {
+     "1": {
+      "actions": 7,
+      "records": 1,
+      "prompt_tokens_estimate": 4202,
+      "completion_tokens_estimate": 88
+     },
+     "2": {
+      "actions": 8,
+      "records": 1,
+      "prompt_tokens_estimate": 4493,
+      "completion_tokens_estimate": 92
+     },
+     "3": {
+      "actions": 15,
+      "records": 2,
+      "prompt_tokens_estimate": 9914,
+      "completion_tokens_estimate": 173
+     },
+     "4": {
+      "actions": 8,
+      "records": 1,
+      "prompt_tokens_estimate": 5413,
+      "completion_tokens_estimate": 92
+     },
+     "5": {
+      "actions": 15,
+      "records": 2,
+      "prompt_tokens_estimate": 11756,
+      "completion_tokens_estimate": 173
+     }
+    }
+   },
+   "q018-e2171764": {
+    "levels": 5,
+    "actions": [
+     6,
+     10,
+     12,
+     14,
+     16
+    ],
+    "baseline_actions": [
+     6,
+     10,
+     12,
+     14,
+     16
+    ],
+    "records": 9,
+    "summary_records": 0,
+    "max_prompt_tokens_estimate": 7359,
+    "per_level": {
+     "1": {
+      "actions": 6,
+      "records": 1,
+      "prompt_tokens_estimate": 4196,
+      "completion_tokens_estimate": 144
+     },
+     "2": {
+      "actions": 10,
+      "records": 2,
+      "prompt_tokens_estimate": 9512,
+      "completion_tokens_estimate": 259
+     },
+     "3": {
+      "actions": 12,
+      "records": 2,
+      "prompt_tokens_estimate": 11008,
+      "completion_tokens_estimate": 287
+     },
+     "4": {
+      "actions": 14,
+      "records": 2,
+      "prompt_tokens_estimate": 12591,
+      "completion_tokens_estimate": 315
+     },
+     "5": {
+      "actions": 16,
+      "records": 2,
+      "prompt_tokens_estimate": 14258,
+      "completion_tokens_estimate": 342
+     }
+    }
+   },
+   "q106-773d8123": {
+    "levels": 4,
+    "actions": [
+     5,
+     4,
+     9,
+     5
+    ],
+    "baseline_actions": [
+     5,
+     4,
+     9,
+     5
+    ],
+    "records": 5,
+    "summary_records": 0,
+    "max_prompt_tokens_estimate": 5584,
+    "per_level": {
+     "1": {
+      "actions": 5,
+      "records": 1,
+      "prompt_tokens_estimate": 4196,
+      "completion_tokens_estimate": 131
+     },
+     "2": {
+      "actions": 4,
+      "records": 1,
+      "prompt_tokens_estimate": 4541,
+      "completion_tokens_estimate": 117
+     },
+     "3": {
+      "actions": 9,
+      "records": 2,
+      "prompt_tokens_estimate": 10125,
+      "completion_tokens_estimate": 245
+     },
+     "4": {
+      "actions": 5,
+      "records": 1,
+      "prompt_tokens_estimate": 5584,
+      "completion_tokens_estimate": 131
+     }
+    }
+   },
+   "q109-cbce58d0": {
+    "levels": 5,
+    "actions": [
+     8,
+     8,
+     9,
+     10,
+     11
+    ],
+    "baseline_actions": [
+     8,
+     8,
+     9,
+     10,
+     11
+    ],
+    "records": 8,
+    "summary_records": 0,
+    "max_prompt_tokens_estimate": 6272,
+    "per_level": {
+     "1": {
+      "actions": 8,
+      "records": 1,
+      "prompt_tokens_estimate": 4200,
+      "completion_tokens_estimate": 87
+     },
+     "2": {
+      "actions": 8,
+      "records": 1,
+      "prompt_tokens_estimate": 4489,
+      "completion_tokens_estimate": 88
+     },
+     "3": {
+      "actions": 9,
+      "records": 2,
+      "prompt_tokens_estimate": 9870,
+      "completion_tokens_estimate": 151
+     },
+     "4": {
+      "actions": 10,
+      "records": 2,
+      "prompt_tokens_estimate": 11038,
+      "completion_tokens_estimate": 155
+     },
+     "5": {
+      "actions": 11,
+      "records": 2,
+      "prompt_tokens_estimate": 12225,
+      "completion_tokens_estimate": 158
+     }
+    }
+   },
+   "q113-2f0e9b1a": {
+    "levels": 5,
+    "actions": [
+     6,
+     11,
+     18,
+     13,
+     15
+    ],
+    "baseline_actions": [
+     6,
+     11,
+     18,
+     13,
+     15
+    ],
+    "records": 10,
+    "summary_records": 0,
+    "max_prompt_tokens_estimate": 6918,
+    "per_level": {
+     "1": {
+      "actions": 6,
+      "records": 1,
+      "prompt_tokens_estimate": 4200,
+      "completion_tokens_estimate": 81
+     },
+     "2": {
+      "actions": 11,
+      "records": 2,
+      "prompt_tokens_estimate": 9282,
+      "completion_tokens_estimate": 160
+     },
+     "3": {
+      "actions": 18,
+      "records": 3,
+      "prompt_tokens_estimate": 16188,
+      "completion_tokens_estimate": 235
+     },
+     "4": {
+      "actions": 13,
+      "records": 2,
+      "prompt_tokens_estimate": 12297,
+      "completion_tokens_estimate": 160
+     },
+     "5": {
+      "actions": 15,
+      "records": 2,
+      "prompt_tokens_estimate": 13504,
+      "completion_tokens_estimate": 171
+     }
+    }
+   },
+   "q115-51409022": {
+    "levels": 5,
+    "actions": [
+     7,
+     8,
+     15,
+     8,
+     15
+    ],
+    "baseline_actions": [
+     7,
+     8,
+     15,
+     8,
+     15
+    ],
+    "records": 7,
+    "summary_records": 0,
+    "max_prompt_tokens_estimate": 6033,
+    "per_level": {
+     "1": {
+      "actions": 7,
+      "records": 1,
+      "prompt_tokens_estimate": 4202,
+      "completion_tokens_estimate": 85
+     },
+     "2": {
+      "actions": 8,
+      "records": 1,
+      "prompt_tokens_estimate": 4489,
+      "completion_tokens_estimate": 87
+     },
+     "3": {
+      "actions": 15,
+      "records": 2,
+      "prompt_tokens_estimate": 9895,
+      "completion_tokens_estimate": 173
+     },
+     "4": {
+      "actions": 8,
+      "records": 1,
+      "prompt_tokens_estimate": 5404,
+      "completion_tokens_estimate": 89
+     },
+     "5": {
+      "actions": 15,
+      "records": 2,
+      "prompt_tokens_estimate": 11731,
+      "completion_tokens_estimate": 172
+     }
+    }
+   },
+   "q118-96bf64c5": {
+    "levels": 5,
+    "actions": [
+     6,
+     10,
+     12,
+     14,
+     16
+    ],
+    "baseline_actions": [
+     6,
+     10,
+     12,
+     14,
+     16
+    ],
+    "records": 9,
+    "summary_records": 0,
+    "max_prompt_tokens_estimate": 7359,
+    "per_level": {
+     "1": {
+      "actions": 6,
+      "records": 1,
+      "prompt_tokens_estimate": 4196,
+      "completion_tokens_estimate": 144
+     },
+     "2": {
+      "actions": 10,
+      "records": 2,
+      "prompt_tokens_estimate": 9512,
+      "completion_tokens_estimate": 259
+     },
+     "3": {
+      "actions": 12,
+      "records": 2,
+      "prompt_tokens_estimate": 11008,
+      "completion_tokens_estimate": 287
+     },
+     "4": {
+      "actions": 14,
+      "records": 2,
+      "prompt_tokens_estimate": 12591,
+      "completion_tokens_estimate": 315
+     },
+     "5": {
+      "actions": 16,
+      "records": 2,
+      "prompt_tokens_estimate": 14258,
+      "completion_tokens_estimate": 342
+     }
+    }
+   }
+  }
+ }
+}

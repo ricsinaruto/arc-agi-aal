@@ -1,0 +1,139 @@
+{
+ "game_id": "q228-9c6d25db",
+ "name": "chameleon-skin",
+ "tags": [
+  "keyboard",
+  "navigation",
+  "colour-state",
+  "keys-doors",
+  "rule-change",
+  "skin"
+ ],
+ "note": "q020 chameleon: take on colours from pads to pass through barriers of the same colour.\n\nHidden rules: arrows move the white avatar one cell; dark-gray walls block. The avatar carries one\ncolour at a time, shown by the colour of the board's border (dark gray at the start: no colour).\nStepping onto a coloured pad (a single red, yellow, magenta or purple cell) gives the avatar that\ncolour. A barrier cell of a colour (drawn exactly like a pad of that colour) can be entered only while\nthe avatar carries that colour; otherwise the move does nothing. Pads and barriers look alike: only\ntrying tells which is which. Levels 1-3: pads stay and can be used again. From level 4 a pad is used\nup when stepped on (it disappears), so the order of visits matters (RESET restarts the level). The\nlevel clears when the avatar stands on the green exit.\n\nSkin of q020 (chameleon): the same rules and levels as above, shown differently. The board is turned 270 degrees clockwise, so every direction, side and axis named in the rules above refers to the unturned board. The direction keys follow the screen: the base game's up appears as left, down appears as right, left appears as down, right appears as up, and the key for the screen direction moves things that way (for example UP moves the base game's right). Clicks act on the cell clicked on screen. Every colour is replaced: white -> gray, light gray -> sky blue, gray -> magenta, dark gray -> pink, charcoal -> black, black -> red, magenta -> yellow, pink -> orange, red -> purple, blue -> dark gray, sky blue -> white, yellow -> light gray, orange -> blue, dark red -> green, green -> charcoal, purple -> dark red.",
+ "episode_of": "q020",
+ "mechanic": "chameleon",
+ "tier": 3,
+ "seed": 0,
+ "skin_of": "q020",
+ "batch": 1,
+ "level_source": "generated",
+ "skin": {
+  "flip": false,
+  "turns": 3,
+  "palette": [
+   2,
+   10,
+   6,
+   7,
+   5,
+   8,
+   11,
+   12,
+   15,
+   3,
+   0,
+   1,
+   9,
+   14,
+   4,
+   13
+  ],
+  "keys": {
+   "3": 1,
+   "4": 2,
+   "2": 3,
+   "1": 4
+  },
+  "actions": [
+   1,
+   2,
+   3,
+   4
+  ]
+ },
+ "solution": [
+  [
+   [
+    1,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    3,
+    null
+   ]
+  ]
+ ],
+ "level": {
+  "attempt": 8,
+  "baseline": 18,
+  "random": 0.0,
+  "tier_band": [
+   10,
+   24
+  ]
+ }
+}

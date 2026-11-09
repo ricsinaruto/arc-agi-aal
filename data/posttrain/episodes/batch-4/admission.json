@@ -1,0 +1,615 @@
+{
+ "episodes": {
+  "q290": {
+   "game_id": "q290-62d81ed7",
+   "admitted": true,
+   "episode_of": "q001",
+   "mechanic": "keys",
+   "tier": 1,
+   "seed": 1,
+   "skin_of": "q001",
+   "batch": 4,
+   "level_source": "fixed",
+   "baseline_actions": [
+    10
+   ],
+   "random_clear_rate": 0.025,
+   "replay_frames": 11,
+   "attempt": 0,
+   "issues": [],
+   "attempt_rejections": {}
+  },
+  "q291": {
+   "game_id": "q291-ed025aaa",
+   "admitted": true,
+   "episode_of": "q001",
+   "mechanic": "keys",
+   "tier": 2,
+   "seed": 2,
+   "skin_of": "q001",
+   "batch": 4,
+   "level_source": "fixed",
+   "baseline_actions": [
+    13
+   ],
+   "random_clear_rate": 0.0,
+   "replay_frames": 14,
+   "attempt": 0,
+   "issues": [],
+   "attempt_rejections": {}
+  },
+  "q292": {
+   "game_id": "q292-89f1baa3",
+   "admitted": true,
+   "episode_of": "q002",
+   "mechanic": "lights",
+   "tier": 2,
+   "seed": 1,
+   "skin_of": "q002",
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    5
+   ],
+   "random_clear_rate": 0.0,
+   "replay_frames": 6,
+   "attempt": 0,
+   "issues": [],
+   "attempt_rejections": {}
+  },
+  "q293": {
+   "game_id": "q293-b92a580a",
+   "admitted": true,
+   "episode_of": "q002",
+   "mechanic": "lights",
+   "tier": 3,
+   "seed": 2,
+   "skin_of": null,
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    6
+   ],
+   "random_clear_rate": 0.0,
+   "replay_frames": 7,
+   "attempt": 10,
+   "issues": [],
+   "attempt_rejections": {
+    "outside tier band": 7,
+    "too short": 3
+   }
+  },
+  "q294": {
+   "game_id": "q294-13c42355",
+   "admitted": true,
+   "episode_of": "q003",
+   "mechanic": "push",
+   "tier": 3,
+   "seed": 1,
+   "skin_of": null,
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    14
+   ],
+   "random_clear_rate": 0.0,
+   "replay_frames": 15,
+   "attempt": 18,
+   "issues": [],
+   "attempt_rejections": {
+    "too short": 10,
+    "outside tier band": 7,
+    "random clears": 1
+   }
+  },
+  "q295": {
+   "game_id": "q295-ed0900e7",
+   "admitted": true,
+   "episode_of": "q003",
+   "mechanic": "push",
+   "tier": 1,
+   "seed": 2,
+   "skin_of": "q003",
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    8
+   ],
+   "random_clear_rate": 0.01,
+   "replay_frames": 9,
+   "attempt": 2,
+   "issues": [],
+   "attempt_rejections": {
+    "too short": 1,
+    "outside tier band": 1
+   }
+  },
+  "q296": {
+   "game_id": "q296-90b5e53c",
+   "admitted": true,
+   "episode_of": "q004",
+   "mechanic": "tilt",
+   "tier": 1,
+   "seed": 1,
+   "skin_of": null,
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    6
+   ],
+   "random_clear_rate": 0.035,
+   "replay_frames": 7,
+   "attempt": 16,
+   "issues": [],
+   "attempt_rejections": {
+    "unsolvable": 8,
+    "too short": 8
+   }
+  },
+  "q297": {
+   "game_id": "q297-4cd248ba",
+   "admitted": true,
+   "episode_of": "q004",
+   "mechanic": "tilt",
+   "tier": 2,
+   "seed": 2,
+   "skin_of": null,
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    5
+   ],
+   "random_clear_rate": 0.03,
+   "replay_frames": 6,
+   "attempt": 1,
+   "issues": [],
+   "attempt_rejections": {
+    "unsolvable": 1
+   }
+  },
+  "q298": {
+   "game_id": "q298-32de00a9",
+   "admitted": true,
+   "episode_of": "q005",
+   "mechanic": "paint",
+   "tier": 2,
+   "seed": 1,
+   "skin_of": "q005",
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    14
+   ],
+   "random_clear_rate": 0.045,
+   "replay_frames": 15,
+   "attempt": 1,
+   "issues": [],
+   "attempt_rejections": {
+    "random clears": 1
+   }
+  },
+  "q299": {
+   "game_id": "q299-53092455",
+   "admitted": true,
+   "episode_of": "q005",
+   "mechanic": "paint",
+   "tier": 3,
+   "seed": 2,
+   "skin_of": null,
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    17
+   ],
+   "random_clear_rate": 0.01,
+   "replay_frames": 18,
+   "attempt": 1,
+   "issues": [],
+   "attempt_rejections": {
+    "random clears": 1
+   }
+  },
+  "q300": {
+   "game_id": "q300-d3d856d1",
+   "admitted": true,
+   "episode_of": "q007",
+   "mechanic": "switch",
+   "tier": 3,
+   "seed": 1,
+   "skin_of": "q007",
+   "batch": 4,
+   "level_source": "fixed",
+   "baseline_actions": [
+    14
+   ],
+   "random_clear_rate": 0.0,
+   "replay_frames": 15,
+   "attempt": 0,
+   "issues": [],
+   "attempt_rejections": {}
+  },
+  "q301": {
+   "game_id": "q301-0170ad9f",
+   "admitted": true,
+   "episode_of": "q007",
+   "mechanic": "switch",
+   "tier": 1,
+   "seed": 2,
+   "skin_of": "q007",
+   "batch": 4,
+   "level_source": "fixed",
+   "baseline_actions": [
+    7
+   ],
+   "random_clear_rate": 0.005,
+   "replay_frames": 8,
+   "attempt": 0,
+   "issues": [],
+   "attempt_rejections": {}
+  },
+  "q302": {
+   "game_id": "q302-8bd1e3c7",
+   "admitted": true,
+   "episode_of": "q008",
+   "mechanic": "gravity",
+   "tier": 1,
+   "seed": 1,
+   "skin_of": null,
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    9
+   ],
+   "random_clear_rate": 0.05,
+   "replay_frames": 10,
+   "attempt": 7,
+   "issues": [],
+   "attempt_rejections": {
+    "unsolvable": 7
+   }
+  },
+  "q303": {
+   "game_id": "q303-bd755fc4",
+   "admitted": true,
+   "episode_of": "q008",
+   "mechanic": "gravity",
+   "tier": 2,
+   "seed": 2,
+   "skin_of": null,
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    10
+   ],
+   "random_clear_rate": 0.035,
+   "replay_frames": 11,
+   "attempt": 2,
+   "issues": [],
+   "attempt_rejections": {
+    "unsolvable": 2
+   }
+  },
+  "q304": {
+   "game_id": "q304-c1f7cb15",
+   "admitted": true,
+   "episode_of": "q010",
+   "mechanic": "conveyor",
+   "tier": 2,
+   "seed": 1,
+   "skin_of": "q010",
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    9
+   ],
+   "random_clear_rate": 0.015,
+   "replay_frames": 10,
+   "attempt": 0,
+   "issues": [],
+   "attempt_rejections": {}
+  },
+  "q305": {
+   "game_id": "q305-89ebd42c",
+   "admitted": true,
+   "episode_of": "q010",
+   "mechanic": "conveyor",
+   "tier": 3,
+   "seed": 2,
+   "skin_of": null,
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    8
+   ],
+   "random_clear_rate": 0.0,
+   "replay_frames": 9,
+   "attempt": 1,
+   "issues": [],
+   "attempt_rejections": {
+    "outside tier band": 1
+   }
+  },
+  "q306": {
+   "game_id": "q306-22af3348",
+   "admitted": true,
+   "episode_of": "q011",
+   "mechanic": "mixer",
+   "tier": 3,
+   "seed": 1,
+   "skin_of": null,
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    9
+   ],
+   "random_clear_rate": 0.0,
+   "replay_frames": 10,
+   "attempt": 0,
+   "issues": [],
+   "attempt_rejections": {}
+  },
+  "q307": {
+   "game_id": "q307-229cf2a6",
+   "admitted": true,
+   "episode_of": "q011",
+   "mechanic": "mixer",
+   "tier": 1,
+   "seed": 2,
+   "skin_of": "q011",
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    4
+   ],
+   "random_clear_rate": 0.0,
+   "replay_frames": 5,
+   "attempt": 2,
+   "issues": [],
+   "attempt_rejections": {
+    "duplicate": 2
+   }
+  },
+  "q308": {
+   "game_id": "q308-e5ce341c",
+   "admitted": true,
+   "episode_of": "q012",
+   "mechanic": "loopover",
+   "tier": 1,
+   "seed": 1,
+   "skin_of": null,
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    4
+   ],
+   "random_clear_rate": 0.0,
+   "replay_frames": 5,
+   "attempt": 0,
+   "issues": [],
+   "attempt_rejections": {}
+  },
+  "q309": {
+   "game_id": "q309-afe2b345",
+   "admitted": true,
+   "episode_of": "q012",
+   "mechanic": "loopover",
+   "tier": 2,
+   "seed": 2,
+   "skin_of": null,
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    5
+   ],
+   "random_clear_rate": 0.0,
+   "replay_frames": 6,
+   "attempt": 0,
+   "issues": [],
+   "attempt_rejections": {}
+  },
+  "q310": {
+   "game_id": "q310-32eee0f7",
+   "admitted": true,
+   "episode_of": "q014",
+   "mechanic": "pipes",
+   "tier": 2,
+   "seed": 1,
+   "skin_of": "q014",
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    7
+   ],
+   "random_clear_rate": 0.02,
+   "replay_frames": 8,
+   "attempt": 0,
+   "issues": [],
+   "attempt_rejections": {}
+  },
+  "q311": {
+   "game_id": "q311-7e511348",
+   "admitted": true,
+   "episode_of": "q014",
+   "mechanic": "pipes",
+   "tier": 3,
+   "seed": 2,
+   "skin_of": null,
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    7
+   ],
+   "random_clear_rate": 0.005,
+   "replay_frames": 8,
+   "attempt": 0,
+   "issues": [],
+   "attempt_rejections": {}
+  },
+  "q312": {
+   "game_id": "q312-f519a082",
+   "admitted": true,
+   "episode_of": "q016",
+   "mechanic": "twins",
+   "tier": 3,
+   "seed": 1,
+   "skin_of": null,
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    11
+   ],
+   "random_clear_rate": 0.0,
+   "replay_frames": 12,
+   "attempt": 3,
+   "issues": [],
+   "attempt_rejections": {
+    "random clears": 1,
+    "outside tier band": 1,
+    "unsolvable": 1
+   }
+  },
+  "q313": {
+   "game_id": "q313-11a1ebd6",
+   "admitted": true,
+   "episode_of": "q016",
+   "mechanic": "twins",
+   "tier": 1,
+   "seed": 2,
+   "skin_of": "q016",
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    6
+   ],
+   "random_clear_rate": 0.0,
+   "replay_frames": 7,
+   "attempt": 0,
+   "issues": [],
+   "attempt_rejections": {}
+  },
+  "q314": {
+   "game_id": "q314-4facd430",
+   "admitted": true,
+   "episode_of": "q017",
+   "mechanic": "flow",
+   "tier": 1,
+   "seed": 1,
+   "skin_of": null,
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    8
+   ],
+   "random_clear_rate": 0.0,
+   "replay_frames": 9,
+   "attempt": 0,
+   "issues": [],
+   "attempt_rejections": {}
+  },
+  "q315": {
+   "game_id": "q315-ab69f3b8",
+   "admitted": true,
+   "episode_of": "q017",
+   "mechanic": "flow",
+   "tier": 2,
+   "seed": 2,
+   "skin_of": null,
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    8
+   ],
+   "random_clear_rate": 0.0,
+   "replay_frames": 9,
+   "attempt": 0,
+   "issues": [],
+   "attempt_rejections": {}
+  },
+  "q316": {
+   "game_id": "q316-13216e68",
+   "admitted": true,
+   "episode_of": "q019",
+   "mechanic": "snake",
+   "tier": 2,
+   "seed": 1,
+   "skin_of": "q019",
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    13
+   ],
+   "random_clear_rate": 0.005,
+   "replay_frames": 14,
+   "attempt": 2,
+   "issues": [],
+   "attempt_rejections": {
+    "outside tier band": 1,
+    "random clears": 1
+   }
+  },
+  "q317": {
+   "game_id": "q317-072a4d3b",
+   "admitted": true,
+   "episode_of": "q019",
+   "mechanic": "snake",
+   "tier": 3,
+   "seed": 2,
+   "skin_of": null,
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    14
+   ],
+   "random_clear_rate": 0.01,
+   "replay_frames": 15,
+   "attempt": 3,
+   "issues": [],
+   "attempt_rejections": {
+    "unsolvable": 3
+   }
+  },
+  "q318": {
+   "game_id": "q318-7fa98438",
+   "admitted": true,
+   "episode_of": "q020",
+   "mechanic": "chameleon",
+   "tier": 3,
+   "seed": 1,
+   "skin_of": null,
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    17
+   ],
+   "random_clear_rate": 0.0,
+   "replay_frames": 18,
+   "attempt": 3,
+   "issues": [],
+   "attempt_rejections": {
+    "unsolvable": 3
+   }
+  },
+  "q319": {
+   "game_id": "q319-f76baefb",
+   "admitted": true,
+   "episode_of": "q020",
+   "mechanic": "chameleon",
+   "tier": 1,
+   "seed": 2,
+   "skin_of": "q020",
+   "batch": 4,
+   "level_source": "generated",
+   "baseline_actions": [
+    10
+   ],
+   "random_clear_rate": 0.005,
+   "replay_frames": 11,
+   "attempt": 2,
+   "issues": [],
+   "attempt_rejections": {
+    "unsolvable": 2
+   }
+  }
+ },
+ "rejected": {}
+}

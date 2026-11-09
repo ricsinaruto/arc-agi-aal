@@ -1,0 +1,8 @@
+{
+  "runtime": "v0.1.dev20073+g8e685d198",
+  "path": "vllm/v1/core/single_type_kv_cache_manager.py",
+  "sha256": "9ec6cbc0c78f30986f294439f02f57a9586ffbf2939d8f5c4fb968a642625ca2",
+  "method": "_remove_blocks_in_range",
+  "first_line": 600,
+  "last_line": 625
+}

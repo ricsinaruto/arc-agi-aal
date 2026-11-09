@@ -1,0 +1,3928 @@
+{
+ "what": "envs 24 h SFT-data roster v1 (owner 30 Oct ~10:35): non-public games kept only if at least as hard as the median public game",
+ "metric": "Flash tokens per level cleared, instances from L1 truncated at 100K tokens (exposure / clears); public: RL v85p-levels.json (43 v8.5p-harness c100/c110 runs, ~215 instances/game); non-public: envs probe/collect tables (v7.1 pruned INT3 RTX, 100K/instance, 6-12 instances/game)",
+ "bar": {
+  "tok_per_clear": 49900,
+  "game": "ka59 (13th of 25; ar25/ft09/tu93/vc33 unmeasured at 100K but easier by hero B300 plays, so the median is the 9th of the 21 measured)",
+  "ci90": [
+   46381,
+   50704
+  ],
+  "iqr": [
+   20339,
+   63586
+  ],
+  "clear_rate_median": 0.51
+ },
+ "roster": {
+  "public": [
+   {
+    "game": "ar25-0c556536",
+    "clones": 2
+   },
+   {
+    "game": "cd82-fb555c5d",
+    "clones": 2
+   },
+   {
+    "game": "cn04-2fe56bfb",
+    "clones": 2
+   },
+   {
+    "game": "ft09-0d8bbf25",
+    "clones": 2
+   },
+   {
+    "game": "ka59-38d34dbb",
+    "clones": 2
+   },
+   {
+    "game": "lp85-305b61c3",
+    "clones": 2
+   },
+   {
+    "game": "ls20-9607627b",
+    "clones": 2
+   },
+   {
+    "game": "re86-8af5384d",
+    "clones": 2
+   },
+   {
+    "game": "sb26-7fbdac44",
+    "clones": 2
+   },
+   {
+    "game": "sc25-635fd71a",
+    "clones": 2
+   },
+   {
+    "game": "sk48-d8078629",
+    "clones": 2
+   },
+   {
+    "game": "tn36-ef4dde99",
+    "clones": 2
+   },
+   {
+    "game": "tu93-0768757b",
+    "clones": 2
+   },
+   {
+    "game": "vc33-5430563c",
+    "clones": 2
+   },
+   {
+    "game": "wa30-ee6fef47",
+    "clones": 2
+   }
+  ],
+  "nonpublic": [
+   {
+    "game": "p04o-c1e38bd1",
+    "clones": 1
+   },
+   {
+    "game": "p064-3ba67f4f",
+    "clones": 1
+   },
+   {
+    "game": "w02f-5ac0668f",
+    "clones": 1
+   },
+   {
+    "game": "p0kh-32b963e5",
+    "clones": 1
+   },
+   {
+    "game": "p0cj-1e206181",
+    "clones": 1
+   },
+   {
+    "game": "x01y-05f2bcdf",
+    "clones": 1
+   },
+   {
+    "game": "x02f-8c05e5c0",
+    "clones": 1
+   },
+   {
+    "game": "p0fl-e405960b",
+    "clones": 1
+   },
+   {
+    "game": "q314-8856fc42",
+    "clones": 1
+   },
+   {
+    "game": "w004-437a74e8",
+    "clones": 1
+   },
+   {
+    "game": "w02d-db5d7050",
+    "clones": 1
+   },
+   {
+    "game": "w02e-6c5db149",
+    "clones": 1
+   },
+   {
+    "game": "q313-c727658c",
+    "clones": 1
+   },
+   {
+    "game": "q334-79c5fd45",
+    "clones": 1
+   },
+   {
+    "game": "w00j-48870e81",
+    "clones": 1
+   },
+   {
+    "game": "p0c7-6aec6417",
+    "clones": 1
+   },
+   {
+    "game": "p0k5-70d19f73",
+    "clones": 1
+   },
+   {
+    "game": "w003-e33185c1",
+    "clones": 1
+   },
+   {
+    "game": "w00l-56b1c283",
+    "clones": 1
+   },
+   {
+    "game": "x01k-e1dea76b",
+    "clones": 1
+   },
+   {
+    "game": "q346-e92ed16b",
+    "clones": 1
+   },
+   {
+    "game": "w002-122d3149",
+    "clones": 1
+   },
+   {
+    "game": "w00m-cea0d906",
+    "clones": 1
+   },
+   {
+    "game": "x013-3171a0bf",
+    "clones": 1
+   },
+   {
+    "game": "x01e-63f56147",
+    "clones": 1
+   },
+   {
+    "game": "p0jt-b79a1550",
+    "clones": 1
+   },
+   {
+    "game": "q004-c194034b",
+    "clones": 1
+   },
+   {
+    "game": "q365-2c82f6dc",
+    "clones": 1
+   },
+   {
+    "game": "x024-8bf6936a",
+    "clones": 1
+   },
+   {
+    "game": "p02s-67e8b8b2",
+    "clones": 1
+   }
+  ],
+  "reserve": [
+   "w02c-d0bb8a98",
+   "w00k-91278332",
+   "w02b-ae329332",
+   "w031-09a7d128",
+   "q331-663f4d33",
+   "q339-596b1118",
+   "x012-c56d71ba",
+   "q327-c8f49e18",
+   "q309-e1ae2578",
+   "p02g-2eb13938",
+   "p05s-028620e4",
+   "p09y-3b0df5a1",
+   "p0q7-5f7fdb86",
+   "x028-4a8286f7"
+  ]
+ },
+ "public": {
+  "bp35": {
+   "n": 218,
+   "tok_per_clear": 108763.619,
+   "lo": 101423.598,
+   "hi": 117210.414,
+   "clears": 105,
+   "tokens": 11420180,
+   "clear_rate": 0.325,
+   "l1_tok_per_clear": 77950.188,
+   "lv_per_inst": 0.482
+  },
+  "cd82": {
+   "n": 215,
+   "tok_per_clear": 77895.618,
+   "lo": 66183.826,
+   "hi": 95335.381,
+   "clears": 136,
+   "tokens": 10593804,
+   "clear_rate": 0.392,
+   "l1_tok_per_clear": 124259.284,
+   "lv_per_inst": 0.633
+  },
+  "cn04": {
+   "n": 218,
+   "tok_per_clear": 71064.701,
+   "lo": 65781.913,
+   "hi": 77682.077,
+   "clears": 167,
+   "tokens": 11867805,
+   "clear_rate": 0.434,
+   "l1_tok_per_clear": 39593.578,
+   "lv_per_inst": 0.766
+  },
+  "dc22": {
+   "n": 215,
+   "tok_per_clear": 53230.522,
+   "lo": 49780.25,
+   "hi": 56914.198,
+   "clears": 201,
+   "tokens": 10699335,
+   "clear_rate": 0.483,
+   "l1_tok_per_clear": 51326.899,
+   "lv_per_inst": 0.935
+  },
+  "g50t": {
+   "n": 215,
+   "tok_per_clear": 164792.485,
+   "lo": 138820.276,
+   "hi": 205062.84,
+   "clears": 66,
+   "tokens": 10876304,
+   "clear_rate": 0.235,
+   "l1_tok_per_clear": 203638.13,
+   "lv_per_inst": 0.307
+  },
+  "ka59": {
+   "n": 218,
+   "tok_per_clear": 49875.622,
+   "lo": 47160.286,
+   "hi": 52916.981,
+   "clears": 225,
+   "tokens": 11222015,
+   "clear_rate": 0.508,
+   "l1_tok_per_clear": 32353.368,
+   "lv_per_inst": 1.032
+  },
+  "lf52": {
+   "n": 218,
+   "tok_per_clear": 54924.615,
+   "lo": 51954.064,
+   "hi": 58371.407,
+   "clears": 213,
+   "tokens": 11698943,
+   "clear_rate": 0.494,
+   "l1_tok_per_clear": 19266.372,
+   "lv_per_inst": 0.977
+  },
+  "ls20": {
+   "n": 215,
+   "tok_per_clear": 59816.233,
+   "lo": 56194.61,
+   "hi": 63692.235,
+   "clears": 180,
+   "tokens": 10766922,
+   "clear_rate": 0.456,
+   "l1_tok_per_clear": 34887.211,
+   "lv_per_inst": 0.837
+  },
+  "m0r0": {
+   "n": 218,
+   "tok_per_clear": 50885.676,
+   "lo": 47034.881,
+   "hi": 55584.814,
+   "clears": 219,
+   "tokens": 11143963,
+   "clear_rate": 0.501,
+   "l1_tok_per_clear": 51500.155,
+   "lv_per_inst": 1.005
+  },
+  "r11l": {
+   "n": 218,
+   "tok_per_clear": 37190.378,
+   "lo": 35053.692,
+   "hi": 39227.107,
+   "clears": 307,
+   "tokens": 11417446,
+   "clear_rate": 0.585,
+   "l1_tok_per_clear": 15896.76,
+   "lv_per_inst": 1.408
+  },
+  "re86": {
+   "n": 215,
+   "tok_per_clear": 20039.242,
+   "lo": 19384.472,
+   "hi": 20656.574,
+   "clears": 529,
+   "tokens": 10600759,
+   "clear_rate": 0.711,
+   "l1_tok_per_clear": 8505.669,
+   "lv_per_inst": 2.46
+  },
+  "s5i5": {
+   "n": 215,
+   "tok_per_clear": 44393.129,
+   "lo": 42017.698,
+   "hi": 46900.624,
+   "clears": 241,
+   "tokens": 10698744,
+   "clear_rate": 0.529,
+   "l1_tok_per_clear": 14894.211,
+   "lv_per_inst": 1.121
+  },
+  "sb26": {
+   "n": 215,
+   "tok_per_clear": 9562.552,
+   "lo": 8898.476,
+   "hi": 10223.837,
+   "clears": 806,
+   "tokens": 7707417,
+   "clear_rate": 0.851,
+   "l1_tok_per_clear": 3559.229,
+   "lv_per_inst": 3.749
+  },
+  "sc25": {
+   "n": 215,
+   "tok_per_clear": 31551.42,
+   "lo": 29813.591,
+   "hi": 33770.701,
+   "clears": 343,
+   "tokens": 10822137,
+   "clear_rate": 0.615,
+   "l1_tok_per_clear": 45408.87,
+   "lv_per_inst": 1.595
+  },
+  "sk48": {
+   "n": 215,
+   "tok_per_clear": 252090.302,
+   "lo": 208843.472,
+   "hi": 319221.514,
+   "clears": 43,
+   "tokens": 10839883,
+   "clear_rate": 0.167,
+   "l1_tok_per_clear": 224960.833,
+   "lv_per_inst": 0.2
+  },
+  "sp80": {
+   "n": 218,
+   "tok_per_clear": 49957.589,
+   "lo": 46707.098,
+   "hi": 53854.971,
+   "clears": 224,
+   "tokens": 11190500,
+   "clear_rate": 0.507,
+   "l1_tok_per_clear": 13743.331,
+   "lv_per_inst": 1.028
+  },
+  "su15": {
+   "n": 215,
+   "tok_per_clear": 37883.804,
+   "lo": 35845.904,
+   "hi": 39966.344,
+   "clears": 276,
+   "tokens": 10455930,
+   "clear_rate": 0.562,
+   "l1_tok_per_clear": 10833.629,
+   "lv_per_inst": 1.284
+  },
+  "tn36": {
+   "n": 218,
+   "tok_per_clear": 63585.559,
+   "lo": 58147.649,
+   "hi": 69702.576,
+   "clears": 188,
+   "tokens": 11954085,
+   "clear_rate": 0.463,
+   "l1_tok_per_clear": 34446.386,
+   "lv_per_inst": 0.862
+  },
+  "tr87": {
+   "n": 215,
+   "tok_per_clear": 20991.606,
+   "lo": 19705.819,
+   "hi": 22430.077,
+   "clears": 480,
+   "tokens": 10075971,
+   "clear_rate": 0.721,
+   "l1_tok_per_clear": 35708.331,
+   "lv_per_inst": 2.233
+  },
+  "wa30": {
+   "n": 218,
+   "tok_per_clear": 78602.0,
+   "lo": 74050.988,
+   "hi": 83042.833,
+   "clears": 145,
+   "tokens": 11397290,
+   "clear_rate": 0.399,
+   "l1_tok_per_clear": 37279.304,
+   "lv_per_inst": 0.665
+  }
+ },
+ "games": [
+  {
+   "game": "h311",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "h311-11835fc5",
+   "origin": "tier-variants-v1",
+   "parent": "q311",
+   "verdict": "nodata"
+  },
+  {
+   "game": "h351",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "h351-2e90fabd",
+   "origin": "tier-variants-v1",
+   "parent": "q351",
+   "verdict": "nodata"
+  },
+  {
+   "game": "p002",
+   "source": "puzzlescript",
+   "levels": 12,
+   "hid": "p002-36424a00",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 21,
+   "T": 28571.428571428572,
+   "lo": 19842.51973775066,
+   "hi": 42639.61256620667,
+   "cr": 0.7777777777777778,
+   "lvi": 3.5,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p01s",
+   "source": "puzzlescript",
+   "levels": 8,
+   "hid": "p01s-30dbbc92",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 559116,
+   "clears": 37,
+   "T": 15111.243243243243,
+   "lo": 11486.968463691468,
+   "hi": 20261.895450852495,
+   "cr": 0.9024390243902439,
+   "lvi": 6.166666666666667,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p01t",
+   "source": "puzzlescript",
+   "levels": 10,
+   "hid": "p01t-91df807b",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 23,
+   "T": 26086.956521739132,
+   "lo": 18414.403665944938,
+   "hi": 38170.39304359011,
+   "cr": 0.7931034482758621,
+   "lvi": 3.8333333333333335,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p026",
+   "source": "puzzlescript",
+   "levels": 10,
+   "hid": "p026-ff2d8aea",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 16,
+   "T": 37500.0,
+   "lo": 24693.07330487115,
+   "hi": 59790.70684087488,
+   "cr": 0.7272727272727273,
+   "lvi": 2.6666666666666665,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "p02g",
+   "source": "puzzlescript",
+   "levels": 8,
+   "hid": "p02g-2eb13938",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 12,
+   "T": 50000.0,
+   "lo": 30865.752808125802,
+   "hi": 86670.7668384256,
+   "cr": 0.6666666666666666,
+   "lvi": 2.0,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "border": true,
+   "tier": "B"
+  },
+  {
+   "game": "p02s",
+   "source": "puzzlescript",
+   "levels": 5,
+   "hid": "p02s-67e8b8b2",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 10,
+   "T": 60000.0,
+   "lo": 35381.184096792,
+   "hi": 110629.16129598775,
+   "cr": 0.625,
+   "lvi": 1.6666666666666667,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "border": true,
+   "tier": "B"
+  },
+  {
+   "game": "p03h",
+   "source": "puzzlescript",
+   "levels": 12,
+   "hid": "p03h-ffba99fe",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 43,
+   "T": 13953.488372093023,
+   "lo": 10821.024359492687,
+   "hi": 18286.24226061423,
+   "cr": 0.8775510204081632,
+   "lvi": 7.166666666666667,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p03o",
+   "source": "puzzlescript",
+   "levels": 5,
+   "hid": "p03o-ea8750e3",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 569147,
+   "clears": 12,
+   "T": 47428.916666666664,
+   "lo": 29278.584355810624,
+   "hi": 82214.01155631569,
+   "cr": 0.7058823529411765,
+   "lvi": 2.0,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "p047",
+   "source": "puzzlescript",
+   "levels": 11,
+   "hid": "p047-a2d1b0e4",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 597617,
+   "clears": 39,
+   "T": 15323.51282051282,
+   "lo": 11732.18576903991,
+   "hi": 20377.81730076869,
+   "cr": 0.8863636363636364,
+   "lvi": 6.5,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p04o",
+   "source": "puzzlescript",
+   "levels": 5,
+   "hid": "p04o-c1e38bd1",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 2,
+   "T": 300000.0,
+   "lo": 95475.87702107847,
+   "hi": 1738375.3603030387,
+   "cr": 0.25,
+   "lvi": 0.3333333333333333,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "tier": "A"
+  },
+  {
+   "game": "p04r",
+   "source": "puzzlescript",
+   "levels": 11,
+   "hid": "p04r-b7b29d8c",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 22,
+   "T": 27272.727272727272,
+   "lo": 19100.651196055496,
+   "hi": 40286.88134384188,
+   "cr": 0.7857142857142857,
+   "lvi": 3.6666666666666665,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p05s",
+   "source": "puzzlescript",
+   "levels": 4,
+   "hid": "p05s-028620e4",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 12,
+   "T": 50000.0,
+   "lo": 30865.752808125802,
+   "hi": 86670.7668384256,
+   "cr": 0.6666666666666666,
+   "lvi": 2.0,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "border": true,
+   "tier": "B"
+  },
+  {
+   "game": "p05v",
+   "source": "puzzlescript",
+   "levels": 4,
+   "hid": "p05v-ad0b1a84",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 484965,
+   "clears": 23,
+   "T": 21085.434782608696,
+   "lo": 14883.902123091644,
+   "hi": 30852.1744373078,
+   "cr": 0.9583333333333334,
+   "lvi": 3.8333333333333335,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p064",
+   "source": "puzzlescript",
+   "levels": 7,
+   "hid": "p064-3ba67f4f",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 2,
+   "T": 300000.0,
+   "lo": 95475.87702107847,
+   "hi": 1738375.3603030387,
+   "cr": 0.25,
+   "lvi": 0.3333333333333333,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "tier": "A"
+  },
+  {
+   "game": "p067",
+   "source": "puzzlescript",
+   "levels": 10,
+   "hid": "p067-e0568ef5",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 13,
+   "T": 46153.846153846156,
+   "lo": 29034.28691071669,
+   "hi": 78040.92217760519,
+   "cr": 0.6842105263157895,
+   "lvi": 2.1666666666666665,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "p089",
+   "source": "puzzlescript",
+   "levels": 12,
+   "hid": "p089-8a1530ed",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 24,
+   "T": 25000.0,
+   "lo": 17777.632313444123,
+   "hi": 36256.90721300427,
+   "cr": 0.8,
+   "lvi": 4.0,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p08d",
+   "source": "puzzlescript",
+   "levels": 12,
+   "hid": "p08d-886579aa",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 16,
+   "T": 37500.0,
+   "lo": 24693.07330487115,
+   "hi": 59790.70684087488,
+   "cr": 0.7272727272727273,
+   "lvi": 2.6666666666666665,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "p092",
+   "source": "puzzlescript",
+   "levels": 12,
+   "hid": "p092-7694db09",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 561926,
+   "clears": 61,
+   "T": 9211.901639344262,
+   "lo": 7443.355653834573,
+   "hi": 11527.534793447303,
+   "cr": 0.9384615384615385,
+   "lvi": 10.166666666666666,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p098",
+   "source": "puzzlescript",
+   "levels": 5,
+   "hid": "p098-44d58d1a",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 17,
+   "T": 35294.117647058825,
+   "lo": 23532.656225478844,
+   "hi": 55395.13590845257,
+   "cr": 0.7391304347826086,
+   "lvi": 2.8333333333333335,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "p09j",
+   "source": "puzzlescript",
+   "levels": 9,
+   "hid": "p09j-c6af32ef",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 16,
+   "T": 37500.0,
+   "lo": 24693.07330487115,
+   "hi": 59790.70684087488,
+   "cr": 0.7272727272727273,
+   "lvi": 2.6666666666666665,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "p09y",
+   "source": "puzzlescript",
+   "levels": 5,
+   "hid": "p09y-3b0df5a1",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 12,
+   "T": 50000.0,
+   "lo": 30865.752808125802,
+   "hi": 86670.7668384256,
+   "cr": 0.6666666666666666,
+   "lvi": 2.0,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "border": true,
+   "tier": "B"
+  },
+  {
+   "game": "p0ao",
+   "source": "puzzlescript",
+   "levels": 5,
+   "hid": "p0ao-a494cc0e",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 555448,
+   "clears": 15,
+   "T": 37029.86666666667,
+   "lo": 24051.49232669193,
+   "hi": 60079.10574260537,
+   "cr": 0.7894736842105263,
+   "lvi": 2.5,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "p0bi",
+   "source": "puzzlescript",
+   "levels": 6,
+   "hid": "p0bi-6b834a8e",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 19,
+   "T": 31578.947368421053,
+   "lo": 21523.342664851927,
+   "hi": 48226.72799067036,
+   "cr": 0.76,
+   "lvi": 3.1666666666666665,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p0c4",
+   "source": "puzzlescript",
+   "levels": 12,
+   "hid": "p0c4-6a575fba",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 19,
+   "T": 31578.947368421053,
+   "lo": 21523.342664851927,
+   "hi": 48226.72799067036,
+   "cr": 0.76,
+   "lvi": 3.1666666666666665,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p0c5",
+   "source": "puzzlescript",
+   "levels": 4,
+   "hid": "p0c5-2a00ccae",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 560147,
+   "clears": 20,
+   "T": 28007.35,
+   "lo": 19275.80911231593,
+   "hi": 42262.50454841662,
+   "cr": 0.9090909090909091,
+   "lvi": 3.3333333333333335,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p0c7",
+   "source": "puzzlescript",
+   "levels": 3,
+   "hid": "p0c7-6aec6417",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 6,
+   "T": 100000.0,
+   "lo": 50690.338611130755,
+   "hi": 229933.51479114903,
+   "cr": 0.5,
+   "lvi": 1.0,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "tier": "A"
+  },
+  {
+   "game": "p0ch",
+   "source": "puzzlescript",
+   "levels": 7,
+   "hid": "p0ch-242358b9",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 598843,
+   "clears": 16,
+   "T": 37427.6875,
+   "lo": 24645.456828514925,
+   "hi": 59675.41042785007,
+   "cr": 0.7619047619047619,
+   "lvi": 2.6666666666666665,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "p0cj",
+   "source": "puzzlescript",
+   "levels": 4,
+   "hid": "p0cj-1e206181",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 4,
+   "T": 150000.0,
+   "lo": 65603.23076963141,
+   "hi": 440936.20857255283,
+   "cr": 0.4,
+   "lvi": 0.6666666666666666,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "tier": "A"
+  },
+  {
+   "game": "p0cv",
+   "source": "puzzlescript",
+   "levels": 5,
+   "hid": "p0cv-9534c2ae",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 543088,
+   "clears": 26,
+   "T": 20888.0,
+   "lo": 15054.5799984552,
+   "hi": 29810.272455669714,
+   "cr": 0.896551724137931,
+   "lvi": 4.333333333333333,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p0di",
+   "source": "puzzlescript",
+   "levels": 12,
+   "hid": "p0di-c014455d",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 40,
+   "T": 15000.0,
+   "lo": 11523.412761650405,
+   "hi": 19870.43164310755,
+   "cr": 0.8695652173913043,
+   "lvi": 6.666666666666667,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p0ei",
+   "source": "puzzlescript",
+   "levels": 10,
+   "hid": "p0ei-39c76784",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 42,
+   "T": 14285.714285714286,
+   "lo": 11045.139553134866,
+   "hi": 18786.37869057687,
+   "cr": 0.875,
+   "lvi": 7.0,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p0fb",
+   "source": "puzzlescript",
+   "levels": 8,
+   "hid": "p0fb-f7fc157e",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 38,
+   "T": 15789.473684210527,
+   "lo": 12046.512269344641,
+   "hi": 21082.395762019984,
+   "cr": 0.8636363636363636,
+   "lvi": 6.333333333333333,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p0fl",
+   "source": "puzzlescript",
+   "levels": 5,
+   "hid": "p0fl-e405960b",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 5,
+   "T": 120000.0,
+   "lo": 57107.79451408974,
+   "hi": 305225.3221350605,
+   "cr": 0.45454545454545453,
+   "lvi": 0.8333333333333334,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "tier": "A"
+  },
+  {
+   "game": "p0fq",
+   "source": "puzzlescript",
+   "levels": 5,
+   "hid": "p0fq-19470d9c",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 574282,
+   "clears": 24,
+   "T": 23928.416666666668,
+   "lo": 17015.623733715533,
+   "hi": 34702.81531349753,
+   "cr": 0.8275862068965517,
+   "lvi": 4.0,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p0fr",
+   "source": "puzzlescript",
+   "levels": 9,
+   "hid": "p0fr-6c6fbf94",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 574055,
+   "clears": 12,
+   "T": 47837.916666666664,
+   "lo": 29531.066213781094,
+   "hi": 82922.97842905401,
+   "cr": 0.7058823529411765,
+   "lvi": 2.0,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "p0g4",
+   "source": "puzzlescript",
+   "levels": 7,
+   "hid": "p0g4-608b50c8",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 595589,
+   "clears": 27,
+   "T": 22058.85185185185,
+   "lo": 15996.605160316436,
+   "hi": 31251.812156610395,
+   "cr": 0.84375,
+   "lvi": 4.5,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p0gk",
+   "source": "puzzlescript",
+   "levels": 4,
+   "hid": "p0gk-cee02901",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 448168,
+   "clears": 21,
+   "T": 21341.333333333332,
+   "lo": 14821.303976380397,
+   "hi": 31849.516474286185,
+   "cr": 0.9130434782608695,
+   "lvi": 3.5,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p0gs",
+   "source": "puzzlescript",
+   "levels": 11,
+   "hid": "p0gs-dcb7dd85",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 35,
+   "T": 17142.85714285714,
+   "lo": 12930.330968483395,
+   "hi": 23193.380894444374,
+   "cr": 0.8536585365853658,
+   "lvi": 5.833333333333333,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p0h9",
+   "source": "puzzlescript",
+   "levels": 8,
+   "hid": "p0h9-2b38e533",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 19,
+   "T": 31578.947368421053,
+   "lo": 21523.342664851927,
+   "hi": 48226.72799067036,
+   "cr": 0.76,
+   "lvi": 3.1666666666666665,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p0hc",
+   "source": "puzzlescript",
+   "levels": 9,
+   "hid": "p0hc-fb7878f1",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 559597,
+   "clears": 40,
+   "T": 13989.925,
+   "lo": 10747.445351968801,
+   "hi": 18532.38989364676,
+   "cr": 0.9302325581395349,
+   "lvi": 6.666666666666667,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p0he",
+   "source": "puzzlescript",
+   "levels": 9,
+   "hid": "p0he-f90169dd",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 573757,
+   "clears": 39,
+   "T": 14711.71794871795,
+   "lo": 11263.77547875484,
+   "hi": 19564.228127776052,
+   "cr": 0.9069767441860465,
+   "lvi": 6.5,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p0hm",
+   "source": "puzzlescript",
+   "levels": 10,
+   "hid": "p0hm-7a2c9e47",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 17,
+   "T": 35294.117647058825,
+   "lo": 23532.656225478844,
+   "hi": 55395.13590845257,
+   "cr": 0.7391304347826086,
+   "lvi": 2.8333333333333335,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "p0i3",
+   "source": "puzzlescript",
+   "levels": 7,
+   "hid": "p0i3-cbed2f9e",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 599366,
+   "clears": 25,
+   "T": 23974.64,
+   "lo": 17166.91641819291,
+   "hi": 34482.598006754444,
+   "cr": 0.8333333333333334,
+   "lvi": 4.166666666666667,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p0ie",
+   "source": "puzzlescript",
+   "levels": 6,
+   "hid": "p0ie-cd3ba502",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 20,
+   "T": 30000.0,
+   "lo": 20647.232721749035,
+   "hi": 45269.37166324192,
+   "cr": 0.7692307692307693,
+   "lvi": 3.3333333333333335,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p0ix",
+   "source": "puzzlescript",
+   "levels": 11,
+   "hid": "p0ix-81c389c5",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 16,
+   "T": 37500.0,
+   "lo": 24693.07330487115,
+   "hi": 59790.70684087488,
+   "cr": 0.7272727272727273,
+   "lvi": 2.6666666666666665,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "p0jt",
+   "source": "puzzlescript",
+   "levels": 5,
+   "hid": "p0jt-b79a1550",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 8,
+   "T": 75000.0,
+   "lo": 41580.35320806327,
+   "hi": 150817.8433890107,
+   "cr": 0.5714285714285714,
+   "lvi": 1.3333333333333333,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "border": true,
+   "tier": "B"
+  },
+  {
+   "game": "p0k1",
+   "source": "puzzlescript",
+   "levels": 10,
+   "hid": "p0k1-688cb93a",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 25,
+   "T": 24000.0,
+   "lo": 17185.075314441838,
+   "hi": 34519.07316072761,
+   "cr": 0.8064516129032258,
+   "lvi": 4.166666666666667,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p0k5",
+   "source": "puzzlescript",
+   "levels": 4,
+   "hid": "p0k5-70d19f73",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 6,
+   "T": 100000.0,
+   "lo": 50690.338611130755,
+   "hi": 229933.51479114903,
+   "cr": 0.5,
+   "lvi": 1.0,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "tier": "A"
+  },
+  {
+   "game": "p0kh",
+   "source": "puzzlescript",
+   "levels": 8,
+   "hid": "p0kh-32b963e5",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 3,
+   "T": 200000.0,
+   "lo": 77474.01338178976,
+   "hi": 740464.6250280133,
+   "cr": 0.3333333333333333,
+   "lvi": 0.5,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "tier": "A"
+  },
+  {
+   "game": "p0l3",
+   "source": "puzzlescript",
+   "levels": 11,
+   "hid": "p0l3-8b2ec60d",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 47,
+   "T": 12765.95744680851,
+   "lo": 10010.983614888357,
+   "hi": 16519.899475304006,
+   "cr": 0.8867924528301887,
+   "lvi": 7.833333333333333,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p0ml",
+   "source": "puzzlescript",
+   "levels": 3,
+   "hid": "p0ml-7b843c19",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 585698,
+   "clears": 12,
+   "T": 48808.166666666664,
+   "lo": 30130.016147022776,
+   "hi": 84604.82465955366,
+   "cr": 0.75,
+   "lvi": 2.0,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "p0nv",
+   "source": "puzzlescript",
+   "levels": 4,
+   "hid": "p0nv-14fa5f7f",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 466587,
+   "clears": 20,
+   "T": 23329.35,
+   "lo": 16056.217289904527,
+   "hi": 35203.50052706176,
+   "cr": 0.9523809523809523,
+   "lvi": 3.3333333333333335,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p0oa",
+   "source": "puzzlescript",
+   "levels": 8,
+   "hid": "p0oa-eddecb09",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 529081,
+   "clears": 32,
+   "T": 16533.78125,
+   "lo": 12309.724779955146,
+   "hi": 22710.059583043563,
+   "cr": 0.9142857142857143,
+   "lvi": 5.333333333333333,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "p0p4",
+   "source": "puzzlescript",
+   "levels": 5,
+   "hid": "p0p4-f961c874",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 14,
+   "T": 42857.142857142855,
+   "lo": 27418.146999037188,
+   "hi": 70898.78529494698,
+   "cr": 0.7,
+   "lvi": 2.3333333333333335,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "p0q7",
+   "source": "puzzlescript",
+   "levels": 12,
+   "hid": "p0q7-5f7fdb86",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 12,
+   "T": 50000.0,
+   "lo": 30865.752808125802,
+   "hi": 86670.7668384256,
+   "cr": 0.6666666666666666,
+   "lvi": 2.0,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "border": true,
+   "tier": "B"
+  },
+  {
+   "game": "p0qe",
+   "source": "puzzlescript",
+   "levels": 6,
+   "hid": "p0qe-4426b08b",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 555832,
+   "clears": 12,
+   "T": 46319.333333333336,
+   "lo": 28593.621858076967,
+   "hi": 80290.64278889296,
+   "cr": 0.6666666666666666,
+   "lvi": 2.0,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "q001",
+   "source": "generated",
+   "levels": null,
+   "hid": "q001-c8ba2de3",
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "n": 6,
+   "tokens": 262561,
+   "clears": 24,
+   "T": 10940.041666666666,
+   "lo": 7779.521529750338,
+   "hi": 15866.083024589358,
+   "cr": 1.0,
+   "lvi": 4.0,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q002",
+   "source": "generated",
+   "levels": null,
+   "hid": "q002-4ec7e433",
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "n": 6,
+   "tokens": 89459,
+   "clears": 24,
+   "T": 3727.4583333333335,
+   "lo": 2650.6153485473296,
+   "hi": 5405.844437280249,
+   "cr": 1.0,
+   "lvi": 4.0,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q004",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q004-c194034b",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 580001,
+   "clears": 8,
+   "T": 72500.125,
+   "lo": 40194.410735049845,
+   "hi": 145790.83330578267,
+   "cr": 0.6153846153846154,
+   "lvi": 1.3333333333333333,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "keep",
+   "border": true,
+   "tier": "B"
+  },
+  {
+   "game": "q005",
+   "source": "generated",
+   "levels": null,
+   "hid": "q005-6c347d0d",
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "n": 6,
+   "tokens": 103946,
+   "clears": 30,
+   "T": 3464.866666666667,
+   "lo": 2554.6648250598896,
+   "hi": 4813.720589240676,
+   "cr": 1.0,
+   "lvi": 5.0,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q006",
+   "source": "generated",
+   "levels": null,
+   "hid": "q006-a3e60ccd",
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "n": 6,
+   "tokens": 140772,
+   "clears": 24,
+   "T": 5865.5,
+   "lo": 4170.988093380261,
+   "hi": 8506.595570315061,
+   "cr": 1.0,
+   "lvi": 4.0,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q007",
+   "source": "generated",
+   "levels": null,
+   "hid": "q007-3f6c1b1e",
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "n": 6,
+   "tokens": 248393,
+   "clears": 24,
+   "T": 10349.708333333334,
+   "lo": 7359.732372055544,
+   "hi": 15009.93658893295,
+   "cr": 1.0,
+   "lvi": 4.0,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q009",
+   "source": "generated",
+   "levels": null,
+   "hid": "q009-6696a439",
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "n": 6,
+   "tokens": 175166,
+   "clears": 30,
+   "T": 5838.866666666667,
+   "lo": 4305.02779083794,
+   "hi": 8111.905996718799,
+   "cr": 1.0,
+   "lvi": 5.0,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q010",
+   "source": "generated",
+   "levels": null,
+   "hid": "q010-70e3829b",
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "n": 6,
+   "tokens": 357134,
+   "clears": 30,
+   "T": 11904.466666666667,
+   "lo": 8777.227287562182,
+   "hi": 16538.811391663745,
+   "cr": 1.0,
+   "lvi": 5.0,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q011",
+   "source": "generated",
+   "levels": null,
+   "hid": "q011-582cc975",
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "n": 6,
+   "tokens": 254504,
+   "clears": 30,
+   "T": 8483.466666666667,
+   "lo": 6254.905591721106,
+   "hi": 11786.034526043417,
+   "cr": 1.0,
+   "lvi": 5.0,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q012",
+   "source": "generated",
+   "levels": null,
+   "hid": "q012-4d4f24c6",
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "n": 6,
+   "tokens": 254035,
+   "clears": 30,
+   "T": 8467.833333333334,
+   "lo": 6243.3790509888695,
+   "hi": 11764.315220285102,
+   "cr": 1.0,
+   "lvi": 5.0,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q013",
+   "source": "generated",
+   "levels": null,
+   "hid": "q013-91bc7865",
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "n": 6,
+   "tokens": 256286,
+   "clears": 30,
+   "T": 8542.866666666667,
+   "lo": 6298.701531134424,
+   "hi": 11868.55862596094,
+   "cr": 1.0,
+   "lvi": 5.0,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q014",
+   "source": "generated",
+   "levels": null,
+   "hid": "q014-a3191849",
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "n": 6,
+   "tokens": 574812,
+   "clears": 15,
+   "T": 38320.8,
+   "lo": 24889.974232134136,
+   "hi": 62173.58047939406,
+   "cr": 0.7894736842105263,
+   "lvi": 2.5,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "q015",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q015-544a385b",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 476140,
+   "clears": 29,
+   "T": 16418.620689655174,
+   "lo": 12042.250004774072,
+   "hi": 22951.30003849428,
+   "cr": 0.9666666666666667,
+   "lvi": 4.833333333333333,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q017",
+   "source": "generated",
+   "levels": null,
+   "hid": "q017-b0e60f45",
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 0,
+   "T": 1200000.0,
+   "lo": 202126.71171328035,
+   "hi": Infinity,
+   "cr": 0.0,
+   "lvi": 0.0,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop0"
+  },
+  {
+   "game": "q018",
+   "source": "generated",
+   "levels": null,
+   "hid": "q018-e2171764",
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "n": 6,
+   "tokens": 415278,
+   "clears": 27,
+   "T": 15380.666666666666,
+   "lo": 11153.728826029173,
+   "hi": 21790.51333851507,
+   "cr": 0.9642857142857143,
+   "lvi": 4.5,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q019",
+   "source": "generated",
+   "levels": null,
+   "hid": "q019-810bf976",
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "n": 6,
+   "tokens": 339577,
+   "clears": 30,
+   "T": 11319.233333333334,
+   "lo": 8345.731603903585,
+   "hi": 15725.749875248504,
+   "cr": 1.0,
+   "lvi": 5.0,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q020",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q020-38389cf6",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 499330,
+   "clears": 28,
+   "T": 17833.214285714286,
+   "lo": 13007.787913888655,
+   "hi": 25091.580130178205,
+   "cr": 0.9655172413793104,
+   "lvi": 4.666666666666667,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q101",
+   "source": "generated_skin",
+   "levels": null,
+   "hid": null,
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "verdict": "nodata"
+  },
+  {
+   "game": "q102",
+   "source": "generated_skin",
+   "levels": null,
+   "hid": null,
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "verdict": "nodata"
+  },
+  {
+   "game": "q104",
+   "source": "generated_skin",
+   "levels": null,
+   "hid": null,
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "verdict": "nodata"
+  },
+  {
+   "game": "q105",
+   "source": "generated_skin",
+   "levels": null,
+   "hid": null,
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "verdict": "nodata"
+  },
+  {
+   "game": "q106",
+   "source": "generated_skin",
+   "levels": null,
+   "hid": null,
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "verdict": "nodata"
+  },
+  {
+   "game": "q107",
+   "source": "generated_skin",
+   "levels": null,
+   "hid": null,
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "verdict": "nodata"
+  },
+  {
+   "game": "q109",
+   "source": "generated_skin",
+   "levels": null,
+   "hid": null,
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "verdict": "nodata"
+  },
+  {
+   "game": "q110",
+   "source": "generated_skin",
+   "levels": null,
+   "hid": null,
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "verdict": "nodata"
+  },
+  {
+   "game": "q111",
+   "source": "generated_skin",
+   "levels": null,
+   "hid": null,
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "verdict": "nodata"
+  },
+  {
+   "game": "q112",
+   "source": "generated_skin",
+   "levels": null,
+   "hid": null,
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "verdict": "nodata"
+  },
+  {
+   "game": "q113",
+   "source": "generated_skin",
+   "levels": null,
+   "hid": null,
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "verdict": "nodata"
+  },
+  {
+   "game": "q114",
+   "source": "generated_skin",
+   "levels": null,
+   "hid": null,
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "verdict": "nodata"
+  },
+  {
+   "game": "q115",
+   "source": "generated_skin",
+   "levels": null,
+   "hid": null,
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "verdict": "nodata"
+  },
+  {
+   "game": "q117",
+   "source": "generated_skin",
+   "levels": null,
+   "hid": null,
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "verdict": "nodata"
+  },
+  {
+   "game": "q118",
+   "source": "generated_skin",
+   "levels": null,
+   "hid": null,
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "verdict": "nodata"
+  },
+  {
+   "game": "q119",
+   "source": "generated_skin",
+   "levels": null,
+   "hid": null,
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "verdict": "nodata"
+  },
+  {
+   "game": "q120",
+   "source": "generated_skin",
+   "levels": null,
+   "hid": null,
+   "origin": "q001-q120 (not in hero-data-v2)",
+   "verdict": "nodata"
+  },
+  {
+   "game": "q302",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q302-22a34c07",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 567160,
+   "clears": 14,
+   "T": 40511.42857142857,
+   "lo": 25917.460419956555,
+   "hi": 67018.25844647021,
+   "cr": 0.7368421052631579,
+   "lvi": 2.3333333333333335,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "q304",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q304-684dd664",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 533840,
+   "clears": 23,
+   "T": 23210.434782608696,
+   "lo": 16383.908755046741,
+   "hi": 33961.471037316915,
+   "cr": 0.8518518518518519,
+   "lvi": 3.8333333333333335,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q309",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q309-e1ae2578",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 575642,
+   "clears": 11,
+   "T": 52331.09090909091,
+   "lo": 31622.19622937951,
+   "hi": 93336.93350069759,
+   "cr": 0.6875,
+   "lvi": 1.8333333333333333,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "keep",
+   "border": true,
+   "tier": "B"
+  },
+  {
+   "game": "q310",
+   "source": "generated",
+   "levels": 6,
+   "hid": "q310-93d43668",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 17,
+   "T": 35294.117647058825,
+   "lo": 23532.656225478844,
+   "hi": 55395.13590845257,
+   "cr": 0.7391304347826086,
+   "lvi": 2.8333333333333335,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "q311",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q311-59f39dc9",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 565247,
+   "clears": 20,
+   "T": 28262.35,
+   "lo": 19451.310590450794,
+   "hi": 42647.29420755417,
+   "cr": 0.8,
+   "lvi": 3.3333333333333335,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q312",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q312-820b0a09",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 578048,
+   "clears": 20,
+   "T": 28902.4,
+   "lo": 19891.81930056931,
+   "hi": 43613.11625198944,
+   "cr": 0.8333333333333334,
+   "lvi": 3.3333333333333335,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q313",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q313-c727658c",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 590632,
+   "clears": 5,
+   "T": 118126.4,
+   "lo": 56216.151482409754,
+   "hi": 300459.7374387917,
+   "cr": 0.45454545454545453,
+   "lvi": 0.8333333333333334,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "keep",
+   "tier": "A"
+  },
+  {
+   "game": "q314",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q314-8856fc42",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 5,
+   "T": 120000.0,
+   "lo": 57107.79451408974,
+   "hi": 305225.3221350605,
+   "cr": 0.45454545454545453,
+   "lvi": 0.8333333333333334,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "keep",
+   "tier": "A"
+  },
+  {
+   "game": "q317",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q317-fca24cc4",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 13,
+   "T": 46153.846153846156,
+   "lo": 29034.28691071669,
+   "hi": 78040.92217760519,
+   "cr": 0.6842105263157895,
+   "lvi": 2.1666666666666665,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "q318",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q318-75c35d29",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 561440,
+   "clears": 23,
+   "T": 24410.434782608696,
+   "lo": 17230.97132368021,
+   "hi": 35717.30911732206,
+   "cr": 0.92,
+   "lvi": 3.8333333333333335,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q319",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q319-1f4d7054",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 516845,
+   "clears": 24,
+   "T": 21535.208333333332,
+   "lo": 15313.800621736715,
+   "hi": 31232.00201417532,
+   "cr": 0.8888888888888888,
+   "lvi": 4.0,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q320",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q320-373de3f1",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 16,
+   "T": 37500.0,
+   "lo": 24693.07330487115,
+   "hi": 59790.70684087488,
+   "cr": 0.7272727272727273,
+   "lvi": 2.6666666666666665,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "q326",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q326-43b7832a",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 554399,
+   "clears": 18,
+   "T": 30799.944444444445,
+   "lo": 20772.457879691196,
+   "hi": 47655.32005301333,
+   "cr": 0.8181818181818182,
+   "lvi": 3.0,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q327",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q327-c8f49e18",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 535767,
+   "clears": 10,
+   "T": 53576.7,
+   "lo": 31593.451433309932,
+   "hi": 98785.75643344579,
+   "cr": 0.6666666666666666,
+   "lvi": 1.6666666666666667,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "keep",
+   "border": true,
+   "tier": "B"
+  },
+  {
+   "game": "q328",
+   "source": "generated",
+   "levels": 6,
+   "hid": "q328-e294f624",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 597551,
+   "clears": 25,
+   "T": 23902.04,
+   "lo": 17114.931565366725,
+   "hi": 34378.17781044324,
+   "cr": 0.8333333333333334,
+   "lvi": 4.166666666666667,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q329",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q329-655f30ff",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 408759,
+   "clears": 28,
+   "T": 14598.535714285714,
+   "lo": 10648.369575016948,
+   "hi": 20540.342463764468,
+   "cr": 0.9655172413793104,
+   "lvi": 4.666666666666667,
+   "tabs": [
+    "gen"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q331",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q331-663f4d33",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 10,
+   "T": 60000.0,
+   "lo": 35381.184096792,
+   "hi": 110629.16129598775,
+   "cr": 0.625,
+   "lvi": 1.6666666666666667,
+   "tabs": [
+    "hard"
+   ],
+   "verdict": "keep",
+   "border": true,
+   "tier": "B"
+  },
+  {
+   "game": "q333",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q333-e072d5e1",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 583314,
+   "clears": 24,
+   "T": 24304.75,
+   "lo": 17283.236358807244,
+   "hi": 35248.602623410625,
+   "cr": 0.8275862068965517,
+   "lvi": 4.0,
+   "tabs": [
+    "hard"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q334",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q334-79c5fd45",
+   "origin": "hero-data-v2",
+   "n": 9,
+   "tokens": 900000,
+   "clears": 8,
+   "T": 112500.0,
+   "lo": 62370.52981209491,
+   "hi": 226226.76508351607,
+   "cr": 0.47058823529411764,
+   "lvi": 0.8888888888888888,
+   "tabs": [
+    "calib"
+   ],
+   "verdict": "keep",
+   "tier": "A"
+  },
+  {
+   "game": "q335",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q335-fa25cdf6",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 561326,
+   "clears": 21,
+   "T": 26729.809523809523,
+   "lo": 18563.53705718771,
+   "hi": 39891.20527223087,
+   "cr": 0.875,
+   "lvi": 3.5,
+   "tabs": [
+    "hard"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q338",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q338-1d02d25f",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 15,
+   "T": 40000.0,
+   "lo": 25980.641565034275,
+   "hi": 64897.998454514585,
+   "cr": 0.7142857142857143,
+   "lvi": 2.5,
+   "tabs": [
+    "hard"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "q339",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q339-596b1118",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 10,
+   "T": 60000.0,
+   "lo": 35381.184096792,
+   "hi": 110629.16129598775,
+   "cr": 0.625,
+   "lvi": 1.6666666666666667,
+   "tabs": [
+    "hard"
+   ],
+   "verdict": "keep",
+   "border": true,
+   "tier": "B"
+  },
+  {
+   "game": "q340",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q340-6c11b5a7",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 597623,
+   "clears": 23,
+   "T": 25983.608695652172,
+   "lo": 18341.45193675502,
+   "hi": 38019.17466981576,
+   "cr": 0.8518518518518519,
+   "lvi": 3.8333333333333335,
+   "tabs": [
+    "hard"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q341",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q341-f8e86b6d",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 15,
+   "T": 40000.0,
+   "lo": 25980.641565034275,
+   "hi": 64897.998454514585,
+   "cr": 0.7142857142857143,
+   "lvi": 2.5,
+   "tabs": [
+    "hard"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "q342",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q342-f17a9629",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 17,
+   "T": 35294.117647058825,
+   "lo": 23532.656225478844,
+   "hi": 55395.13590845257,
+   "cr": 0.7391304347826086,
+   "lvi": 2.8333333333333335,
+   "tabs": [
+    "hard"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "q345",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q345-8f8bb1fd",
+   "origin": "hero-data-v2",
+   "n": 9,
+   "tokens": 900000,
+   "clears": 25,
+   "T": 36000.0,
+   "lo": 25777.612971662755,
+   "hi": 51778.609741091415,
+   "cr": 0.7352941176470589,
+   "lvi": 2.7777777777777777,
+   "tabs": [
+    "calib"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "q346",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q346-e92ed16b",
+   "origin": "hero-data-v2",
+   "n": 9,
+   "tokens": 900000,
+   "clears": 10,
+   "T": 90000.0,
+   "lo": 53071.776145188,
+   "hi": 165943.74194398161,
+   "cr": 0.5263157894736842,
+   "lvi": 1.1111111111111112,
+   "tabs": [
+    "calib"
+   ],
+   "verdict": "keep",
+   "tier": "B"
+  },
+  {
+   "game": "q347",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q347-3889d1b2",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 567852,
+   "clears": 24,
+   "T": 23660.5,
+   "lo": 16825.10677408979,
+   "hi": 34314.2621245315,
+   "cr": 0.8888888888888888,
+   "lvi": 4.0,
+   "tabs": [
+    "rule"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q349",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q349-82a9f316",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 547468,
+   "clears": 28,
+   "T": 19552.428571428572,
+   "lo": 14261.806087438756,
+   "hi": 27510.538503010837,
+   "cr": 0.9333333333333333,
+   "lvi": 4.666666666666667,
+   "tabs": [
+    "rule"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q350",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q350-2c9786bb",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 511301,
+   "clears": 25,
+   "T": 20452.04,
+   "lo": 14644.57698891571,
+   "hi": 29416.061043588645,
+   "cr": 0.8928571428571429,
+   "lvi": 4.166666666666667,
+   "tabs": [
+    "rule"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q351",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q351-af6bc502",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 536731,
+   "clears": 21,
+   "T": 25558.619047619046,
+   "lo": 17750.15910227108,
+   "hi": 38143.336487121116,
+   "cr": 0.875,
+   "lvi": 3.5,
+   "tabs": [
+    "rule"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q352",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q352-2dad98dd",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 483487,
+   "clears": 24,
+   "T": 20145.291666666668,
+   "lo": 14325.423523883599,
+   "hi": 29216.23882948966,
+   "cr": 0.9230769230769231,
+   "lvi": 4.0,
+   "tabs": [
+    "rule"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q355",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q355-6b204d85",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 22,
+   "T": 27272.727272727272,
+   "lo": 19100.651196055496,
+   "hi": 40286.88134384188,
+   "cr": 0.7857142857142857,
+   "lvi": 3.6666666666666665,
+   "tabs": [
+    "rule"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q356",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q356-2514572a",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 20,
+   "T": 30000.0,
+   "lo": 20647.232721749035,
+   "hi": 45269.37166324192,
+   "cr": 0.7692307692307693,
+   "lvi": 3.3333333333333335,
+   "tabs": [
+    "rule"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q358",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q358-ec4c9e9f",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 524948,
+   "clears": 26,
+   "T": 20190.30769230769,
+   "lo": 14551.733164844482,
+   "hi": 28814.56210606551,
+   "cr": 0.896551724137931,
+   "lvi": 4.333333333333333,
+   "tabs": [
+    "rule"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q360",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q360-bc0d58fa",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 487918,
+   "clears": 21,
+   "T": 23234.190476190477,
+   "lo": 16135.870909006378,
+   "hi": 34674.390806797375,
+   "cr": 0.875,
+   "lvi": 3.5,
+   "tabs": [
+    "rule"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q363",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q363-be36802e",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 538400,
+   "clears": 28,
+   "T": 19228.571428571428,
+   "lo": 14025.5803032817,
+   "hi": 27054.867005963883,
+   "cr": 0.9333333333333333,
+   "lvi": 4.666666666666667,
+   "tabs": [
+    "rule"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q364",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q364-40219d1d",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 541060,
+   "clears": 20,
+   "T": 27053.0,
+   "lo": 18618.986227382553,
+   "hi": 40822.41038685612,
+   "cr": 0.8333333333333334,
+   "lvi": 3.3333333333333335,
+   "tabs": [
+    "rule"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "q365",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q365-2c82f6dc",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 9,
+   "T": 66666.66666666667,
+   "lo": 38214.50841877742,
+   "hi": 127848.19539611193,
+   "cr": 0.6,
+   "lvi": 1.5,
+   "tabs": [
+    "rule"
+   ],
+   "verdict": "keep",
+   "border": true,
+   "tier": "B"
+  },
+  {
+   "game": "q366",
+   "source": "generated",
+   "levels": 5,
+   "hid": "q366-b5a0e4fd",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 568983,
+   "clears": 12,
+   "T": 47415.25,
+   "lo": 29270.14771670974,
+   "hi": 82190.32154671318,
+   "cr": 0.7058823529411765,
+   "lvi": 2.0,
+   "tabs": [
+    "rule"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "r004",
+   "source": "tier_variant",
+   "levels": 4,
+   "hid": "r004-63114a4e",
+   "origin": "tier-variants-v1",
+   "parent": "q004",
+   "verdict": "nodata"
+  },
+  {
+   "game": "r309",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "r309-d4b987e9",
+   "origin": "tier-variants-v1",
+   "parent": "q309",
+   "verdict": "nodata",
+   "n": 2
+  },
+  {
+   "game": "r311",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "r311-3233880d",
+   "origin": "tier-variants-v1",
+   "parent": "q311",
+   "verdict": "nodata",
+   "n": 2
+  },
+  {
+   "game": "r313",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "r313-7a9d5346",
+   "origin": "tier-variants-v1",
+   "parent": "q313",
+   "verdict": "nodata"
+  },
+  {
+   "game": "r317",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "r317-4443ee5a",
+   "origin": "tier-variants-v1",
+   "parent": "q317",
+   "verdict": "nodata",
+   "n": 2
+  },
+  {
+   "game": "r320",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "r320-5ed1bf52",
+   "origin": "tier-variants-v1",
+   "parent": "q320",
+   "verdict": "nodata"
+  },
+  {
+   "game": "r327",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "r327-7c50ebd7",
+   "origin": "tier-variants-v1",
+   "parent": "q327",
+   "verdict": "nodata"
+  },
+  {
+   "game": "r331",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "r331-3c5a169a",
+   "origin": "tier-variants-v1",
+   "parent": "q331",
+   "verdict": "nodata"
+  },
+  {
+   "game": "r335",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "r335-9d33ff46",
+   "origin": "tier-variants-v1",
+   "parent": "q335",
+   "verdict": "nodata",
+   "n": 2
+  },
+  {
+   "game": "r342",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "r342-b8b78443",
+   "origin": "tier-variants-v1",
+   "parent": "q342",
+   "verdict": "nodata"
+  },
+  {
+   "game": "r351",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "r351-73148742",
+   "origin": "tier-variants-v1",
+   "parent": "q351",
+   "verdict": "nodata"
+  },
+  {
+   "game": "r365",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "r365-508c0556",
+   "origin": "tier-variants-v1",
+   "parent": "q365",
+   "verdict": "nodata"
+  },
+  {
+   "game": "s004",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "s004-f3f4306e",
+   "origin": "tier-variants-v1",
+   "parent": "q004",
+   "verdict": "nodata"
+  },
+  {
+   "game": "s309",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "s309-44547f03",
+   "origin": "tier-variants-v1",
+   "parent": "q309",
+   "verdict": "nodata",
+   "n": 2
+  },
+  {
+   "game": "s310",
+   "source": "tier_variant",
+   "levels": 6,
+   "hid": "s310-2f722f0d",
+   "origin": "tier-variants-v1",
+   "parent": "q310",
+   "verdict": "nodata"
+  },
+  {
+   "game": "s311",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "s311-1a7b4438",
+   "origin": "tier-variants-v1",
+   "parent": "q311",
+   "verdict": "nodata",
+   "n": 2
+  },
+  {
+   "game": "s313",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "s313-218b0ef3",
+   "origin": "tier-variants-v1",
+   "parent": "q313",
+   "verdict": "nodata"
+  },
+  {
+   "game": "s317",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "s317-03abb486",
+   "origin": "tier-variants-v1",
+   "parent": "q317",
+   "verdict": "nodata",
+   "n": 2
+  },
+  {
+   "game": "s320",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "s320-1c9fe4f2",
+   "origin": "tier-variants-v1",
+   "parent": "q320",
+   "verdict": "nodata"
+  },
+  {
+   "game": "s327",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "s327-24ad4866",
+   "origin": "tier-variants-v1",
+   "parent": "q327",
+   "verdict": "nodata"
+  },
+  {
+   "game": "s331",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "s331-dc22abe3",
+   "origin": "tier-variants-v1",
+   "parent": "q331",
+   "verdict": "nodata"
+  },
+  {
+   "game": "s335",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "s335-364b9771",
+   "origin": "tier-variants-v1",
+   "parent": "q335",
+   "verdict": "nodata",
+   "n": 2
+  },
+  {
+   "game": "s342",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "s342-c18bfcd7",
+   "origin": "tier-variants-v1",
+   "parent": "q342",
+   "verdict": "nodata"
+  },
+  {
+   "game": "s351",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "s351-94a13c34",
+   "origin": "tier-variants-v1",
+   "parent": "q351",
+   "verdict": "nodata"
+  },
+  {
+   "game": "s365",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "s365-7503b758",
+   "origin": "tier-variants-v1",
+   "parent": "q365",
+   "verdict": "nodata"
+  },
+  {
+   "game": "t004",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "t004-38d9bc8f",
+   "origin": "tier-variants-v1",
+   "parent": "q004",
+   "verdict": "nodata"
+  },
+  {
+   "game": "t309",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "t309-f81de566",
+   "origin": "tier-variants-v1",
+   "parent": "q309",
+   "verdict": "nodata"
+  },
+  {
+   "game": "t310",
+   "source": "tier_variant",
+   "levels": 6,
+   "hid": "t310-7aec714a",
+   "origin": "tier-variants-v1",
+   "parent": "q310",
+   "verdict": "nodata"
+  },
+  {
+   "game": "t311",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "t311-6589f665",
+   "origin": "tier-variants-v1",
+   "parent": "q311",
+   "verdict": "nodata"
+  },
+  {
+   "game": "t313",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "t313-ab413ae0",
+   "origin": "tier-variants-v1",
+   "parent": "q313",
+   "verdict": "nodata"
+  },
+  {
+   "game": "t317",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "t317-3e4411f6",
+   "origin": "tier-variants-v1",
+   "parent": "q317",
+   "verdict": "nodata"
+  },
+  {
+   "game": "t320",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "t320-734263fb",
+   "origin": "tier-variants-v1",
+   "parent": "q320",
+   "verdict": "nodata"
+  },
+  {
+   "game": "t327",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "t327-2ad9e6c4",
+   "origin": "tier-variants-v1",
+   "parent": "q327",
+   "verdict": "nodata"
+  },
+  {
+   "game": "t331",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "t331-224680ea",
+   "origin": "tier-variants-v1",
+   "parent": "q331",
+   "verdict": "nodata"
+  },
+  {
+   "game": "t335",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "t335-8e490e0e",
+   "origin": "tier-variants-v1",
+   "parent": "q335",
+   "verdict": "nodata"
+  },
+  {
+   "game": "t342",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "t342-032aafbb",
+   "origin": "tier-variants-v1",
+   "parent": "q342",
+   "verdict": "nodata"
+  },
+  {
+   "game": "t351",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "t351-3084646d",
+   "origin": "tier-variants-v1",
+   "parent": "q351",
+   "verdict": "nodata"
+  },
+  {
+   "game": "t365",
+   "source": "tier_variant",
+   "levels": 5,
+   "hid": "t365-acceab51",
+   "origin": "tier-variants-v1",
+   "parent": "q365",
+   "verdict": "nodata"
+  },
+  {
+   "game": "w000",
+   "source": "witness",
+   "levels": 8,
+   "hid": "w000-b2940ba6",
+   "origin": "hero-data-v2",
+   "n": 12,
+   "tokens": 818677,
+   "clears": 82,
+   "T": 9983.865853658537,
+   "lo": 8308.819908200316,
+   "hi": 12093.593702353759,
+   "cr": 0.9761904761904762,
+   "lvi": 6.833333333333333,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "w001",
+   "source": "witness",
+   "levels": 8,
+   "hid": "w001-d4f99da0",
+   "origin": "hero-data-v2",
+   "n": 12,
+   "tokens": 1186865,
+   "clears": 37,
+   "T": 32077.432432432433,
+   "lo": 24383.993349607546,
+   "hi": 43010.99332567132,
+   "cr": 0.7872340425531915,
+   "lvi": 3.0833333333333335,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "w002",
+   "source": "witness",
+   "levels": 8,
+   "hid": "w002-122d3149",
+   "origin": "hero-data-v2",
+   "n": 12,
+   "tokens": 1200000,
+   "clears": 14,
+   "T": 85714.28571428571,
+   "lo": 54836.293998074376,
+   "hi": 141797.57058989396,
+   "cr": 0.5384615384615384,
+   "lvi": 1.1666666666666667,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "tier": "B"
+  },
+  {
+   "game": "w003",
+   "source": "witness",
+   "levels": 8,
+   "hid": "w003-e33185c1",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 6,
+   "T": 100000.0,
+   "lo": 50690.338611130755,
+   "hi": 229933.51479114903,
+   "cr": 0.5,
+   "lvi": 1.0,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "tier": "A"
+  },
+  {
+   "game": "w004",
+   "source": "witness",
+   "levels": 8,
+   "hid": "w004-437a74e8",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 5,
+   "T": 120000.0,
+   "lo": 57107.79451408974,
+   "hi": 305225.3221350605,
+   "cr": 0.45454545454545453,
+   "lvi": 0.8333333333333334,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "tier": "A"
+  },
+  {
+   "game": "w005",
+   "source": "witness",
+   "levels": 8,
+   "hid": "w005-6defcb88",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 498357,
+   "clears": 34,
+   "T": 14657.558823529413,
+   "lo": 11010.015875125868,
+   "hi": 19926.380892511657,
+   "cr": 0.918918918918919,
+   "lvi": 5.666666666666667,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "w00j",
+   "source": "witness",
+   "levels": 8,
+   "hid": "w00j-48870e81",
+   "origin": "hero-data-v2",
+   "n": 12,
+   "tokens": 1200000,
+   "clears": 11,
+   "T": 109090.90909090909,
+   "lo": 65920.5469289166,
+   "hi": 194572.87724112748,
+   "cr": 0.4782608695652174,
+   "lvi": 0.9166666666666666,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "tier": "A"
+  },
+  {
+   "game": "w00k",
+   "source": "witness",
+   "levels": 8,
+   "hid": "w00k-91278332",
+   "origin": "hero-data-v2",
+   "n": 12,
+   "tokens": 1200000,
+   "clears": 16,
+   "T": 75000.0,
+   "lo": 49386.1466097423,
+   "hi": 119581.41368174976,
+   "cr": 0.5714285714285714,
+   "lvi": 1.3333333333333333,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "border": true,
+   "tier": "B"
+  },
+  {
+   "game": "w00l",
+   "source": "witness",
+   "levels": 8,
+   "hid": "w00l-56b1c283",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 6,
+   "T": 100000.0,
+   "lo": 50690.338611130755,
+   "hi": 229933.51479114903,
+   "cr": 0.5,
+   "lvi": 1.0,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "tier": "A"
+  },
+  {
+   "game": "w00m",
+   "source": "witness",
+   "levels": 8,
+   "hid": "w00m-cea0d906",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 7,
+   "T": 85714.28571428571,
+   "lo": 45652.077409407655,
+   "hi": 182795.87400345778,
+   "cr": 0.5384615384615384,
+   "lvi": 1.1666666666666667,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "border": true,
+   "tier": "B"
+  },
+  {
+   "game": "w02a",
+   "source": "witness",
+   "levels": 8,
+   "hid": "w02a-0781c892",
+   "origin": "hero-data-v2",
+   "n": 12,
+   "tokens": 1200000,
+   "clears": 26,
+   "T": 46153.846153846156,
+   "lo": 33264.39913632089,
+   "hi": 65868.38034867951,
+   "cr": 0.6842105263157895,
+   "lvi": 2.1666666666666665,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "w02b",
+   "source": "witness",
+   "levels": 8,
+   "hid": "w02b-ae329332",
+   "origin": "hero-data-v2",
+   "n": 12,
+   "tokens": 1200000,
+   "clears": 17,
+   "T": 70588.23529411765,
+   "lo": 47065.31245095769,
+   "hi": 110790.27181690514,
+   "cr": 0.5862068965517241,
+   "lvi": 1.4166666666666667,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "border": true,
+   "tier": "B"
+  },
+  {
+   "game": "w02c",
+   "source": "witness",
+   "levels": 8,
+   "hid": "w02c-d0bb8a98",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 7,
+   "T": 85714.28571428571,
+   "lo": 45652.077409407655,
+   "hi": 182795.87400345778,
+   "cr": 0.5384615384615384,
+   "lvi": 1.1666666666666667,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "border": true,
+   "tier": "B"
+  },
+  {
+   "game": "w02d",
+   "source": "witness",
+   "levels": 8,
+   "hid": "w02d-db5d7050",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 5,
+   "T": 120000.0,
+   "lo": 57107.79451408974,
+   "hi": 305225.3221350605,
+   "cr": 0.45454545454545453,
+   "lvi": 0.8333333333333334,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "tier": "A"
+  },
+  {
+   "game": "w02e",
+   "source": "witness",
+   "levels": 8,
+   "hid": "w02e-6c5db149",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 5,
+   "T": 120000.0,
+   "lo": 57107.79451408974,
+   "hi": 305225.3221350605,
+   "cr": 0.45454545454545453,
+   "lvi": 0.8333333333333334,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "tier": "A"
+  },
+  {
+   "game": "w02f",
+   "source": "witness",
+   "levels": 8,
+   "hid": "w02f-5ac0668f",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 2,
+   "T": 300000.0,
+   "lo": 95475.87702107847,
+   "hi": 1738375.3603030387,
+   "cr": 0.25,
+   "lvi": 0.3333333333333333,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "tier": "A"
+  },
+  {
+   "game": "w031",
+   "source": "witness",
+   "levels": 4,
+   "hid": "w031-09a7d128",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 9,
+   "T": 66666.66666666667,
+   "lo": 38214.50841877742,
+   "hi": 127848.19539611193,
+   "cr": 0.6,
+   "lvi": 1.5,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "border": true,
+   "tier": "B"
+  },
+  {
+   "game": "x002",
+   "source": "sonpham_interactive",
+   "levels": 4,
+   "hid": "x002-bac162aa",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 15,
+   "T": 40000.0,
+   "lo": 25980.641565034275,
+   "hi": 64897.998454514585,
+   "cr": 0.7142857142857143,
+   "lvi": 2.5,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "x003",
+   "source": "sonpham_interactive",
+   "levels": 10,
+   "hid": "x003-924ee5e3",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 435029,
+   "clears": 56,
+   "T": 7768.375,
+   "lo": 6218.320641162687,
+   "hi": 9823.349606346404,
+   "cr": 0.9824561403508771,
+   "lvi": 9.333333333333334,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "x00b",
+   "source": "sonpham_interactive",
+   "levels": 7,
+   "hid": "x00b-5e6f1c4b",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 597066,
+   "clears": 32,
+   "T": 18658.3125,
+   "lo": 13891.480010563031,
+   "hi": 25628.22031977994,
+   "cr": 0.8648648648648649,
+   "lvi": 5.333333333333333,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "x00c",
+   "source": "sonpham_interactive",
+   "levels": 7,
+   "hid": "x00c-7abe1ef2",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 376229,
+   "clears": 41,
+   "T": 9176.317073170732,
+   "lo": 7072.507382903544,
+   "hi": 12110.620775557516,
+   "cr": 0.9761904761904762,
+   "lvi": 6.833333333333333,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "x00l",
+   "source": "sonpham_interactive",
+   "levels": 7,
+   "hid": "x00l-c5b4e909",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 581308,
+   "clears": 24,
+   "T": 24221.166666666668,
+   "lo": 17223.799808105963,
+   "hi": 35127.38369696181,
+   "cr": 0.8275862068965517,
+   "lvi": 4.0,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "x010",
+   "source": "sonpham_interactive",
+   "levels": 9,
+   "hid": "x010-264fe343",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 573310,
+   "clears": 37,
+   "T": 15494.864864864865,
+   "lo": 11778.582422822732,
+   "hi": 20776.274120090005,
+   "cr": 0.8809523809523809,
+   "lvi": 6.166666666666667,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "x012",
+   "source": "sonpham_interactive",
+   "levels": 6,
+   "hid": "x012-c56d71ba",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 585222,
+   "clears": 10,
+   "T": 58522.2,
+   "lo": 34509.745532488014,
+   "hi": 107904.36505326757,
+   "cr": 0.6666666666666666,
+   "lvi": 1.6666666666666667,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "border": true,
+   "tier": "B"
+  },
+  {
+   "game": "x013",
+   "source": "sonpham_interactive",
+   "levels": 5,
+   "hid": "x013-3171a0bf",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 7,
+   "T": 85714.28571428571,
+   "lo": 45652.077409407655,
+   "hi": 182795.87400345778,
+   "cr": 0.5384615384615384,
+   "lvi": 1.1666666666666667,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "border": true,
+   "tier": "B"
+  },
+  {
+   "game": "x01d",
+   "source": "sonpham_interactive",
+   "levels": 6,
+   "hid": "x01d-970c765c",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 23,
+   "T": 26086.956521739132,
+   "lo": 18414.403665944938,
+   "hi": 38170.39304359011,
+   "cr": 0.7931034482758621,
+   "lvi": 3.8333333333333335,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "x01e",
+   "source": "sonpham_interactive",
+   "levels": 2,
+   "hid": "x01e-63f56147",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 7,
+   "T": 85714.28571428571,
+   "lo": 45652.077409407655,
+   "hi": 182795.87400345778,
+   "cr": 0.5384615384615384,
+   "lvi": 1.1666666666666667,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "border": true,
+   "tier": "B"
+  },
+  {
+   "game": "x01f",
+   "source": "sonpham_interactive",
+   "levels": 7,
+   "hid": "x01f-ab5abdf2",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 19,
+   "T": 31578.947368421053,
+   "lo": 21523.342664851927,
+   "hi": 48226.72799067036,
+   "cr": 0.76,
+   "lvi": 3.1666666666666665,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "x01k",
+   "source": "sonpham_interactive",
+   "levels": 3,
+   "hid": "x01k-e1dea76b",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 6,
+   "T": 100000.0,
+   "lo": 50690.338611130755,
+   "hi": 229933.51479114903,
+   "cr": 0.5,
+   "lvi": 1.0,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "tier": "A"
+  },
+  {
+   "game": "x01o",
+   "source": "sonpham_interactive",
+   "levels": 8,
+   "hid": "x01o-c3637c8d",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 23,
+   "T": 26086.956521739132,
+   "lo": 18414.403665944938,
+   "hi": 38170.39304359011,
+   "cr": 0.7931034482758621,
+   "lvi": 3.8333333333333335,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "x01u",
+   "source": "sonpham_interactive",
+   "levels": 6,
+   "hid": "x01u-9dc9e8e6",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 23,
+   "T": 26086.956521739132,
+   "lo": 18414.403665944938,
+   "hi": 38170.39304359011,
+   "cr": 0.7931034482758621,
+   "lvi": 3.8333333333333335,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "x01v",
+   "source": "sonpham_interactive",
+   "levels": 6,
+   "hid": "x01v-f8c4b71c",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 550974,
+   "clears": 22,
+   "T": 25044.272727272728,
+   "lo": 17539.9369868258,
+   "hi": 36995.04026923656,
+   "cr": 0.8461538461538461,
+   "lvi": 3.6666666666666665,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "x01y",
+   "source": "sonpham_interactive",
+   "levels": 2,
+   "hid": "x01y-05f2bcdf",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 4,
+   "T": 150000.0,
+   "lo": 65603.23076963141,
+   "hi": 440936.20857255283,
+   "cr": 0.4,
+   "lvi": 0.6666666666666666,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "tier": "A"
+  },
+  {
+   "game": "x024",
+   "source": "sonpham_interactive",
+   "levels": 6,
+   "hid": "x024-8bf6936a",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 9,
+   "T": 66666.66666666667,
+   "lo": 38214.50841877742,
+   "hi": 127848.19539611193,
+   "cr": 0.6,
+   "lvi": 1.5,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "border": true,
+   "tier": "B"
+  },
+  {
+   "game": "x027",
+   "source": "sonpham_interactive",
+   "levels": 7,
+   "hid": "x027-973e5477",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 17,
+   "T": 35294.117647058825,
+   "lo": 23532.656225478844,
+   "hi": 55395.13590845257,
+   "cr": 0.7391304347826086,
+   "lvi": 2.8333333333333335,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop",
+   "border": true
+  },
+  {
+   "game": "x028",
+   "source": "sonpham_interactive",
+   "levels": 7,
+   "hid": "x028-4a8286f7",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 12,
+   "T": 50000.0,
+   "lo": 30865.752808125802,
+   "hi": 86670.7668384256,
+   "cr": 0.6666666666666666,
+   "lvi": 2.0,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "border": true,
+   "tier": "B"
+  },
+  {
+   "game": "x02c",
+   "source": "sonpham_interactive",
+   "levels": 6,
+   "hid": "x02c-9daa1ccd",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 550823,
+   "clears": 31,
+   "T": 17768.483870967742,
+   "lo": 13166.285461699295,
+   "hi": 24541.834610064016,
+   "cr": 0.9117647058823529,
+   "lvi": 5.166666666666667,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  },
+  {
+   "game": "x02f",
+   "source": "sonpham_interactive",
+   "levels": 3,
+   "hid": "x02f-8c05e5c0",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 600000,
+   "clears": 4,
+   "T": 150000.0,
+   "lo": 65603.23076963141,
+   "hi": 440936.20857255283,
+   "cr": 0.4,
+   "lvi": 0.6666666666666666,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "keep",
+   "tier": "A"
+  },
+  {
+   "game": "y01k",
+   "source": "arc_interactive",
+   "levels": 5,
+   "hid": "y01k-3fa49ae7",
+   "origin": "hero-data-v2",
+   "n": 6,
+   "tokens": 420346,
+   "clears": 25,
+   "T": 16813.84,
+   "lo": 12039.462780207281,
+   "hi": 24183.257211365348,
+   "cr": 0.9615384615384616,
+   "lvi": 4.166666666666667,
+   "tabs": [
+    "v71"
+   ],
+   "verdict": "drop"
+  }
+ ]
+}

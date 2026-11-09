@@ -1,0 +1,26 @@
+{
+ "files": {
+  "train.jsonl": {
+   "sha256": "cbbea68e766fd224e168f3d057aeedc9e7da8a1252b09e0ad57fc25c8f2f1d32",
+   "bytes": 10309485,
+   "sequences": 103
+  },
+  "eval.jsonl": {
+   "sha256": "023e93870e342f8c974456ea924b33122f88f0ac7d9b726d488804035f0cb8aa",
+   "bytes": 1407007,
+   "sequences": 14
+  }
+ },
+ "tokenizer_sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+ "config": {
+  "max_tokens": 32768,
+  "dev_cap_per_game": 8,
+  "sources": [
+   "dev",
+   "teacher"
+  ],
+  "level": 1
+ },
+ "image_tokens": 64,
+ "image_token_id": 248056
+}

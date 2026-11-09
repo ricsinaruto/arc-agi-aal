@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: Apache-2.0
+# Extracted verbatim from pinned vLLM single_type_kv_cache_manager.py.
+def _remove_blocks_in_range(
+    self,
+    request_id: str,
+    first_block: int,
+    last_block: int,
+) -> None:
+    """Free blocks in ``[first_block, last_block)`` and replace with null_block.
+
+    Iterates backward so newly-evictable tail blocks are reached even after
+    earlier blocks in the range were nulled in a prior call.
+    """
+    if request_id not in self.req_to_blocks:
+        return
+    if first_block >= last_block:
+        return
+    blocks = self.req_to_blocks[request_id]
+    last_block = min(last_block, len(blocks))
+
+    freed: list[KVCacheBlock] = []
+    for i in range(last_block - 1, first_block - 1, -1):
+        if blocks[i] == self._null_block:
+            break
+        freed.append(blocks[i])
+        blocks[i] = self._null_block
+    if freed:
+        self.block_pool.free_blocks(freed)

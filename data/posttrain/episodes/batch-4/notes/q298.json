@@ -1,0 +1,120 @@
+{
+ "game_id": "q298-32de00a9",
+ "name": "paint-skin",
+ "tags": [
+  "keyboard",
+  "path-cover",
+  "skin"
+ ],
+ "note": "q005 paint: walk over every gray floor cell exactly once.\n\nHidden rules: the blue avatar paints each cell it leaves sky blue; painted cells cannot be entered\nagain, so a wrong route strands the avatar (RESET restarts the level). The level clears when no gray\nfloor cell is left.\n\nSkin of q005 (paint): the same rules and levels as above, shown differently. The board is mirrored left-right and then turned 180 degrees clockwise, so every direction, side and axis named in the rules above refers to the unturned board. The direction keys follow the screen: the base game's up appears as down, down appears as up, left appears as left, right appears as right, and the key for the screen direction moves things that way (for example UP moves the base game's down). Clicks act on the cell clicked on screen. Every colour is replaced: white -> gray, light gray -> dark gray, gray -> black, dark gray -> yellow, charcoal -> pink, black -> dark red, magenta -> purple, pink -> sky blue, red -> magenta, blue -> orange, sky blue -> white, yellow -> green, orange -> charcoal, dark red -> red, green -> blue, purple -> light gray.",
+ "episode_of": "q005",
+ "mechanic": "paint",
+ "tier": 2,
+ "seed": 1,
+ "skin_of": "q005",
+ "batch": 4,
+ "level_source": "generated",
+ "skin": {
+  "flip": true,
+  "turns": 2,
+  "palette": [
+   2,
+   3,
+   5,
+   11,
+   7,
+   13,
+   15,
+   10,
+   6,
+   12,
+   0,
+   14,
+   4,
+   8,
+   9,
+   1
+  ],
+  "keys": {
+   "2": 1,
+   "1": 2,
+   "3": 3,
+   "4": 4
+  },
+  "actions": [
+   1,
+   2,
+   3,
+   4
+  ]
+ },
+ "solution": [
+  [
+   [
+    1,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    1,
+    null
+   ]
+  ]
+ ],
+ "level": {
+  "attempt": 1,
+  "baseline": 14,
+  "random": 0.045,
+  "tier_band": [
+   11,
+   15
+  ]
+ }
+}

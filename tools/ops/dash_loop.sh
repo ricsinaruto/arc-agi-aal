@@ -1,0 +1,38 @@
+#!/bin/zsh
+# dash_loop.sh: every 2 minutes reconcile the run queue with the machines, then regenerate MODAL_STATUS.md / .html and the arm
+# status pages (docs/html) from the queue, the live feeds, the arm logs and the ledger (tools/ops/mon.py).
+# Settings: runs/ops/ops.env (link to <scratch>/ops.env) with ARC_OPS_SCRATCH and ARC_NEBIUS_CONFIG; extra runs to print, one per line, in <scratch>/runs.txt.
+ROOT=$(cd "$(dirname "$0")/../.." && pwd)
+[ -f $ROOT/runs/ops/ops.env ] && source $ROOT/runs/ops/ops.env
+export ARC_OPS_SCRATCH=${ARC_OPS_SCRATCH:-$ROOT/runs/ops}; S=$ARC_OPS_SCRATCH
+[ -f $S/ops.env ] && source $S/ops.env
+export ARC_NEBIUS_CONFIG=${ARC_NEBIUS_CONFIG:-$S/nebius.json}
+mkdir -p "$S/launch" "$S/mon"; touch $S/runs.txt
+PY=$ROOT/.venv/bin/python; [ -x $PY ] || PY=python3
+# run records (docs/runs/<run>.json) and the views spend.json / modal-queue.json are machine-local and untracked (phase D,
+# 24 Oct): sync regenerates the views (direct view edits are dropped and flagged); once a UTC day `snapshot` commits the
+# ended records to docs/runs-settled/ (local) and pushes budget.json
+cap() { local s=$1; shift; perl -e 'alarm shift; exec @ARGV' "$s" "$@"; }  # hard timeout on a step (macOS has no timeout(1))
+records_sync() { cap 60 $PY $ROOT/tools/ops/records.py sync > $S/mon/records.txt 2>&1 || { date -u +"%F %T UTC records sync failed"; tail -3 $S/mon/records.txt; } >> $S/mon/records-failed.txt; }
+# slow sources (volume/bucket reads, container execs, Modal/Nebius listings) and the CI poll, billing and backup run in the
+# fetch loop (mon.py --fetch, one instance, restarts itself on a code change); the page pass below only reads its caches
+fetch_up() { pgrep -f "tools/ops/mon.py --fetch" > /dev/null || (nohup $PY $ROOT/tools/ops/mon.py --fetch >> $S/mon/fetch.txt 2>&1 < /dev/null &); }
+SELF=$ROOT/tools/ops/dash_loop.sh; SELF_M=$(stat -f %m $SELF)
+while true; do
+  # an edited script takes effect at the next pass: re-exec (a running shell keeps its old function bodies); hourly/daily
+  # markers ride along in the environment so a re-exec does not repeat them
+  [ "$(stat -f %m $SELF 2>/dev/null)" != "$SELF_M" ] && zsh -n $SELF && { export VOL_H SNAP_D; exec /bin/zsh $SELF "$@"; }
+  t0=$(date +%s); TM="$(date -u +%H:%M:%S)"; lap() { TM="$TM $1 $(( $(date +%s) - ${T1:-$t0} ))s"; T1=$(date +%s); }; T1=$t0
+  fetch_up; records_sync; lap records
+  H=$(( $(date +%s) / 3600 ))
+  [ "$H" != "${VOL_H:-}" ] && { (cd $ROOT && $PY tools/ops/volume_usage.py > $S/mon/volume.txt 2>&1 &); VOL_H=$H; }  # runs volume inodes/bytes, hourly, background
+  # a crashed pass is recorded in mon/failed.txt; the next pass shows it in the dashboard check banner, a clean pass clears it
+  if cap 150 $PY $ROOT/tools/ops/mon.py $(cat $S/runs.txt) > $S/mon/last.tmp 2>&1; then rm -f $S/mon/failed.txt
+  else { date -u +"%F %T UTC"; tail -3 $S/mon/last.tmp; } > $S/mon/failed.txt; fi
+  mv $S/mon/last.tmp $S/mon/last.txt; lap mon; echo "$TM" >> $S/mon/loop-timing.txt  # per-step seconds of each pass
+  D=$(date -u +%F); G=$(git -C $ROOT rev-parse --absolute-git-dir)
+  if [ "$D" != "${SNAP_D:-}" ] && [ ! -d $G/rebase-merge ] && [ ! -d $G/rebase-apply ] && [ ! -f $G/MERGE_HEAD ]; then
+    cap 120 $PY $ROOT/tools/ops/records.py snapshot >> $S/mon/records.txt 2>&1 && SNAP_D=$D  # settled records to git, daily
+  fi
+  d=$(( 120 - $(date +%s) + t0 )); sleep $(( d > 10 ? d: 10 ))  # a pass every 2 min from its start: pages never older than ~2.5 min (<= 5 min at any moment)
+done

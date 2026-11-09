@@ -1,0 +1,104 @@
+{
+ "game_id": "q304-c1f7cb15",
+ "name": "conveyor-skin",
+ "tags": [
+  "keyboard",
+  "click",
+  "conveyor",
+  "one-way",
+  "rule-change",
+  "skin"
+ ],
+ "note": "q010 conveyor: reach the green exit across walls whose gaps hold conveyor belts.\n\nHidden rules: arrows move the blue avatar one cell; dark-gray walls block. A belt cell's colour gives\nits direction: sky blue carries up, magenta down, orange left, yellow right. When the avatar steps\nonto a belt cell it is carried along, one cell at a time in the belt's direction (and on through any\nfurther belt cells), until it reaches a non-belt cell or the next cell is a wall, where it stops (a\nride that would come back to a belt cell it already crossed stops there instead). A belt\npointing back the way the avatar came throws it straight back, so such a gap cannot be crossed. The\nlevel clears when the avatar stands on the green exit. Levels 1-2: clicks do nothing. From level 3 a\nclick on a belt cell reverses that whole belt (the straight run of same-coloured belt cells it belongs\nto): up and down swap, left and right swap, and the colours change with them.\n\nSkin of q010 (conveyor): the same rules and levels as above, shown differently. The board is mirrored left-right and then turned 90 degrees clockwise, so every direction, side and axis named in the rules above refers to the unturned board. The direction keys follow the screen: the base game's up appears as right, down appears as left, left appears as down, right appears as up, and the key for the screen direction moves things that way (for example UP moves the base game's right). Clicks act on the cell clicked on screen. Every colour is replaced: white -> magenta, light gray -> yellow, gray -> dark gray, dark gray -> red, charcoal -> pink, black -> green, magenta -> charcoal, pink -> white, red -> orange, blue -> sky blue, sky blue -> dark red, yellow -> gray, orange -> blue, dark red -> purple, green -> light gray, purple -> black.",
+ "episode_of": "q010",
+ "mechanic": "conveyor",
+ "tier": 2,
+ "seed": 1,
+ "skin_of": "q010",
+ "batch": 4,
+ "level_source": "generated",
+ "skin": {
+  "flip": true,
+  "turns": 1,
+  "palette": [
+   6,
+   11,
+   3,
+   8,
+   7,
+   14,
+   4,
+   0,
+   12,
+   10,
+   13,
+   2,
+   9,
+   15,
+   1,
+   5
+  ],
+  "keys": {
+   "4": 1,
+   "3": 2,
+   "2": 3,
+   "1": 4
+  },
+  "actions": [
+   1,
+   2,
+   3,
+   4,
+   6
+  ]
+ },
+ "solution": [
+  [
+   [
+    1,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    1,
+    null
+   ]
+  ]
+ ],
+ "level": {
+  "attempt": 0,
+  "baseline": 9,
+  "random": 0.015,
+  "tier_band": [
+   8,
+   20
+  ]
+ }
+}

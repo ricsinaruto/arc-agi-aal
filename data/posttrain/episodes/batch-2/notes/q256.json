@@ -1,0 +1,107 @@
+{
+ "game_id": "q256-e576db52",
+ "name": "snake-skin",
+ "tags": [
+  "keyboard",
+  "snake",
+  "growth",
+  "wrap-around",
+  "rule-change",
+  "skin"
+ ],
+ "note": "q019 snake: steer a growing snake to eat every yellow food, then leave through the exit.\n\nHidden rules: arrows move the snake's blue head one cell and the sky-blue body follows (each segment\ntakes the place of the one ahead of it). The head cannot move into a dark-gray wall or into its own\nbody (the tail cell is allowed, since the tail moves away), and such a move does nothing. Moving onto\nyellow food eats it: the snake grows by one segment (its tail stays put that turn). The exit is\ncharcoal and blocks while any food is left; it turns green when the last food is eaten, and moving the\nhead onto the green exit clears the level. From level 4 the border has gaps: moving out through a gap\nbrings the head in through the matching gap on the opposite side (the board wraps around there).\n\nSkin of q019 (snake): the same rules and levels as above, shown differently. The board is turned 180 degrees clockwise, so every direction, side and axis named in the rules above refers to the unturned board. The direction keys follow the screen: the base game's up appears as down, down appears as up, left appears as right, right appears as left, and the key for the screen direction moves things that way (for example UP moves the base game's down). Clicks act on the cell clicked on screen. Every colour is replaced: white -> black, light gray -> purple, gray -> green, dark gray -> gray, charcoal -> orange, black -> pink, magenta -> blue, pink -> dark red, red -> sky blue, blue -> yellow, sky blue -> dark gray, yellow -> white, orange -> red, dark red -> light gray, green -> magenta, purple -> charcoal.",
+ "episode_of": "q019",
+ "mechanic": "snake",
+ "tier": 3,
+ "seed": 0,
+ "skin_of": "q019",
+ "batch": 2,
+ "level_source": "generated",
+ "skin": {
+  "flip": false,
+  "turns": 2,
+  "palette": [
+   5,
+   15,
+   14,
+   2,
+   12,
+   7,
+   9,
+   13,
+   10,
+   11,
+   3,
+   0,
+   8,
+   1,
+   6,
+   4
+  ],
+  "keys": {
+   "2": 1,
+   "1": 2,
+   "4": 3,
+   "3": 4
+  },
+  "actions": [
+   1,
+   2,
+   3,
+   4
+  ]
+ },
+ "solution": [
+  [
+   [
+    2,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    4,
+    null
+   ]
+  ]
+ ],
+ "level": {
+  "attempt": 0,
+  "baseline": 10,
+  "random": 0.015,
+  "tier_band": [
+   10,
+   22
+  ]
+ }
+}

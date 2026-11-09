@@ -1,0 +1,80 @@
+{
+ "game_id": "q230-bf52be4d",
+ "name": "keys",
+ "tags": [
+  "keyboard",
+  "navigation",
+  "keys-doors"
+ ],
+ "note": "q001 keys: walk to the green exit; a coloured cell you step on opens every wall cell of the same colour.\n\nHidden rules the player must discover: arrows move the blue avatar one cell; dark-gray walls block;\nstepping on a coloured cell that is not blocking (a key) removes it and every blocking cell of that\ncolour (doors); keys and doors look identical until you try to walk into them.",
+ "episode_of": "q001",
+ "mechanic": "keys",
+ "tier": 2,
+ "seed": 0,
+ "skin_of": null,
+ "batch": 2,
+ "level_source": "fixed",
+ "skin": null,
+ "solution": [
+  [
+   [
+    2,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ]
+  ]
+ ],
+ "level": {
+  "attempt": 0,
+  "baseline": 13,
+  "random": 0.005,
+  "tier_band": null
+ }
+}

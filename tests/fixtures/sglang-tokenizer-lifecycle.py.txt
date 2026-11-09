@@ -1,0 +1,351 @@
+# SPDX-License-Identifier: Apache-2.0
+# Pinned SGLang manager methods; unmodified bodies, class indentation removed.
+
+async def _tokenize_one_request(
+        self,
+        obj: Union[GenerateReqInput, EmbeddingReqInput],
+    ):
+        """Tokenize one request."""
+        # Tokenize
+        input_embeds = None
+        input_text = obj.text
+        token_type_ids = None
+        is_cross_encoder_request = (
+            isinstance(obj, EmbeddingReqInput) and obj.is_cross_encoder_request
+        )
+        if obj.input_embeds is not None:
+            if not get_memory().disable_radix_cache:
+                raise ValueError(
+                    "input_embeds is provided while disable_radix_cache is False. "
+                    "Please add `--disable-radix-cache` when you launch the server "
+                    "if you want to use input_embeds as inputs."
+                )
+            input_embeds = obj.input_embeds
+            input_ids = obj.input_ids
+        elif obj.input_ids is not None:
+            input_ids = obj.input_ids
+        else:
+            if self.tokenizer is None:
+                raise ValueError(
+                    "The engine initialized with skip_tokenizer_init=True cannot "
+                    "accept text prompts. Please provide input_ids or re-initialize "
+                    "the engine with skip_tokenizer_init=False."
+                )
+
+            # For audio-only requests (e.g., Whisper), text may be empty.
+            # The multimodal processor will provide input_ids later.
+            if not input_text and self.mm_processor and obj.contains_mm_input():
+                # Use empty placeholder - multimodal processor will override
+                input_ids = []
+            else:
+                input_ids, token_type_ids = await self._tokenize_texts(
+                    input_text, is_cross_encoder_request
+                )
+
+        contains_mm_input = obj.contains_mm_input()
+        if contains_mm_input and get_disagg().language_model_only:
+            raise ValueError(
+                "Multimodal inputs are not supported when --language-model-only "
+                "is set; the encoder is not loaded. Restart without the flag."
+            )
+        is_mossvl = (
+            "MossVLForConditionalGeneration"
+            in self.model_config.hf_config.architectures
+        )
+        should_run_mm_processor = self.mm_processor is not None and (
+            contains_mm_input or is_mossvl
+        )
+
+        if should_run_mm_processor:
+            if obj.image_data is not None and not isinstance(obj.image_data, list):
+                obj.image_data = [obj.image_data]
+            if obj.video_data is not None and not isinstance(obj.video_data, list):
+                obj.video_data = [obj.video_data]
+            if obj.audio_data is not None and not isinstance(obj.audio_data, list):
+                obj.audio_data = [obj.audio_data]
+            if contains_mm_input:
+                self._validate_mm_limits(obj)
+                # mm_content_hashes is a GenerateReqInput field; EmbeddingReqInput
+                # has no such attribute.
+                if isinstance(obj, GenerateReqInput):
+                    self._normalize_mm_content_hashes(obj)
+
+            mm_inputs = None
+            mm_processor_input = (
+                input_ids
+                if self.mm_processor.prefer_tokenized_input and input_ids is not None
+                else (input_text or input_ids)
+            )
+
+            if (
+                not get_disagg().language_only
+                or get_disagg().encoder_transfer_backend == "zmq_to_tokenizer"
+            ):
+                if get_disagg().language_only:
+                    mm_inputs = await self.mm_receiver.recv_mm_data(
+                        request_obj=obj,
+                        mm_processor=self.mm_processor,
+                        prompt=mm_processor_input,
+                        need_wait_for_mm_inputs=obj.need_wait_for_mm_inputs,
+                    )
+                    _reject_missing_dispatched_encoder_embedding(obj, mm_inputs)
+                if mm_inputs is None:
+                    if get_disagg().language_only:
+                        logger.warning(
+                            "Encoder embedding not available, "
+                            "falling back to local mm processing"
+                        )
+                    mm_inputs = await self.mm_processor.process_mm_data_async(
+                        image_data=obj.image_data,
+                        audio_data=obj.audio_data,
+                        input_text=mm_processor_input,
+                        request_obj=obj,
+                        max_req_input_len=self.max_req_input_len,
+                    )
+            elif (
+                get_disagg().language_only
+                and get_disagg().encoder_transfer_backend
+                in ["zmq_to_scheduler", "mooncake"]
+                and not obj.need_wait_for_mm_inputs
+            ):
+                # In language_only mode with zmq_to_scheduler/mooncake, if we didn't dispatch
+                # to encoder (e.g., only one image), process locally like non-language_only mode
+                mm_inputs = await self.mm_processor.process_mm_data_async(
+                    image_data=obj.image_data,
+                    audio_data=obj.audio_data,
+                    input_text=mm_processor_input,
+                    request_obj=obj,
+                    max_req_input_len=self.max_req_input_len,
+                )
+
+            if mm_inputs and mm_inputs.input_ids is not None:
+                input_ids = mm_inputs.input_ids
+            if mm_inputs and mm_inputs.token_type_ids is not None:
+                token_type_ids = mm_inputs.token_type_ids
+                if not isinstance(token_type_ids, list):
+                    token_type_ids = token_type_ids.flatten().tolist()
+            # Caller-supplied per-image hashes (external KV routers, e.g.
+            # routing-aware orchestrators that compute a content-addressed
+            # hash before dispatch). Setting MultimodalDataItem.hash here
+            # short-circuits the internal hash_feature() recompute inside
+            # set_pad_value(), making the derived pad_value deterministic
+            # from the caller's hash. That alignment lets the router's
+            # routing decision agree with sglang's prefix-cache key for
+            # the same image. On any per-item parse error or list-length
+            # mismatch we fall back to the internal recompute so a
+            # malformed mm_hashes never blocks a request.
+            caller_mm_hashes = getattr(obj, "mm_hashes", None)
+            if caller_mm_hashes and mm_inputs and mm_inputs.mm_items:
+                if len(caller_mm_hashes) != len(mm_inputs.mm_items):
+                    logger.warning(
+                        "mm_hashes length (%d) != mm_items length (%d); "
+                        "ignoring caller hashes for this request.",
+                        len(caller_mm_hashes),
+                        len(mm_inputs.mm_items),
+                    )
+                else:
+                    for item, hex_hash in zip(mm_inputs.mm_items, caller_mm_hashes):
+                        if not isinstance(item, MultimodalDataItem):
+                            continue
+                        try:
+                            item.set_hash(int(hex_hash, 16))
+                        except (TypeError, ValueError):
+                            logger.warning(
+                                "Ignoring malformed mm_hashes entry %r; "
+                                "this item will fall back to hash_feature().",
+                                hex_hash,
+                            )
+            if (
+                envs.SGLANG_MM_PRECOMPUTE_HASH.get()
+                and mm_inputs
+                and mm_inputs.mm_items
+            ):
+                for item in mm_inputs.mm_items:
+                    if isinstance(item, MultimodalDataItem):
+                        item.set_pad_value()
+        else:
+            mm_inputs = None
+
+        self._validate_one_request(obj, input_ids)
+        return self._create_tokenized_object(
+            obj, input_text, input_ids, input_embeds, mm_inputs, token_type_ids
+        )
+
+def _create_tokenized_object(
+        self,
+        obj: Union[GenerateReqInput, EmbeddingReqInput],
+        input_text: str,
+        input_ids: Optional[List[int]],
+        input_embeds: Optional[List[List[float]]] = None,
+        mm_inputs=None,
+        token_type_ids: Optional[List[int]] = None,
+    ) -> Union[TokenizedGenerateReqInput, TokenizedEmbeddingReqInput]:
+        """Create a tokenized request object from common parameters."""
+        input_ids_arr: Optional[array[int]] = (
+            array("q", input_ids) if input_ids is not None else None
+        )
+        # Parse sampling parameters
+        # Note: if there are preferred sampling params, we use them if they are not
+        # explicitly passed in sampling_params
+        if self.preferred_sampling_params:
+            sampling_kwargs = {**self.preferred_sampling_params, **obj.sampling_params}
+        else:
+            sampling_kwargs = obj.sampling_params
+        if isinstance(obj, GenerateReqInput) and obj.max_thinking_tokens is not None:
+            sampling_kwargs = dict(sampling_kwargs)
+            custom_params = dict(sampling_kwargs.get("custom_params") or {})
+            custom_params["thinking_budget"] = obj.max_thinking_tokens
+            sampling_kwargs["custom_params"] = custom_params
+        sampling_params = self.sampling_params_class(**sampling_kwargs)
+        sampling_params.normalize(self.tokenizer)
+        sampling_params.verify(self.model_config.vocab_size)
+
+        # Build return object
+        if isinstance(obj, GenerateReqInput):
+            session_params = (
+                SessionParams(**obj.session_params) if obj.session_params else None
+            )
+
+            bootstrap_room = obj.bootstrap_room
+            if (
+                bootstrap_room is None
+                and get_disagg().disaggregation_transfer_backend == "fake"
+            ):
+                bootstrap_room = self.fake_bootstrap_room_counter
+                self.fake_bootstrap_room_counter += 1
+
+            tokenized_obj = TokenizedGenerateReqInput(
+                input_text=input_text,
+                input_ids=input_ids_arr,
+                mm_inputs=mm_inputs,
+                sampling_params=sampling_params,
+                return_logprob=obj.return_logprob,
+                logprob_start_len=obj.logprob_start_len,
+                top_logprobs_num=obj.top_logprobs_num,
+                token_ids_logprob=obj.token_ids_logprob,
+                return_sampling_mask=obj.return_sampling_mask,
+                return_flat_raw_top_logprobs=obj.return_flat_raw_top_logprobs,
+                stream=obj.stream,
+                rid=obj.rid,
+                http_worker_ipc=obj.http_worker_ipc,
+                bootstrap_host=obj.bootstrap_host,
+                bootstrap_port=obj.bootstrap_port,
+                bootstrap_room=bootstrap_room,
+                lora_id=obj.lora_id,
+                input_embeds=input_embeds,
+                positional_embed_overrides=obj.positional_embed_overrides,
+                session_id=obj.session_id,
+                session_params=session_params,
+                custom_logit_processor=obj.custom_logit_processor,
+                require_reasoning=obj.require_reasoning,
+                return_hidden_states=obj.return_hidden_states,
+                return_routed_experts=obj.return_routed_experts,
+                routed_experts_start_len=obj.routed_experts_start_len,
+                return_indexer_topk=obj.return_indexer_topk,
+                routed_dp_rank=obj.routed_dp_rank,
+                disagg_prefill_dp_rank=obj.disagg_prefill_dp_rank,
+                priority=obj.priority,
+                extra_key=obj.extra_key,
+                cache_salt=obj.cache_salt,
+                routing_key=obj.routing_key,
+                token_type_ids=token_type_ids,
+                need_wait_for_mm_inputs=obj.need_wait_for_mm_inputs,
+                num_items_assigned=obj.num_items_assigned,
+                multi_item_delimiter_indices=obj.multi_item_delimiter_indices,
+                encoder_urls=obj.encoder_urls,
+            )
+        elif isinstance(obj, EmbeddingReqInput):
+            # Resolve unresolved embed overrides now that input_ids are available
+            positional_embed_overrides = obj.positional_embed_overrides
+            if (
+                positional_embed_overrides is None
+                and obj.embed_overrides is not None
+                and obj.embed_override_token_id is not None
+            ):
+                positional_embed_overrides = self._resolve_embed_overrides(
+                    input_ids_arr, obj.embed_override_token_id, obj.embed_overrides
+                )
+
+            tokenized_obj = TokenizedEmbeddingReqInput(
+                input_text=input_text,
+                input_ids=input_ids_arr,
+                mm_inputs=mm_inputs,
+                token_type_ids=token_type_ids,
+                sampling_params=sampling_params,
+                positional_embed_overrides=positional_embed_overrides,
+                rid=obj.rid,
+                priority=obj.priority,
+                dimensions=obj.dimensions,
+                lora_id=obj.lora_id,
+                http_worker_ipc=obj.http_worker_ipc,
+                return_pooled_hidden_states=obj.return_pooled_hidden_states,
+                multi_item_delimiter_indices=obj.multi_item_delimiter_indices,
+            )
+
+        tokenized_obj.time_stats = self.rid_to_state[obj.rid].time_stats
+        self.rid_to_state[obj.rid].time_stats.set_tokenize_finish_time()
+
+        return tokenized_obj
+
+def _init_req_state(
+        self,
+        obj: Union[GenerateReqInput, EmbeddingReqInput],
+        request: Optional[fastapi.Request] = None,
+    ):
+        created_time = obj.received_time
+
+        external_trace_header = None
+        if self.enable_trace:
+            if obj.external_trace_header:
+                # When the request comes from the rust grpc server or Engine there isn't a
+                # real request object but we still need to propagate the trace context from
+                # the trace context that is explicitly passed in
+                external_trace_header = obj.external_trace_header
+            elif request:
+                external_trace_header = extract_trace_headers(request.headers)
+                obj.external_trace_header = external_trace_header
+
+        # Normalize single/batch into a uniform list of (rid, sub_obj, bootstrap_room)
+        if not hasattr(obj, "is_single") or obj.is_single:
+            items = [(obj.rid, obj, getattr(obj, "bootstrap_room", None))]
+        else:
+            items = [
+                (
+                    obj.rid[i],
+                    obj[i],
+                    (
+                        obj.bootstrap_room[i]
+                        if hasattr(obj, "bootstrap_room") and obj.bootstrap_room
+                        else None
+                    ),
+                )
+                for i in range(len(obj.rid))
+            ]
+
+        for rid, sub_obj, bootstrap_room in items:
+            if rid in self.rid_to_state:
+                raise ValueError(f"Duplicate request ID detected: {rid}")
+            time_stats = APIServerReqTimeStats(disagg_mode=self.disaggregation_mode)
+            state = ReqState([], False, asyncio.Event(), sub_obj, time_stats)
+            self.rid_to_state[rid] = state
+            if self.enable_trace:
+                time_stats.init_trace_ctx(rid, bootstrap_room, external_trace_header)
+            time_stats.set_created_time(created_time)
+
+def _release_req_states_on_failure(self, rids: Iterable[str]):
+        """Release rid_to_state entries created for a failed handler.
+
+        Undelivered states are removed locally. Dispatched requests are aborted
+        and retained until the scheduler response removes them.
+        """
+        for rid in rids:
+            state = self.rid_to_state.get(rid)
+            if state is None:
+                continue
+            if state.dispatched:
+                try:
+                    self.abort_request(rid)
+                except Exception:
+                    logger.exception("Failed to abort request %s during cleanup", rid)
+            else:
+                del self.rid_to_state[rid]

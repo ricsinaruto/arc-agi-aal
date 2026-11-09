@@ -1,0 +1,22 @@
+{"t": 65, "util": [0.0], "mem_gib": [0.0]}
+{"t": 127, "util": [6.0], "mem_gib": [52.2]}
+{"t": 188, "util": [0.0], "mem_gib": [61.7]}
+{"t": 250, "util": [7.0], "mem_gib": [202.2]}
+{"t": 311, "util": [93.0], "mem_gib": [207.5], "vllm": {"num_requests_running": 7.0, "num_requests_waiting": 10.0, "kv_cache_usage_perc": 0.02277904328018221, "num_preemptions_total": 0.0, "generation_tokens_total": 490.0}}
+{"t": 372, "util": [0.0], "mem_gib": [5.0], "vllm": {"num_requests_running": 0.0, "num_requests_waiting": 0.0, "kv_cache_usage_perc": 0.0, "num_preemptions_total": 0.0, "generation_tokens_total": 1465.0}}
+{"t": 433, "util": [4.0], "mem_gib": [27.0], "vllm": {"num_requests_running": 0.0, "num_requests_waiting": 0.0, "kv_cache_usage_perc": 0.0, "num_preemptions_total": 0.0, "generation_tokens_total": 1465.0}}
+{"t": 494, "util": [1.0], "mem_gib": [120.0], "vllm": {"num_requests_running": 0.0, "num_requests_waiting": 0.0, "kv_cache_usage_perc": 0.0, "num_preemptions_total": 0.0, "generation_tokens_total": 1465.0}}
+{"t": 555, "util": [0.0], "mem_gib": [204.4], "vllm": {"num_requests_running": 0.0, "num_requests_waiting": 0.0, "kv_cache_usage_perc": 0.0, "num_preemptions_total": 0.0, "generation_tokens_total": 1465.0}}
+{"t": 616, "util": [93.0], "mem_gib": [214.1], "vllm": {"num_requests_running": 110.0, "num_requests_waiting": 4.0, "kv_cache_usage_perc": 0.2709079075821673, "num_preemptions_total": 0.0, "generation_tokens_total": 21997.0}}
+{"t": 677, "util": [100.0], "mem_gib": [214.1], "vllm": {"num_requests_running": 119.0, "num_requests_waiting": 0.0, "kv_cache_usage_perc": 0.30589000976244707, "num_preemptions_total": 0.0, "generation_tokens_total": 130545.0}}
+{"t": 739, "util": [95.0], "mem_gib": [214.1], "vllm": {"num_requests_running": 120.0, "num_requests_waiting": 0.0, "kv_cache_usage_perc": 0.3211845102505695, "num_preemptions_total": 0.0, "generation_tokens_total": 248509.0}}
+{"t": 800, "util": [100.0], "mem_gib": [215.1], "vllm": {"num_requests_running": 108.0, "num_requests_waiting": 0.0, "kv_cache_usage_perc": 0.30182232346241455, "num_preemptions_total": 0.0, "generation_tokens_total": 362379.0}}
+{"t": 861, "util": [95.0], "mem_gib": [215.1], "vllm": {"num_requests_running": 111.0, "num_requests_waiting": 0.0, "kv_cache_usage_perc": 0.3275301008786202, "num_preemptions_total": 0.0, "generation_tokens_total": 467113.0}}
+{"t": 923, "util": [100.0], "mem_gib": [215.1], "vllm": {"num_requests_running": 110.0, "num_requests_waiting": 0.0, "kv_cache_usage_perc": 0.33208590953465666, "num_preemptions_total": 0.0, "generation_tokens_total": 582475.0}}
+{"t": 985, "util": [100.0], "mem_gib": [215.1], "vllm": {"num_requests_running": 106.0, "num_requests_waiting": 0.0, "kv_cache_usage_perc": 0.33013342011064106, "num_preemptions_total": 0.0, "generation_tokens_total": 702676.0}}
+{"t": 1048, "util": [98.0], "mem_gib": [215.1], "vllm": {"num_requests_running": 111.0, "num_requests_waiting": 0.0, "kv_cache_usage_perc": 0.3418483566547348, "num_preemptions_total": 0.0, "generation_tokens_total": 830070.0}}
+{"t": 1110, "util": [0.0], "mem_gib": [66.8], "vllm": {"num_requests_running": 0.0, "num_requests_waiting": 0.0, "kv_cache_usage_perc": 0.0, "num_preemptions_total": 0.0, "generation_tokens_total": 907575.0}}
+{"t": 1171, "util": [0.0], "mem_gib": [95.0], "vllm": {"num_requests_running": 0.0, "num_requests_waiting": 0.0, "kv_cache_usage_perc": 0.0, "num_preemptions_total": 0.0, "generation_tokens_total": 907575.0}}
+{"t": 1233, "util": [0.0], "mem_gib": [95.8], "vllm": {"num_requests_running": 0.0, "num_requests_waiting": 0.0, "kv_cache_usage_perc": 0.0, "num_preemptions_total": 0.0, "generation_tokens_total": 907575.0}}
+{"t": 1308, "util": [0.0], "mem_gib": [94.6], "vllm": {"num_requests_running": 0.0, "num_requests_waiting": 0.0, "kv_cache_usage_perc": 0.0, "num_preemptions_total": 0.0, "generation_tokens_total": 907575.0}}
+{"t": 1413, "util": [0.0], "mem_gib": [215.3], "vllm": {"num_requests_running": 0.0, "num_requests_waiting": 0.0, "kv_cache_usage_perc": 0.0, "num_preemptions_total": 0.0, "generation_tokens_total": 907575.0}}

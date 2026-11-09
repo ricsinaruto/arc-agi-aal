@@ -1,0 +1,97 @@
+{
+ "game_id": "q283-114f5164",
+ "name": "twins",
+ "tags": [
+  "keyboard",
+  "symmetry",
+  "multi-avatar",
+  "hazard",
+  "rule-change"
+ ],
+ "note": "q016 twins: steer two avatars at once, one of them mirrored, onto the two green cells.\n\nHidden rules: every arrow moves the blue avatar one cell in the arrow's direction and the orange avatar\none cell in the mirrored direction. Levels 1-2: the orange avatar mirrors left-right only (LEFT moves\nit right, RIGHT moves it left, UP and DOWN move it the same way as blue). From level 3 it mirrors both\naxes (it always moves opposite to blue). Each avatar that would walk into a dark-gray wall, off the\nboard, or into the other avatar's current cell stays where it is while the other still moves. From\nlevel 4 charcoal pits appear: an avatar that steps into a pit falls in and the game is over (RESET\nrestarts the level). The level clears when the two avatars stand on the two green cells (either\navatar on either cell).",
+ "episode_of": "q016",
+ "mechanic": "twins",
+ "tier": 3,
+ "seed": 2,
+ "skin_of": null,
+ "batch": 3,
+ "level_source": "generated",
+ "skin": null,
+ "solution": [
+  [
+   [
+    1,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    1,
+    null
+   ]
+  ]
+ ],
+ "level": {
+  "attempt": 1,
+  "baseline": 16,
+  "random": 0.0,
+  "tier_band": [
+   7,
+   18
+  ]
+ }
+}

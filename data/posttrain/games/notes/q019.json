@@ -1,0 +1,252 @@
+{
+ "game_id": "q019-810bf976",
+ "name": "snake",
+ "tags": [
+  "keyboard",
+  "snake",
+  "growth",
+  "wrap-around",
+  "rule-change"
+ ],
+ "note": "q019 snake: steer a growing snake to eat every yellow food, then leave through the exit.\n\nHidden rules: arrows move the snake's blue head one cell and the sky-blue body follows (each segment\ntakes the place of the one ahead of it). The head cannot move into a dark-gray wall or into its own\nbody (the tail cell is allowed, since the tail moves away), and such a move does nothing. Moving onto\nyellow food eats it: the snake grows by one segment (its tail stays put that turn). The exit is\ncharcoal and blocks while any food is left; it turns green when the last food is eaten, and moving the\nhead onto the green exit clears the level. From level 4 the border has gaps: moving out through a gap\nbrings the head in through the matching gap on the opposite side (the board wraps around there).",
+ "generated_levels": [
+  {
+   "tier": 0,
+   "attempt": 3,
+   "baseline": 6,
+   "random": 0.05
+  },
+  {
+   "tier": 1,
+   "attempt": 0,
+   "baseline": 11,
+   "random": 0.01
+  },
+  {
+   "tier": 2,
+   "attempt": 0,
+   "baseline": 12,
+   "random": 0.035
+  },
+  {
+   "tier": 3,
+   "attempt": 0,
+   "baseline": 9,
+   "random": 0.01
+  },
+  {
+   "tier": 4,
+   "attempt": 0,
+   "baseline": 11,
+   "random": 0.045
+  }
+ ],
+ "solution": [
+  [
+   [
+    2,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    1,
+    null
+   ]
+  ],
+  [
+   [
+    1,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    4,
+    null
+   ]
+  ],
+  [
+   [
+    2,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    2,
+    null
+   ]
+  ],
+  [
+   [
+    3,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ]
+  ],
+  [
+   [
+    1,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ]
+  ]
+ ]
+}

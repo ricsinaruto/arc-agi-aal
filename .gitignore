@@ -1,0 +1,135 @@
+# Credentials: excluded at every depth, including the supplied reference.
+.kaggle/
+.env
+.env.*
+!.env.example
+access_token
+*.pem
+*.key
+.netrc
+
+# Python, editors, and local build products.
+.venv/
+.analysis-venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+build/
+dist/
+.DS_Store
+.ipynb_checkpoints/
+
+# Downloaded assets, model weights, and generated run artifacts.
+.cache/
+models/
+weights/
+wheelhouse/
+wheelhouse.tar
+environment_files/
+runs/
+recordings/
+*.safetensors
+*.gguf
+*.sqlite
+*.sqlite3
+*.db
+*.parquet
+
+# Live collection status changes independently of source commits.
+docs/kaggle-runs/**/status*.jsonl
+pi/node_modules/
+data/posttrain/relay/
+data/posttrain/solver/runs/
+
+# Post-training data files (large; stats.json files stay tracked).
+data/posttrain/**/*.jsonl
+MODAL_STATUS.md
+MODAL_STATUS.html
+papers/
+
+# Hosted-API and cloud credentials kept beside the repo root.
+.openrouter/
+.beam/
+.nebius/
+
+# Agent worktrees, tool logs and local scratch.
+.claude/worktrees/
+.playwright-mcp/
+.benchmarks/
+
+# Clones of public harnesses (only the retrodict-max branch uses Retrodict and thinharness).
+externals/
+
+# run records (infra stage 4): tracked, their lock and temp files not
+# run records and their views: machine-local, written only by tools/ops/records.py (24 Oct); settled copies in docs/runs-settled/ (local only)
+docs/runs/
+docs/spend.json
+docs/modal-queue.json
+docs/modal-billed.json
+docs/.modal-billed.json.*
+docs/modal-billed.json.lock
+docs/runs-settled/
+
+# generated every dash pass / written by launchers: on disk in the main checkout, not in git
+docs/html/index.html
+docs/html/training-live.html
+docs/html/*-status.html
+docs/validation/**/*.json
+docs/validation/**/*.jsonl
+docs/*.lock
+
+# harvested logs of other arms: kept locally, not in git
+runlogs/other/
+
+# Owner notes and external material: local only, never in git
+/resources/
+/papers/
+/working notes.md
+/targets.md
+/notes.md
+/ideas.md
+/prompt.md
+/arc2_log.md
+/arc3_log.md
+/docs/ideas.md
+/docs/harness-ideas.md
+/docs/throughput-ideas.md
+/docs/paper-notes.md
+/docs/post-train-envs.md
+/docs/rl-feedback.md
+/notes/
+/.playwright-mcp/
+/docs/spend.json
+/docs/modal-queue.json
+
+# Local-only notes: kept in the working tree, never committed.
+/branch-docs/
+/docs/archive/arc2-arm.md
+/docs/archive/arc2-audit.md
+/docs/archive/arc2-conv1-analysis.md
+/docs/archive/artifact-storage.md
+/docs/archive/envs-plan.md
+/docs/archive/harness-arm.md
+/docs/archive/harness-audit.md
+/docs/archive/harnesses.md
+/docs/archive/neural.md
+/docs/archive/optim.md
+/docs/archive/posttrain-stack.md
+/docs/archive/prompt-training-recipe.md
+/docs/archive/prune-heal-plan.md
+/docs/archive/research\ plans.md
+/docs/archive/rl-archive.md
+/docs/archive/rl-plan.md
+/docs/archive/rsi.md
+/docs/archive/sft-plan.md
+/docs/archive/throughput-arm-status.md
+/docs/archive/throughput-tuning.md
+/docs/archive/v71-24h-analysis.md
+/docs/lessons.md
+/docs/v52-submission.md
+/docs/v9-submission.md
+/kaggle/README.md

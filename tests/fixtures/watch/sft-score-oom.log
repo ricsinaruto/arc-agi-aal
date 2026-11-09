@@ -1,0 +1,22 @@
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/axolotl-venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/axolotl-venv/lib/python3.12/site-packages/transformers/models/qwen4_exp/modeling_qwen4_exp.py", line 993, in forward
+    expert_output = self.experts(hidden_states_reshaped, selected_experts, routing_weights)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/axolotl-venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/axolotl-venv/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/axolotl-venv/lib/python3.12/site-packages/transformers/integrations/moe.py", line 590, in forward
+    return experts_forward(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/axolotl-venv/lib/python3.12/site-packages/transformers/integrations/moe.py", line 489, in grouped_mm_experts_forward
+    weighted_out = weighted_out[inv_perm]  # (S, hidden_dim)
+                   ~~~~~~~~~~~~^^^^^^^^^^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 1.56 GiB. GPU 0 has a total capacity of 267.68 GiB of which 711.69 MiB is free. Process 1 has 266.96 GiB memory in use. Of the allocated memory 265.73 GiB is allocated by PyTorch, with 2.86 GiB allocated in private pools (e.g., CUDA Graphs), and 321.52 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is lar
+

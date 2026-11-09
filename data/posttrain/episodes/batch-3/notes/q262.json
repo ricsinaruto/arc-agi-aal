@@ -1,0 +1,59 @@
+{
+ "game_id": "q262-db244f79",
+ "name": "lights",
+ "tags": [
+  "click",
+  "toggle",
+  "rule-change"
+ ],
+ "note": "q002 lights: click cells until every board cell is yellow.\n\nHidden rules: a click on a board cell flips it and its neighbours between gray and yellow. Levels 1-2\nflip the four orthogonal neighbours (plus pattern); from level 3 the flip pattern is the four\ndiagonal neighbours instead (the interaction changes between levels, as in the public games).\nClicks outside the board do nothing.",
+ "episode_of": "q002",
+ "mechanic": "lights",
+ "tier": 1,
+ "seed": 0,
+ "skin_of": null,
+ "batch": 3,
+ "level_source": "generated",
+ "skin": null,
+ "solution": [
+  [
+   [
+    6,
+    [
+     2,
+     1
+    ]
+   ],
+   [
+    6,
+    [
+     3,
+     1
+    ]
+   ],
+   [
+    6,
+    [
+     2,
+     2
+    ]
+   ],
+   [
+    6,
+    [
+     3,
+     3
+    ]
+   ]
+  ]
+ ],
+ "level": {
+  "attempt": 5,
+  "baseline": 4,
+  "random": 0.0,
+  "tier_band": [
+   4,
+   6
+  ]
+ }
+}

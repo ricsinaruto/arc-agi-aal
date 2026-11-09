@@ -1,0 +1,2034 @@
+{
+ "teacher": "Qwen3.8-Flash-Next-NVFP4 xhigh",
+ "totals": {
+  "segments": 577,
+  "verified": 545,
+  "usable_verified": 510,
+  "unique_verified": 448,
+  "failed_verification": {
+   "explorer_game": 32
+  },
+  "excluded_after_verification": {
+   "unreconstructed_variant:duck_harness": 27,
+   "unreconstructed_variant:harness_v2": 17,
+   "external_actions": 2,
+   "unattributed_actions": 2,
+   "unreconstructed_variant:critical_errors": 6
+  },
+  "completion_tokens_usable": 11278175,
+  "completion_tokens_unique": 10622123,
+  "reasoning_tokens_unique": 8940641,
+  "user_source_unique": {
+   "transcript_verified": 252,
+   "transcript": 0,
+   "simulated": 196
+  },
+  "starts_after_compaction_unique": 84,
+  "with_compaction_inside_unique": 60,
+  "caveats_unique": {
+   "carried_context_omitted:cross_game_notes": 25,
+   "carried_context_omitted:game_snapshot": 12,
+   "carried_context_omitted:memory_block": 8,
+   "compaction_tail_observation_only": 3,
+   "compaction_keeps_3_observations": 4
+  },
+  "level_score_unique": {
+   "n": 448,
+   "min": 6.25,
+   "median": 115.0,
+   "mean": 99.804,
+   "max": 115.0
+  },
+  "score_histogram_unique": {
+   "0-10": 1,
+   "10-25": 21,
+   "25-50": 34,
+   "50-75": 24,
+   "75-100": 16,
+   "100-115": 352
+  }
+ },
+ "games_processed": 1532,
+ "games_with_transcript": 724,
+ "games_transcript_aligned": 724,
+ "prompt_simulation": {
+  "turns": 6409,
+  "user_exact": 6393,
+  "system_exact": 6104,
+  "followups": 11,
+  "followup_exact": 11,
+  "mismatch_examples": [
+   {
+    "game": "ar25-0c556536",
+    "turn": 4,
+    "step": 17,
+    "diff": {
+     "at": 462,
+     "transcript": "om HUD-only changes.\nNew on level 2 (not on any earlier level's board): objects (colour, pixels, bbo",
+     "simulated": "om HUD-only changes."
+    }
+   },
+   {
+    "game": "ar25-0c556536",
+    "turn": 9,
+    "step": 36,
+    "diff": {
+     "at": 465,
+     "transcript": "om HUD-only changes.\nNew on level 3 (not on any earlier level's board): objects (colour, pixels, bbo",
+     "simulated": "om HUD-only changes."
+    }
+   },
+   {
+    "game": "ar25-0c556536",
+    "turn": 17,
+    "step": 83,
+    "diff": {
+     "at": 421,
+     "transcript": "om HUD-only changes.\nNew on level 4 (not on any earlier level's board): objects (colour, pixels, bbo",
+     "simulated": "om HUD-only changes."
+    }
+   },
+   {
+    "game": "ar25-0c556536",
+    "turn": 22,
+    "step": 113,
+    "diff": {
+     "at": 434,
+     "transcript": "om HUD-only changes.\nNew on level 5 (not on any earlier level's board): objects (colour, pixels, bbo",
+     "simulated": "om HUD-only changes."
+    }
+   },
+   {
+    "game": "ar25-0c556536",
+    "turn": 29,
+    "step": 161,
+    "diff": {
+     "at": 405,
+     "transcript": "om HUD-only changes.\nNew on level 6 (not on any earlier level's board): objects (colour, pixels, bbo",
+     "simulated": "om HUD-only changes."
+    }
+   },
+   {
+    "game": "ar25-0c556536",
+    "turn": 45,
+    "step": 252,
+    "diff": {
+     "at": 702,
+     "transcript": "om HUD-only changes.\nNew on level 7 (not on any earlier level's board): objects (colour, pixels, bbo",
+     "simulated": "om HUD-only changes."
+    }
+   },
+   {
+    "game": "ar25-0c556536",
+    "turn": 51,
+    "step": 298,
+    "diff": {
+     "at": 719,
+     "transcript": "om HUD-only changes.\nNew on level 8 (not on any earlier level's board): objects (colour, pixels, bbo",
+     "simulated": "om HUD-only changes."
+    }
+   },
+   {
+    "game": "lf52-271a04aa",
+    "turn": 9,
+    "step": 13,
+    "diff": {
+     "at": 498,
+     "transcript": "om HUD-only changes.\nNew on level 2 (not on any earlier level's board): colours never seen before: O",
+     "simulated": "om HUD-only changes."
+    }
+   },
+   {
+    "game": "lf52-271a04aa",
+    "turn": 38,
+    "step": 94,
+    "diff": {
+     "at": 405,
+     "transcript": "om HUD-only changes.\nNew on level 3 (not on any earlier level's board): objects (colour, pixels, bbo",
+     "simulated": "om HUD-only changes."
+    }
+   },
+   {
+    "game": "tu93-0768757b",
+    "turn": 3,
+    "step": 18,
+    "diff": {
+     "at": 440,
+     "transcript": "om HUD-only changes.\nNew on level 2 (not on any earlier level's board): colours never seen before: R",
+     "simulated": "om HUD-only changes."
+    }
+   },
+   {
+    "game": "tu93-0768757b",
+    "turn": 10,
+    "step": 37,
+    "diff": {
+     "at": 385,
+     "transcript": "om HUD-only changes.\nNew on level 3 (not on any earlier level's board): objects (colour, pixels, bbo",
+     "simulated": "om HUD-only changes."
+    }
+   },
+   {
+    "game": "tu93-0768757b",
+    "turn": 12,
+    "step": 63,
+    "diff": {
+     "at": 1110,
+     "transcript": "om HUD-only changes.\nNew on level 4 (not on any earlier level's board): colours never seen before: O",
+     "simulated": "om HUD-only changes."
+    }
+   },
+   {
+    "game": "tu93-0768757b",
+    "turn": 16,
+    "step": 105,
+    "diff": {
+     "at": 1225,
+     "transcript": "om HUD-only changes.\nNew on level 5 (not on any earlier level's board): objects (colour, pixels, bbo",
+     "simulated": "om HUD-only changes."
+    }
+   },
+   {
+    "game": "tu93-0768757b",
+    "turn": 22,
+    "step": 134,
+    "diff": {
+     "at": 1070,
+     "transcript": "om HUD-only changes.\nNew on level 6 (not on any earlier level's board): objects (colour, pixels, bbo",
+     "simulated": "om HUD-only changes."
+    }
+   },
+   {
+    "game": "tu93-0768757b",
+    "turn": 27,
+    "step": 162,
+    "diff": {
+     "at": 434,
+     "transcript": "om HUD-only changes.\nNew on level 7 (not on any earlier level's board): colours never seen before: r",
+     "simulated": "om HUD-only changes."
+    }
+   },
+   {
+    "game": "tu93-0768757b",
+    "turn": 29,
+    "step": 176,
+    "diff": {
+     "at": 436,
+     "transcript": "om HUD-only changes.\nNew on level 8: nothing; every object's colour and shape appeared on an earlier",
+     "simulated": "om HUD-only changes."
+    }
+   }
+  ]
+ },
+ "skipped": {
+  "non_teacher_trials": [
+   "kaggle-arena-30m-minicpm5-text-v1 (openbmb/MiniCPM5-2B, native)",
+   "kaggle-arena-30m-nemotron3-super-v1 (nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4, native)",
+   "kaggle-arena-30m-nemotron3-super-v2 (nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4, native)",
+   "kaggle-arena-30m-nemotron35-lightning-v2 (nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4, native)",
+   "kaggle-arena-30m-qwen35-122b-v1 (nvidia/Qwen3.5-122B-A10B-NVFP4, native)",
+   "kaggle-arena-30m-qwen36-v1 (nvidia/Qwen3.6-35B-A3B-NVFP4, native)",
+   "kaggle-arena-duck-30m-fixed2x-effort-low-v1 (Qwen/Qwen3.8-Flash-Next-NVFP4, low)",
+   "kaggle-arena-duck-30m-fixed2x-effort-medium-v1 (Qwen/Qwen3.8-Flash-Next-NVFP4, medium)",
+   "kaggle-arena-duck-30m-inference-effort-high-v1 (Qwen/Qwen3.8-Flash-Next-NVFP4, high)",
+   "kaggle-arena-duck-30m-inference-effort-medium-v1 (Qwen/Qwen3.8-Flash-Next-NVFP4, medium)",
+   "kaggle-arena-duck-30m-nex-none-v1 (primitive-ai/Nex-N2.5-mini-NVFP4, none)",
+   "kaggle-arena-duck-30m-nex-v4 (primitive-ai/Nex-N2.5-mini-NVFP4, high)",
+   "kaggle-arena-duck-30m-qwen27-fp8-capacity-v2 (Qwen/Qwen3.8-27B-FP8, xhigh)",
+   "kaggle-arena-duck-30m-qwen27-nvfp4-capacity-v2 (nvidia/Qwen3.8-27B-NVFP4, xhigh)",
+   "kaggle-arena-duck-30m-sglang-tokenize-v4 (pennyroyal, xhigh)",
+   "kaggle-arena-duck-30m-ui-mate-27b-v4 (tencent/UI-Mate-27B, native)",
+   "kaggle-arena-duck-60m-r23-ornith-v1 (ornith-ai/Ornith-1.5-35B-A3B-NVFP4, native)",
+   "kaggle-arena-paired-30m-flash-sglang-v2 (pennyroyal, xhigh)",
+   "kaggle-arena-paired-30m-nex-v2 (primitive-ai/Nex-N2.5-mini-NVFP4, high)",
+   "kaggle-arena-paired-30m-qwen27-fp8-v2 (Qwen/Qwen3.8-27B-FP8, xhigh)",
+   "kaggle-arena-paired-30m-qwen27-nvfp4-v1 (nvidia/Qwen3.8-27B-NVFP4, xhigh)",
+   "kaggle-arena-paired-30m-ui-mate-9b-v2 (tencent/UI-Mate-9B, native)",
+   "modal-validation/arena-duck-probe-effort-low-v1-modal-20260926 (Qwen/Qwen3.8-Flash-Next-NVFP4, low)",
+   "modal-validation/arena-duck-probe-effort-medium-v1-modal-20260926 (Qwen/Qwen3.8-Flash-Next-NVFP4, medium)"
+  ],
+  "holdout_or_other_games": 1067,
+  "other_set_games": 20
+ },
+ "per_game_level": [
+  {
+   "game": "ar25",
+   "level": 1,
+   "segments": 53,
+   "verified": 49,
+   "unique_verified": 36,
+   "failed": {},
+   "excluded": {
+    "unreconstructed_variant:duck_harness": 2,
+    "unreconstructed_variant:harness_v2": 1,
+    "external_actions": 1,
+    "unattributed_actions": 1,
+    "unreconstructed_variant:critical_errors": 1
+   },
+   "baseline_actions": 32,
+   "median_actions": 18,
+   "min_actions": 15,
+   "score": {
+    "n": 49,
+    "min": 113.778,
+    "median": 115.0,
+    "mean": 114.975,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 281570,
+    "median": 5616
+   }
+  },
+  {
+   "game": "ar25",
+   "level": 2,
+   "segments": 34,
+   "verified": 31,
+   "unique_verified": 31,
+   "failed": {},
+   "excluded": {
+    "unreconstructed_variant:duck_harness": 2,
+    "unreconstructed_variant:harness_v2": 1,
+    "unreconstructed_variant:critical_errors": 1
+   },
+   "baseline_actions": 50,
+   "median_actions": 23,
+   "min_actions": 15,
+   "score": {
+    "n": 31,
+    "min": 28.905,
+    "median": 115.0,
+    "mean": 109.531,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 562974,
+    "median": 17226
+   }
+  },
+  {
+   "game": "ar25",
+   "level": 3,
+   "segments": 24,
+   "verified": 23,
+   "unique_verified": 23,
+   "failed": {},
+   "excluded": {
+    "unreconstructed_variant:duck_harness": 1,
+    "unreconstructed_variant:harness_v2": 1
+   },
+   "baseline_actions": 75,
+   "median_actions": 48,
+   "min_actions": 41,
+   "score": {
+    "n": 23,
+    "min": 10.541,
+    "median": 115.0,
+    "mean": 107.353,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 505179,
+    "median": 18044
+   }
+  },
+  {
+   "game": "ar25",
+   "level": 4,
+   "segments": 23,
+   "verified": 22,
+   "unique_verified": 15,
+   "failed": {},
+   "excluded": {
+    "unreconstructed_variant:duck_harness": 1,
+    "unreconstructed_variant:harness_v2": 1
+   },
+   "baseline_actions": 37,
+   "median_actions": 30.0,
+   "min_actions": 22,
+   "score": {
+    "n": 22,
+    "min": 111.755,
+    "median": 115.0,
+    "mean": 114.853,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 213218,
+    "median": 7004.5
+   }
+  },
+  {
+   "game": "ar25",
+   "level": 5,
+   "segments": 21,
+   "verified": 20,
+   "unique_verified": 17,
+   "failed": {},
+   "excluded": {
+    "unreconstructed_variant:duck_harness": 1,
+    "unreconstructed_variant:harness_v2": 1
+   },
+   "baseline_actions": 89,
+   "median_actions": 29.5,
+   "min_actions": 28,
+   "score": {
+    "n": 20,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 554996,
+    "median": 26944.5
+   }
+  },
+  {
+   "game": "ar25",
+   "level": 6,
+   "segments": 15,
+   "verified": 14,
+   "unique_verified": 14,
+   "failed": {},
+   "excluded": {
+    "unreconstructed_variant:duck_harness": 1,
+    "unreconstructed_variant:harness_v2": 1
+   },
+   "baseline_actions": 159,
+   "median_actions": 59.0,
+   "min_actions": 53,
+   "score": {
+    "n": 14,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 582808,
+    "median": 40407.0
+   }
+  },
+  {
+   "game": "ar25",
+   "level": 7,
+   "segments": 13,
+   "verified": 12,
+   "unique_verified": 11,
+   "failed": {},
+   "excluded": {
+    "unreconstructed_variant:duck_harness": 1,
+    "unreconstructed_variant:harness_v2": 1
+   },
+   "baseline_actions": 233,
+   "median_actions": 40.0,
+   "min_actions": 37,
+   "score": {
+    "n": 12,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 367806,
+    "median": 28409.0
+   }
+  },
+  {
+   "game": "ar25",
+   "level": 8,
+   "segments": 11,
+   "verified": 10,
+   "unique_verified": 9,
+   "failed": {},
+   "excluded": {
+    "unreconstructed_variant:duck_harness": 1,
+    "unreconstructed_variant:harness_v2": 1
+   },
+   "baseline_actions": 73,
+   "median_actions": 48.0,
+   "min_actions": 47,
+   "score": {
+    "n": 10,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 81213,
+    "median": 7059.0
+   }
+  },
+  {
+   "game": "bp35",
+   "level": 1,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 21,
+   "median_actions": 22.0,
+   "min_actions": 19,
+   "score": {
+    "n": 2,
+    "min": 70.56,
+    "median": 92.78,
+    "mean": 92.78,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 73285,
+    "median": 36642.5
+   }
+  },
+  {
+   "game": "cn04",
+   "level": 1,
+   "segments": 10,
+   "verified": 9,
+   "unique_verified": 9,
+   "failed": {},
+   "excluded": {
+    "external_actions": 1,
+    "unattributed_actions": 1
+   },
+   "baseline_actions": 29,
+   "median_actions": 18,
+   "min_actions": 14,
+   "score": {
+    "n": 9,
+    "min": 72.751,
+    "median": 115.0,
+    "mean": 110.306,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 144717,
+    "median": 14888
+   }
+  },
+  {
+   "game": "cn04",
+   "level": 2,
+   "segments": 5,
+   "verified": 5,
+   "unique_verified": 5,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 54,
+   "median_actions": 38,
+   "min_actions": 33,
+   "score": {
+    "n": 5,
+    "min": 37.655,
+    "median": 115.0,
+    "mean": 99.531,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 301056,
+    "median": 51045
+   }
+  },
+  {
+   "game": "cn04",
+   "level": 3,
+   "segments": 4,
+   "verified": 4,
+   "unique_verified": 4,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 85,
+   "median_actions": 27.5,
+   "min_actions": 22,
+   "score": {
+    "n": 4,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 134700,
+    "median": 28084.5
+   }
+  },
+  {
+   "game": "cn04",
+   "level": 4,
+   "segments": 4,
+   "verified": 4,
+   "unique_verified": 4,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 300,
+   "median_actions": 36.5,
+   "min_actions": 34,
+   "score": {
+    "n": 4,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 73586,
+    "median": 16244.5
+   }
+  },
+  {
+   "game": "cn04",
+   "level": 5,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 208,
+   "median_actions": 66.0,
+   "min_actions": 66,
+   "score": {
+    "n": 2,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 83927,
+    "median": 41963.5
+   }
+  },
+  {
+   "game": "ka59",
+   "level": 1,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 28,
+   "median_actions": 19.0,
+   "min_actions": 18,
+   "score": {
+    "n": 2,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 42863,
+    "median": 21431.5
+   }
+  },
+  {
+   "game": "ka59",
+   "level": 2,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 109,
+   "median_actions": 72,
+   "min_actions": 72,
+   "score": {
+    "n": 1,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 25061,
+    "median": 25061
+   }
+  },
+  {
+   "game": "ka59",
+   "level": 3,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 51,
+   "median_actions": 72,
+   "min_actions": 72,
+   "score": {
+    "n": 1,
+    "min": 50.174,
+    "median": 50.174,
+    "mean": 50.174,
+    "max": 50.174
+   },
+   "completion_tokens": {
+    "sum": 35176,
+    "median": 35176
+   }
+  },
+  {
+   "game": "ka59",
+   "level": 4,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 51,
+   "median_actions": 53,
+   "min_actions": 53,
+   "score": {
+    "n": 1,
+    "min": 92.595,
+    "median": 92.595,
+    "mean": 92.595,
+    "max": 92.595
+   },
+   "completion_tokens": {
+    "sum": 47411,
+    "median": 47411
+   }
+  },
+  {
+   "game": "ka59",
+   "level": 5,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 33,
+   "median_actions": 21,
+   "min_actions": 21,
+   "score": {
+    "n": 1,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 11604,
+    "median": 11604
+   }
+  },
+  {
+   "game": "lf52",
+   "level": 1,
+   "segments": 24,
+   "verified": 20,
+   "unique_verified": 20,
+   "failed": {},
+   "excluded": {
+    "unreconstructed_variant:duck_harness": 3,
+    "unreconstructed_variant:harness_v2": 1,
+    "unreconstructed_variant:critical_errors": 1
+   },
+   "baseline_actions": 32,
+   "median_actions": 12.0,
+   "min_actions": 9,
+   "score": {
+    "n": 20,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 258165,
+    "median": 11863.0
+   }
+  },
+  {
+   "game": "lf52",
+   "level": 2,
+   "segments": 8,
+   "verified": 7,
+   "unique_verified": 7,
+   "failed": {},
+   "excluded": {
+    "unreconstructed_variant:duck_harness": 1,
+    "unreconstructed_variant:harness_v2": 1
+   },
+   "baseline_actions": 81,
+   "median_actions": 95,
+   "min_actions": 51,
+   "score": {
+    "n": 7,
+    "min": 14.878,
+    "median": 72.698,
+    "mean": 69.945,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 307819,
+    "median": 46700
+   }
+  },
+  {
+   "game": "m0r0",
+   "level": 1,
+   "segments": 7,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {
+    "explorer_game": 5
+   },
+   "excluded": {},
+   "baseline_actions": 30,
+   "median_actions": 21.5,
+   "min_actions": 20,
+   "score": {
+    "n": 2,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 32326,
+    "median": 16163.0
+   }
+  },
+  {
+   "game": "m0r0",
+   "level": 2,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 111,
+   "median_actions": 38.5,
+   "min_actions": 35,
+   "score": {
+    "n": 2,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 30202,
+    "median": 15101.0
+   }
+  },
+  {
+   "game": "m0r0",
+   "level": 3,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 203,
+   "median_actions": 87,
+   "min_actions": 87,
+   "score": {
+    "n": 1,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 77227,
+    "median": 77227
+   }
+  },
+  {
+   "game": "m0r0",
+   "level": 4,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 26,
+   "median_actions": 23,
+   "min_actions": 23,
+   "score": {
+    "n": 1,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 19020,
+    "median": 19020
+   }
+  },
+  {
+   "game": "r11l",
+   "level": 1,
+   "segments": 26,
+   "verified": 19,
+   "unique_verified": 19,
+   "failed": {
+    "explorer_game": 5
+   },
+   "excluded": {
+    "unreconstructed_variant:duck_harness": 2
+   },
+   "baseline_actions": 22,
+   "median_actions": 7,
+   "min_actions": 5,
+   "score": {
+    "n": 19,
+    "min": 71.598,
+    "median": 115.0,
+    "mean": 112.716,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 304716,
+    "median": 15661
+   }
+  },
+  {
+   "game": "r11l",
+   "level": 2,
+   "segments": 5,
+   "verified": 5,
+   "unique_verified": 5,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 33,
+   "median_actions": 21,
+   "min_actions": 14,
+   "score": {
+    "n": 5,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 237158,
+    "median": 38055
+   }
+  },
+  {
+   "game": "r11l",
+   "level": 3,
+   "segments": 4,
+   "verified": 4,
+   "unique_verified": 4,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 51,
+   "median_actions": 15.0,
+   "min_actions": 13,
+   "score": {
+    "n": 4,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 189286,
+    "median": 44364.0
+   }
+  },
+  {
+   "game": "r11l",
+   "level": 4,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 26,
+   "median_actions": 25.0,
+   "min_actions": 14,
+   "score": {
+    "n": 2,
+    "min": 52.16,
+    "median": 83.58,
+    "mean": 83.58,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 161211,
+    "median": 80605.5
+   }
+  },
+  {
+   "game": "sc25",
+   "level": 1,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 36,
+   "median_actions": 36,
+   "min_actions": 36,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 31671,
+    "median": 31671
+   }
+  },
+  {
+   "game": "sc25",
+   "level": 2,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 6,
+   "median_actions": 5,
+   "min_actions": 5,
+   "score": {
+    "n": 1,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 3333,
+    "median": 3333
+   }
+  },
+  {
+   "game": "sc25",
+   "level": 3,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 32,
+   "median_actions": 99,
+   "min_actions": 99,
+   "score": {
+    "n": 1,
+    "min": 10.448,
+    "median": 10.448,
+    "mean": 10.448,
+    "max": 10.448
+   },
+   "completion_tokens": {
+    "sum": 68538,
+    "median": 68538
+   }
+  },
+  {
+   "game": "sc25",
+   "level": 4,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 83,
+   "median_actions": 27,
+   "min_actions": 27,
+   "score": {
+    "n": 1,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 18009,
+    "median": 18009
+   }
+  },
+  {
+   "game": "sp80",
+   "level": 1,
+   "segments": 7,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {
+    "explorer_game": 5
+   },
+   "excluded": {},
+   "baseline_actions": 39,
+   "median_actions": 74.0,
+   "min_actions": 26,
+   "score": {
+    "n": 2,
+    "min": 10.219,
+    "median": 62.609,
+    "mean": 62.609,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 65354,
+    "median": 32677.0
+   }
+  },
+  {
+   "game": "tn36",
+   "level": 1,
+   "segments": 11,
+   "verified": 5,
+   "unique_verified": 5,
+   "failed": {
+    "explorer_game": 5
+   },
+   "excluded": {
+    "unreconstructed_variant:duck_harness": 1
+   },
+   "baseline_actions": 32,
+   "median_actions": 30,
+   "min_actions": 20,
+   "score": {
+    "n": 5,
+    "min": 79.012,
+    "median": 113.778,
+    "mean": 107.314,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 112424,
+    "median": 25064
+   }
+  },
+  {
+   "game": "tn36",
+   "level": 2,
+   "segments": 4,
+   "verified": 4,
+   "unique_verified": 4,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 72,
+   "median_actions": 46.0,
+   "min_actions": 17,
+   "score": {
+    "n": 4,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 135858,
+    "median": 33075.0
+   }
+  },
+  {
+   "game": "tu93",
+   "level": 1,
+   "segments": 39,
+   "verified": 32,
+   "unique_verified": 13,
+   "failed": {
+    "explorer_game": 4
+   },
+   "excluded": {
+    "unreconstructed_variant:duck_harness": 2,
+    "unreconstructed_variant:harness_v2": 1,
+    "unreconstructed_variant:critical_errors": 1
+   },
+   "baseline_actions": 19,
+   "median_actions": 19.0,
+   "min_actions": 18,
+   "score": {
+    "n": 32,
+    "min": 15.668,
+    "median": 100.0,
+    "mean": 94.162,
+    "max": 111.42
+   },
+   "completion_tokens": {
+    "sum": 320369,
+    "median": 9978.0
+   }
+  },
+  {
+   "game": "tu93",
+   "level": 2,
+   "segments": 26,
+   "verified": 25,
+   "unique_verified": 19,
+   "failed": {},
+   "excluded": {
+    "unreconstructed_variant:duck_harness": 1,
+    "unreconstructed_variant:harness_v2": 1
+   },
+   "baseline_actions": 16,
+   "median_actions": 23,
+   "min_actions": 15,
+   "score": {
+    "n": 25,
+    "min": 16.0,
+    "median": 48.393,
+    "mean": 63.077,
+    "max": 113.778
+   },
+   "completion_tokens": {
+    "sum": 594907,
+    "median": 22880
+   }
+  },
+  {
+   "game": "tu93",
+   "level": 3,
+   "segments": 22,
+   "verified": 21,
+   "unique_verified": 14,
+   "failed": {},
+   "excluded": {
+    "unreconstructed_variant:duck_harness": 1,
+    "unreconstructed_variant:harness_v2": 1
+   },
+   "baseline_actions": 34,
+   "median_actions": 31,
+   "min_actions": 19,
+   "score": {
+    "n": 21,
+    "min": 35.58,
+    "median": 115.0,
+    "mean": 97.599,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 622120,
+    "median": 24961
+   }
+  },
+  {
+   "game": "tu93",
+   "level": 4,
+   "segments": 17,
+   "verified": 16,
+   "unique_verified": 15,
+   "failed": {},
+   "excluded": {
+    "unreconstructed_variant:duck_harness": 1,
+    "unreconstructed_variant:harness_v2": 1
+   },
+   "baseline_actions": 42,
+   "median_actions": 33.5,
+   "min_actions": 17,
+   "score": {
+    "n": 16,
+    "min": 28.265,
+    "median": 115.0,
+    "mean": 105.235,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 513648,
+    "median": 22493.5
+   }
+  },
+  {
+   "game": "tu93",
+   "level": 5,
+   "segments": 12,
+   "verified": 11,
+   "unique_verified": 10,
+   "failed": {},
+   "excluded": {
+    "unreconstructed_variant:duck_harness": 1,
+    "unreconstructed_variant:harness_v2": 1
+   },
+   "baseline_actions": 123,
+   "median_actions": 30,
+   "min_actions": 29,
+   "score": {
+    "n": 11,
+    "min": 68.146,
+    "median": 115.0,
+    "mean": 110.741,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 467433,
+    "median": 23786
+   }
+  },
+  {
+   "game": "tu93",
+   "level": 6,
+   "segments": 7,
+   "verified": 6,
+   "unique_verified": 6,
+   "failed": {},
+   "excluded": {
+    "unreconstructed_variant:duck_harness": 1,
+    "unreconstructed_variant:harness_v2": 1
+   },
+   "baseline_actions": 80,
+   "median_actions": 37.0,
+   "min_actions": 28,
+   "score": {
+    "n": 6,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 224004,
+    "median": 36635.0
+   }
+  },
+  {
+   "game": "tu93",
+   "level": 7,
+   "segments": 7,
+   "verified": 6,
+   "unique_verified": 5,
+   "failed": {},
+   "excluded": {
+    "unreconstructed_variant:duck_harness": 1,
+    "unreconstructed_variant:harness_v2": 1
+   },
+   "baseline_actions": 14,
+   "median_actions": 21.0,
+   "min_actions": 14,
+   "score": {
+    "n": 6,
+    "min": 6.25,
+    "median": 56.998,
+    "mean": 56.565,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 133573,
+    "median": 17695.0
+   }
+  },
+  {
+   "game": "tu93",
+   "level": 8,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 23,
+   "median_actions": 36.0,
+   "min_actions": 21,
+   "score": {
+    "n": 2,
+    "min": 20.338,
+    "median": 67.669,
+    "mean": 67.669,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 124928,
+    "median": 62464.0
+   }
+  },
+  {
+   "game": "vc33",
+   "level": 1,
+   "segments": 37,
+   "verified": 30,
+   "unique_verified": 30,
+   "failed": {
+    "explorer_game": 5
+   },
+   "excluded": {
+    "unreconstructed_variant:critical_errors": 1,
+    "unreconstructed_variant:duck_harness": 1
+   },
+   "baseline_actions": 7,
+   "median_actions": 12.0,
+   "min_actions": 7,
+   "score": {
+    "n": 30,
+    "min": 13.573,
+    "median": 34.028,
+    "mean": 37.036,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 279271,
+    "median": 8682.5
+   }
+  },
+  {
+   "game": "vc33",
+   "level": 2,
+   "segments": 32,
+   "verified": 28,
+   "unique_verified": 26,
+   "failed": {
+    "explorer_game": 2
+   },
+   "excluded": {
+    "unreconstructed_variant:critical_errors": 1,
+    "unreconstructed_variant:duck_harness": 1
+   },
+   "baseline_actions": 18,
+   "median_actions": 13.0,
+   "min_actions": 7,
+   "score": {
+    "n": 28,
+    "min": 61.248,
+    "median": 115.0,
+    "mean": 111.866,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 267506,
+    "median": 8333.0
+   }
+  },
+  {
+   "game": "vc33",
+   "level": 3,
+   "segments": 24,
+   "verified": 23,
+   "unique_verified": 23,
+   "failed": {
+    "explorer_game": 1
+   },
+   "excluded": {},
+   "baseline_actions": 44,
+   "median_actions": 31,
+   "min_actions": 23,
+   "score": {
+    "n": 23,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 562962,
+    "median": 22058
+   }
+  },
+  {
+   "game": "vc33",
+   "level": 4,
+   "segments": 6,
+   "verified": 6,
+   "unique_verified": 6,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 61,
+   "median_actions": 80.5,
+   "min_actions": 39,
+   "score": {
+    "n": 6,
+    "min": 29.141,
+    "median": 64.223,
+    "mean": 68.827,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 479283,
+    "median": 72057.0
+   }
+  },
+  {
+   "game": "vc33",
+   "level": 5,
+   "segments": 3,
+   "verified": 3,
+   "unique_verified": 3,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 131,
+   "median_actions": 93,
+   "min_actions": 60,
+   "score": {
+    "n": 3,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 207687,
+    "median": 45356
+   }
+  },
+  {
+   "game": "vc33",
+   "level": 6,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 34,
+   "median_actions": 52.5,
+   "min_actions": 24,
+   "score": {
+    "n": 2,
+    "min": 17.619,
+    "median": 66.309,
+    "mean": 66.309,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 50294,
+    "median": 25147.0
+   }
+  },
+  {
+   "game": "vc33",
+   "level": 7,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 152,
+   "median_actions": 61.0,
+   "min_actions": 51,
+   "score": {
+    "n": 2,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 74423,
+    "median": 37211.5
+   }
+  },
+  {
+   "game": "wa30",
+   "level": 1,
+   "segments": 3,
+   "verified": 3,
+   "unique_verified": 3,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 71,
+   "median_actions": 34,
+   "min_actions": 31,
+   "score": {
+    "n": 3,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 64631,
+    "median": 24055
+   }
+  },
+  {
+   "game": "wa30",
+   "level": 2,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 119,
+   "median_actions": 65,
+   "min_actions": 65,
+   "score": {
+    "n": 1,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 34565,
+    "median": 34565
+   }
+  },
+  {
+   "game": "wa30",
+   "level": 3,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 183,
+   "median_actions": 80,
+   "min_actions": 80,
+   "score": {
+    "n": 1,
+    "min": 115.0,
+    "median": 115.0,
+    "mean": 115.0,
+    "max": 115.0
+   },
+   "completion_tokens": {
+    "sum": 30633,
+    "median": 30633
+   }
+  },
+  {
+   "game": "wa30",
+   "level": 4,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 98,
+   "median_actions": 123,
+   "min_actions": 123,
+   "score": {
+    "n": 1,
+    "min": 63.481,
+    "median": 63.481,
+    "mean": 63.481,
+    "max": 63.481
+   },
+   "completion_tokens": {
+    "sum": 50471,
+    "median": 50471
+   }
+  }
+ ],
+ "eval_split": {
+  "segments": 0,
+  "unique_verified": 0,
+  "games": [],
+  "completion_tokens": 0
+ },
+ "source": "dev",
+ "run_patterns": [
+  "runs/modal-validation/arena-duck-*/arena/trials/duck-transfer",
+  "runs/kaggle-*/**/trials/duck-transfer"
+ ],
+ "errors": [],
+ "runs": [
+  "kaggle-arena-cache-blocks-r2-20260923",
+  "kaggle-arena-competition-rerun-rehearsal-v1",
+  "kaggle-arena-competition-rerun-rehearsal-v2",
+  "kaggle-arena-duck-30m-fixed2x-64k-four-v1",
+  "kaggle-arena-duck-30m-fixed2x-memory-v1",
+  "kaggle-arena-duck-30m-fixed2x-mtp4-v1",
+  "kaggle-arena-duck-30m-fixed2x-pool2-timed-novelty-v3",
+  "kaggle-arena-duck-30m-fixed2x-progress-v1",
+  "kaggle-arena-duck-30m-fixed2x-stall-open360-v1",
+  "kaggle-arena-duck-30m-fixed2x-switch3-v1",
+  "kaggle-arena-duck-30m-fixed2x-t1cap120-v1",
+  "kaggle-arena-duck-30m-flash-context-control-v1",
+  "kaggle-arena-duck-30m-flash-control-v4",
+  "kaggle-arena-duck-30m-flash-reclaim-64k-v1",
+  "kaggle-arena-duck-30m-flash-reclaim-mtp1-v1",
+  "kaggle-arena-duck-30m-flash-reclaim-v1",
+  "kaggle-arena-duck-30m-inference-64k-keep3-v1",
+  "kaggle-arena-duck-30m-inference-affinity-v1",
+  "kaggle-arena-duck-30m-inference-fifo-v1",
+  "kaggle-arena-duck-30m-inference-four-v1",
+  "kaggle-arena-duck-30m-inference-grant-2t1-v1",
+  "kaggle-arena-duck-30m-inference-regrant-2x-v1",
+  "kaggle-arena-duck-60m-r23-base-v4",
+  "kaggle-arena-duck-60m-r23-base-v5",
+  "kaggle-arena-duck-60m-r23-budget1x-v1",
+  "kaggle-arena-duck-60m-r23-coverage-v1",
+  "kaggle-arena-duck-60m-r23-evolve-v3",
+  "kaggle-arena-duck-60m-r23-explorer-v1",
+  "kaggle-arena-duck-60m-r23-index-lane-v1",
+  "kaggle-arena-duck-60m-r23-index-lane-v2",
+  "kaggle-arena-duck-60m-r23-index-lane-v3",
+  "kaggle-arena-duck-60m-r23-index-v2",
+  "kaggle-arena-duck-60m-r23-notes-live-v2",
+  "kaggle-arena-duck-60m-r23-procedure-v1",
+  "kaggle-arena-duck-60m-r23-thompson-v1",
+  "kaggle-arena-duck-60m-r23-token-budget-v1",
+  "kaggle-arena-flash-competition-fixed2x-v1",
+  "kaggle-arena-flash-competition-fixed2x-v2",
+  "kaggle-arena-flash-competition-fixed2x-v3",
+  "kaggle-arena-flash-competition-fixed2x-v4",
+  "kaggle-arena-flash-competition-fixed2x-v5",
+  "kaggle-arena-flash-competition-progress-v1",
+  "kaggle-arena-flash-competition-v1",
+  "kaggle-arena-paired-30m-flash-vllm-v1",
+  "kaggle-arena/smoke1",
+  "modal-validation/arena-duck-30m-fixed2x-80k-three-v1-modal-20260925",
+  "modal-validation/arena-duck-30m-fixed2x-notes-live-v1-modal-20260925",
+  "modal-validation/arena-duck-30m-fixed2x-notes-live-v2-modal-20260925",
+  "modal-validation/arena-duck-30m-fixed2x-notes-v1-modal-20260925",
+  "modal-validation/arena-duck-30m-fixed2x-notes-v2-modal-20260925",
+  "modal-validation/arena-duck-30m-fixed2x-pool-v2-modal-20260925",
+  "modal-validation/arena-duck-30m-fixed2x-pool2-cap-v1-modal-20260925",
+  "modal-validation/arena-duck-30m-fixed2x-pool2-cap-v2-modal-20260925",
+  "modal-validation/arena-duck-30m-fixed2x-pool2-timed-novelty-v1-modal-20260925",
+  "modal-validation/arena-duck-30m-fixed2x-pool2-timed-novelty-v2-modal-20260925",
+  "modal-validation/arena-duck-30m-fixed2x-progress-v2-modal-20260925",
+  "modal-validation/arena-duck-30m-fixed2x-snapshot-v1-modal-20260925",
+  "modal-validation/arena-duck-30m-fixed2x-stall-open360-v2-modal-20260925",
+  "modal-validation/arena-duck-30m-r23-fixed2x-v1-modal-20260925",
+  "modal-validation/arena-duck-60m-r23-base-v2-modal-20260925",
+  "modal-validation/arena-duck-60m-r23-base-v3-modal-20260925",
+  "modal-validation/arena-duck-60m-r23-budget4x-v1-modal-20260925",
+  "modal-validation/arena-duck-60m-r23-harness-v2-v1-modal-20260926",
+  "modal-validation/arena-duck-60m-r23-index-v3-modal-20260926",
+  "modal-validation/arena-duck-60m-r23-llm-rank-v1-modal-20260926",
+  "modal-validation/arena-duck-60m-r23-memory-v2-modal-20260926",
+  "modal-validation/arena-duck-60m-r23-notes-live-v1-modal-20260925",
+  "modal-validation/arena-duck-60m-r23-reopen-pause-v1-modal-20260925",
+  "modal-validation/arena-duck-60m-r23-slots1-v1-modal-20260925",
+  "modal-validation/arena-duck-60m-r23-slots4-v1-modal-20260925",
+  "modal-validation/arena-duck-60m-r23-slots4-v2-modal-20260926",
+  "modal-validation/arena-duck-60m-r23-slots8-v1-modal-20260925",
+  "modal-validation/arena-duck-60m-r23-snapshot-v1-modal-20260926",
+  "modal-validation/arena-duck-probe-control-v1-modal-20260926",
+  "modal-validation/arena-duck-probe-control-v2-modal-20260926",
+  "modal-validation/arena-duck-probe-critical-v1-modal-20260926",
+  "modal-validation/arena-duck-probe-demo-silent-v1-modal-20260926",
+  "modal-validation/arena-duck-probe-demo-silent-v2-modal-20260926",
+  "modal-validation/arena-duck-probe-demo-v1-modal-20260926",
+  "modal-validation/arena-duck-probe-demo-v2-modal-20260926",
+  "modal-validation/arena-duck-probe-play-v1-modal-20260926",
+  "modal-validation/arena-duck-transfer-25g-900s-20260922"
+ ],
+ "request_caps": {
+  "kaggle-arena/smoke1": [
+   null,
+   "no_bundle"
+  ],
+  "kaggle-arena-cache-blocks-r2-20260923": [
+   null,
+   "no_bundle"
+  ],
+  "kaggle-arena-competition-rerun-rehearsal-v1": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-competition-rerun-rehearsal-v2": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-duck-30m-fixed2x-64k-four-v1": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-duck-30m-fixed2x-memory-v1": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-duck-30m-fixed2x-mtp4-v1": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-duck-30m-fixed2x-pool2-timed-novelty-v3": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-duck-30m-fixed2x-progress-v1": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-duck-30m-fixed2x-stall-open360-v1": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-duck-30m-fixed2x-switch3-v1": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-duck-30m-fixed2x-t1cap120-v1": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-duck-30m-flash-context-control-v1": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-duck-30m-flash-control-v4": [
+   null,
+   "no_bundle"
+  ],
+  "kaggle-arena-duck-30m-flash-reclaim-64k-v1": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-duck-30m-flash-reclaim-mtp1-v1": [
+   null,
+   "no_bundle"
+  ],
+  "kaggle-arena-duck-30m-flash-reclaim-v1": [
+   null,
+   "no_bundle"
+  ],
+  "kaggle-arena-duck-30m-inference-64k-keep3-v1": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-duck-30m-inference-affinity-v1": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-duck-30m-inference-fifo-v1": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-duck-30m-inference-four-v1": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-duck-30m-inference-grant-2t1-v1": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-duck-30m-inference-regrant-2x-v1": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-duck-60m-r23-base-v4": [
+   12,
+   "bundle"
+  ],
+  "kaggle-arena-duck-60m-r23-base-v5": [
+   12,
+   "bundle"
+  ],
+  "kaggle-arena-duck-60m-r23-budget1x-v1": [
+   12,
+   "bundle"
+  ],
+  "kaggle-arena-duck-60m-r23-coverage-v1": [
+   12,
+   "bundle"
+  ],
+  "kaggle-arena-duck-60m-r23-evolve-v3": [
+   12,
+   "bundle"
+  ],
+  "kaggle-arena-duck-60m-r23-explorer-v1": [
+   12,
+   "bundle"
+  ],
+  "kaggle-arena-duck-60m-r23-index-lane-v1": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-duck-60m-r23-index-lane-v2": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-duck-60m-r23-index-lane-v3": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-duck-60m-r23-index-v2": [
+   12,
+   "bundle"
+  ],
+  "kaggle-arena-duck-60m-r23-notes-live-v2": [
+   12,
+   "bundle"
+  ],
+  "kaggle-arena-duck-60m-r23-procedure-v1": [
+   12,
+   "bundle"
+  ],
+  "kaggle-arena-duck-60m-r23-thompson-v1": [
+   12,
+   "bundle"
+  ],
+  "kaggle-arena-duck-60m-r23-token-budget-v1": [
+   12,
+   "bundle"
+  ],
+  "kaggle-arena-flash-competition-fixed2x-v1": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-flash-competition-fixed2x-v2": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-flash-competition-fixed2x-v3": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-flash-competition-fixed2x-v4": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-flash-competition-fixed2x-v5": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-flash-competition-progress-v1": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-flash-competition-v1": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-paired-30m-flash-vllm-v1": [
+   null,
+   "no_bundle"
+  ],
+  "modal-validation/arena-duck-30m-fixed2x-80k-three-v1-modal-20260925": [
+   null,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-30m-fixed2x-notes-live-v1-modal-20260925": [
+   null,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-30m-fixed2x-notes-live-v2-modal-20260925": [
+   null,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-30m-fixed2x-notes-v1-modal-20260925": [
+   null,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-30m-fixed2x-notes-v2-modal-20260925": [
+   null,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-30m-fixed2x-pool-v2-modal-20260925": [
+   null,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-30m-fixed2x-pool2-cap-v1-modal-20260925": [
+   null,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-30m-fixed2x-pool2-cap-v2-modal-20260925": [
+   null,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-30m-fixed2x-pool2-timed-novelty-v1-modal-20260925": [
+   null,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-30m-fixed2x-pool2-timed-novelty-v2-modal-20260925": [
+   null,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-30m-fixed2x-progress-v2-modal-20260925": [
+   null,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-30m-fixed2x-snapshot-v1-modal-20260925": [
+   12,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-30m-fixed2x-stall-open360-v2-modal-20260925": [
+   null,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-30m-r23-fixed2x-v1-modal-20260925": [
+   12,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-60m-r23-base-v2-modal-20260925": [
+   12,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-60m-r23-base-v3-modal-20260925": [
+   12,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-60m-r23-budget4x-v1-modal-20260925": [
+   12,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-60m-r23-harness-v2-v1-modal-20260926": [
+   null,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-60m-r23-index-v3-modal-20260926": [
+   null,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-60m-r23-llm-rank-v1-modal-20260926": [
+   12,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-60m-r23-memory-v2-modal-20260926": [
+   12,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-60m-r23-notes-live-v1-modal-20260925": [
+   12,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-60m-r23-reopen-pause-v1-modal-20260925": [
+   12,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-60m-r23-slots1-v1-modal-20260925": [
+   12,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-60m-r23-slots4-v1-modal-20260925": [
+   12,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-60m-r23-slots4-v2-modal-20260926": [
+   12,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-60m-r23-slots8-v1-modal-20260925": [
+   12,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-60m-r23-snapshot-v1-modal-20260926": [
+   12,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-probe-control-v1-modal-20260926": [
+   12,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-probe-control-v2-modal-20260926": [
+   12,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-probe-critical-v1-modal-20260926": [
+   12,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-probe-demo-silent-v1-modal-20260926": [
+   12,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-probe-demo-silent-v2-modal-20260926": [
+   12,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-probe-demo-v1-modal-20260926": [
+   12,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-probe-demo-v2-modal-20260926": [
+   12,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-probe-play-v1-modal-20260926": [
+   12,
+   "bundle"
+  ],
+  "modal-validation/arena-duck-transfer-25g-900s-20260922": [
+   null,
+   "no_bundle"
+  ]
+ },
+ "images": true,
+ "seconds": 13.9
+}

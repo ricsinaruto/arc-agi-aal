@@ -1,0 +1,222 @@
+{
+ "game_id": "q231-46ba3ebb",
+ "name": "keys-skin",
+ "tags": [
+  "keyboard",
+  "navigation",
+  "keys-doors",
+  "skin"
+ ],
+ "note": "q001 keys: walk to the green exit; a coloured cell you step on opens every wall cell of the same colour.\n\nHidden rules the player must discover: arrows move the blue avatar one cell; dark-gray walls block;\nstepping on a coloured cell that is not blocking (a key) removes it and every blocking cell of that\ncolour (doors); keys and doors look identical until you try to walk into them.\n\nSkin of q001 (keys): the same rules and levels as above, shown differently. The board is mirrored left-right, so every direction, side and axis named in the rules above refers to the unturned board. The direction keys follow the screen: the base game's up appears as up, down appears as down, left appears as right, right appears as left, and the key for the screen direction moves things that way (for example UP moves the base game's up). Clicks act on the cell clicked on screen. Every colour is replaced: white -> blue, light gray -> purple, gray -> charcoal, dark gray -> pink, charcoal -> sky blue, black -> light gray, magenta -> orange, pink -> white, red -> black, blue -> yellow, sky blue -> red, yellow -> dark gray, orange -> gray, dark red -> green, green -> dark red, purple -> magenta.",
+ "episode_of": "q001",
+ "mechanic": "keys",
+ "tier": 3,
+ "seed": 1,
+ "skin_of": "q001",
+ "batch": 2,
+ "level_source": "fixed",
+ "skin": {
+  "flip": true,
+  "turns": 0,
+  "palette": [
+   9,
+   15,
+   4,
+   7,
+   10,
+   1,
+   12,
+   0,
+   5,
+   11,
+   8,
+   3,
+   2,
+   14,
+   13,
+   6
+  ],
+  "keys": {
+   "1": 1,
+   "2": 2,
+   "4": 3,
+   "3": 4
+  },
+  "actions": [
+   1,
+   2,
+   3,
+   4
+  ]
+ },
+ "solution": [
+  [
+   [
+    2,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    3,
+    null
+   ]
+  ]
+ ],
+ "level": {
+  "attempt": 0,
+  "baseline": 40,
+  "random": 0.0,
+  "tier_band": null
+ }
+}

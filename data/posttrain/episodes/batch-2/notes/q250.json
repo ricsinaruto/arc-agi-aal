@@ -1,0 +1,120 @@
+{
+ "game_id": "q250-3161253a",
+ "name": "pipes-skin",
+ "tags": [
+  "click",
+  "rotation",
+  "connectivity",
+  "skin"
+ ],
+ "note": "q014 pipes: rotate pipe tiles until water flows from the red source to every green sink.\n\nHidden rules: the board is a grid of 3x3-cell tiles. A pipe tile shows a centre cell and one arm per\nopening (up, right, down, left). Clicking any cell of a rotatable tile (light gray when dry, blue when\nwet) turns it a quarter turn clockwise; clicks on blank tiles or the border do nothing. The red-centred source and green-centred sinks never turn; from level 4 gray tiles are\nlocked and ignore clicks too. Water spreads from the source through every pair of neighbouring tiles\nwhose facing openings meet; wet pipes are drawn blue (locked ones sky blue), dry pipes light gray\n(locked ones gray). A sink's arm turns blue when water reaches it. The level clears when every sink\nis wet. Levels 1-2 have one sink, level 3 two sinks, level 4 one sink with locked tiles, level 5 two\nsinks with locked tiles.\n\nSkin of q014 (pipes): the same rules and levels as above, shown differently. The board is mirrored left-right and then turned 180 degrees clockwise, so every direction, side and axis named in the rules above refers to the unturned board. Clicks act on the cell clicked on screen. Every colour is replaced: white -> yellow, light gray -> magenta, gray -> orange, dark gray -> green, charcoal -> light gray, black -> blue, magenta -> purple, pink -> black, red -> pink, blue -> sky blue, sky blue -> gray, yellow -> dark red, orange -> red, dark red -> white, green -> dark gray, purple -> charcoal.",
+ "episode_of": "q014",
+ "mechanic": "pipes",
+ "tier": 3,
+ "seed": 0,
+ "skin_of": "q014",
+ "batch": 2,
+ "level_source": "generated",
+ "skin": {
+  "flip": true,
+  "turns": 2,
+  "palette": [
+   11,
+   6,
+   12,
+   14,
+   1,
+   9,
+   15,
+   5,
+   7,
+   10,
+   2,
+   13,
+   8,
+   0,
+   3,
+   4
+  ],
+  "keys": {},
+  "actions": [
+   6
+  ]
+ },
+ "solution": [
+  [
+   [
+    6,
+    [
+     2,
+     8
+    ]
+   ],
+   [
+    6,
+    [
+     2,
+     8
+    ]
+   ],
+   [
+    6,
+    [
+     2,
+     8
+    ]
+   ],
+   [
+    6,
+    [
+     5,
+     8
+    ]
+   ],
+   [
+    6,
+    [
+     5,
+     8
+    ]
+   ],
+   [
+    6,
+    [
+     5,
+     5
+    ]
+   ],
+   [
+    6,
+    [
+     5,
+     5
+    ]
+   ],
+   [
+    6,
+    [
+     8,
+     5
+    ]
+   ],
+   [
+    6,
+    [
+     8,
+     5
+    ]
+   ]
+  ]
+ ],
+ "level": {
+  "attempt": 0,
+  "baseline": 9,
+  "random": 0.025,
+  "tier_band": [
+   6,
+   14
+  ]
+ }
+}

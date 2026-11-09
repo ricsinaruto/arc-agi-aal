@@ -1,0 +1,16 @@
+arc-agi-aal
+Copyright 2026 the arc-agi-aal authors
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This repository includes or adapts third-party work:
+
+- src/inference, src/taaf, src/duck_transfer, src/duck_controls: adapted from Tufa Labs' public "Duck" ARC-AGI-3
+  harness (the ARC3-Inference and tufa framework packages from their public Kaggle notebook).
+- src/arena and the ARC-AGI-3 agent: features ported from dfranzen's public ARC-AGI-3 Milestone 2 Kaggle notebook
+  (Apache-2.0).
+- src/arc_infra, src/arena/serving_core: patches to vLLM (Apache-2.0, https://github.com/vllm-project/vllm).
+- data/kernel_quality/gsm8k.jsonl: problems from GSM8K (MIT, https://github.com/openai/grade-school-math).
+- kaggle/runtime-pins/extra-wheels/imageio-2.37.0-py3-none-any.whl: imageio (BSD-2-Clause), redistributed unmodified.
+
+Model weights (Qwen3.8-Flash-Next and derived checkpoints) are not included.

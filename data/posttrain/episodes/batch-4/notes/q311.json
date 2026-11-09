@@ -1,0 +1,80 @@
+{
+ "game_id": "q311-7e511348",
+ "name": "pipes",
+ "tags": [
+  "click",
+  "rotation",
+  "connectivity"
+ ],
+ "note": "q014 pipes: rotate pipe tiles until water flows from the red source to every green sink.\n\nHidden rules: the board is a grid of 3x3-cell tiles. A pipe tile shows a centre cell and one arm per\nopening (up, right, down, left). Clicking any cell of a rotatable tile (light gray when dry, blue when\nwet) turns it a quarter turn clockwise; clicks on blank tiles or the border do nothing. The red-centred source and green-centred sinks never turn; from level 4 gray tiles are\nlocked and ignore clicks too. Water spreads from the source through every pair of neighbouring tiles\nwhose facing openings meet; wet pipes are drawn blue (locked ones sky blue), dry pipes light gray\n(locked ones gray). A sink's arm turns blue when water reaches it. The level clears when every sink\nis wet. Levels 1-2 have one sink, level 3 two sinks, level 4 one sink with locked tiles, level 5 two\nsinks with locked tiles.",
+ "episode_of": "q014",
+ "mechanic": "pipes",
+ "tier": 3,
+ "seed": 2,
+ "skin_of": null,
+ "batch": 4,
+ "level_source": "generated",
+ "skin": null,
+ "solution": [
+  [
+   [
+    6,
+    [
+     5,
+     2
+    ]
+   ],
+   [
+    6,
+    [
+     5,
+     2
+    ]
+   ],
+   [
+    6,
+    [
+     5,
+     2
+    ]
+   ],
+   [
+    6,
+    [
+     5,
+     5
+    ]
+   ],
+   [
+    6,
+    [
+     2,
+     8
+    ]
+   ],
+   [
+    6,
+    [
+     2,
+     8
+    ]
+   ],
+   [
+    6,
+    [
+     5,
+     8
+    ]
+   ]
+  ]
+ ],
+ "level": {
+  "attempt": 0,
+  "baseline": 7,
+  "random": 0.005,
+  "tier_band": [
+   6,
+   14
+  ]
+ }
+}

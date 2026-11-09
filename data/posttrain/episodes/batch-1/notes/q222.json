@@ -1,0 +1,95 @@
+{
+ "game_id": "q222-e02dd3ad",
+ "name": "twins-skin",
+ "tags": [
+  "keyboard",
+  "symmetry",
+  "multi-avatar",
+  "hazard",
+  "rule-change",
+  "skin"
+ ],
+ "note": "q016 twins: steer two avatars at once, one of them mirrored, onto the two green cells.\n\nHidden rules: every arrow moves the blue avatar one cell in the arrow's direction and the orange avatar\none cell in the mirrored direction. Levels 1-2: the orange avatar mirrors left-right only (LEFT moves\nit right, RIGHT moves it left, UP and DOWN move it the same way as blue). From level 3 it mirrors both\naxes (it always moves opposite to blue). Each avatar that would walk into a dark-gray wall, off the\nboard, or into the other avatar's current cell stays where it is while the other still moves. From\nlevel 4 charcoal pits appear: an avatar that steps into a pit falls in and the game is over (RESET\nrestarts the level). The level clears when the two avatars stand on the two green cells (either\navatar on either cell).\n\nSkin of q016 (twins): the same rules and levels as above, shown differently. The board is mirrored left-right, so every direction, side and axis named in the rules above refers to the unturned board. The direction keys follow the screen: the base game's up appears as up, down appears as down, left appears as right, right appears as left, and the key for the screen direction moves things that way (for example UP moves the base game's up). Clicks act on the cell clicked on screen. Every colour is replaced: white -> orange, light gray -> purple, gray -> black, dark gray -> yellow, charcoal -> pink, black -> sky blue, magenta -> white, pink -> charcoal, red -> dark gray, blue -> light gray, sky blue -> red, yellow -> green, orange -> gray, dark red -> blue, green -> dark red, purple -> magenta.",
+ "episode_of": "q016",
+ "mechanic": "twins",
+ "tier": 3,
+ "seed": 0,
+ "skin_of": "q016",
+ "batch": 1,
+ "level_source": "generated",
+ "skin": {
+  "flip": true,
+  "turns": 0,
+  "palette": [
+   12,
+   15,
+   5,
+   11,
+   7,
+   10,
+   0,
+   4,
+   3,
+   1,
+   8,
+   14,
+   2,
+   9,
+   13,
+   6
+  ],
+  "keys": {
+   "1": 1,
+   "2": 2,
+   "4": 3,
+   "3": 4
+  },
+  "actions": [
+   1,
+   2,
+   3,
+   4
+  ]
+ },
+ "solution": [
+  [
+   [
+    2,
+    null
+   ],
+   [
+    3,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    1,
+    null
+   ]
+  ]
+ ],
+ "level": {
+  "attempt": 0,
+  "baseline": 7,
+  "random": 0.01,
+  "tier_band": [
+   7,
+   18
+  ]
+ }
+}

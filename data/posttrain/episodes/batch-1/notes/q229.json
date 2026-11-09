@@ -1,0 +1,69 @@
+{
+ "game_id": "q229-2f166d14",
+ "name": "chameleon",
+ "tags": [
+  "keyboard",
+  "navigation",
+  "colour-state",
+  "keys-doors",
+  "rule-change"
+ ],
+ "note": "q020 chameleon: take on colours from pads to pass through barriers of the same colour.\n\nHidden rules: arrows move the white avatar one cell; dark-gray walls block. The avatar carries one\ncolour at a time, shown by the colour of the board's border (dark gray at the start: no colour).\nStepping onto a coloured pad (a single red, yellow, magenta or purple cell) gives the avatar that\ncolour. A barrier cell of a colour (drawn exactly like a pad of that colour) can be entered only while\nthe avatar carries that colour; otherwise the move does nothing. Pads and barriers look alike: only\ntrying tells which is which. Levels 1-3: pads stay and can be used again. From level 4 a pad is used\nup when stepped on (it disappears), so the order of visits matters (RESET restarts the level). The\nlevel clears when the avatar stands on the green exit.",
+ "episode_of": "q020",
+ "mechanic": "chameleon",
+ "tier": 1,
+ "seed": 1,
+ "skin_of": null,
+ "batch": 1,
+ "level_source": "generated",
+ "skin": null,
+ "solution": [
+  [
+   [
+    4,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ]
+  ]
+ ],
+ "level": {
+  "attempt": 3,
+  "baseline": 9,
+  "random": 0.025,
+  "tier_band": [
+   6,
+   16
+  ]
+ }
+}

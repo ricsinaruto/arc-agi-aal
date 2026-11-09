@@ -1,0 +1,65 @@
+{
+ "game_id": "q275-c1369147",
+ "name": "conveyor",
+ "tags": [
+  "keyboard",
+  "click",
+  "conveyor",
+  "one-way",
+  "rule-change"
+ ],
+ "note": "q010 conveyor: reach the green exit across walls whose gaps hold conveyor belts.\n\nHidden rules: arrows move the blue avatar one cell; dark-gray walls block. A belt cell's colour gives\nits direction: sky blue carries up, magenta down, orange left, yellow right. When the avatar steps\nonto a belt cell it is carried along, one cell at a time in the belt's direction (and on through any\nfurther belt cells), until it reaches a non-belt cell or the next cell is a wall, where it stops (a\nride that would come back to a belt cell it already crossed stops there instead). A belt\npointing back the way the avatar came throws it straight back, so such a gap cannot be crossed. The\nlevel clears when the avatar stands on the green exit. Levels 1-2: clicks do nothing. From level 3 a\nclick on a belt cell reverses that whole belt (the straight run of same-coloured belt cells it belongs\nto): up and down swap, left and right swap, and the colours change with them.",
+ "episode_of": "q010",
+ "mechanic": "conveyor",
+ "tier": 2,
+ "seed": 2,
+ "skin_of": null,
+ "batch": 3,
+ "level_source": "generated",
+ "skin": null,
+ "solution": [
+  [
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    1,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    4,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    2,
+    null
+   ],
+   [
+    3,
+    null
+   ]
+  ]
+ ],
+ "level": {
+  "attempt": 0,
+  "baseline": 8,
+  "random": 0.005,
+  "tier_band": [
+   8,
+   20
+  ]
+ }
+}

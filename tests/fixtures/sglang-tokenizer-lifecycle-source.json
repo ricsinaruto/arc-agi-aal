@@ -1,0 +1,12 @@
+{
+  "source": "python/sglang/srt/managers/tokenizer_manager.py",
+  "runtime_commit": "2d6689abdac6f200091e9aa1ae65e95b86d9dd82",
+  "source_sha256": "be628f36d577c3f58ebf429c382ec5d051e8b0538c53847d95f007da16d2e402",
+  "fixture_sha256": "d5764f18bc6c66ed12ee225b1968271708f33eee37b19624e39386b05b7b6eac",
+  "methods": [
+    "_tokenize_one_request",
+    "_create_tokenized_object",
+    "_init_req_state",
+    "_release_req_states_on_failure"
+  ]
+}

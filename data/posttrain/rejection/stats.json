@@ -1,0 +1,1163 @@
+{
+ "rule": {
+  "group_by": [
+   "episode_of",
+   "tier"
+  ],
+  "rank_by": [
+   "completion_tokens",
+   "action_count",
+   "id"
+  ],
+  "k": 2,
+  "max_median_multiple": 2.0,
+  "median_over": "all verified clears of the group"
+ },
+ "totals": {
+  "segments": 109,
+  "groups": 42,
+  "groups_with_episodes": 45,
+  "episode_clears": 109,
+  "selected": 82,
+  "dropped_over_median_multiple": 7,
+  "dropped_beyond_k": 20,
+  "completion_tokens_all_clears": 2378607,
+  "completion_tokens_selected": 1543564,
+  "completion_tokens_saved": 835043,
+  "saved_share": 0.3511,
+  "mean_tokens_all_clears": 21822.1,
+  "mean_tokens_selected": 18824.0
+ },
+ "groups": {
+  "q001/tier-1": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 5377,
+   "over_median_multiple": 1,
+   "beyond_k": 0,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b3:q261-9f3c6edb:L1",
+    "kaggle-arena-duck-teacher-episodes-b1:q200-4dc12afa:L1"
+   ],
+   "kept_tokens": [
+    2640,
+    5377
+   ],
+   "kept_actions": [
+    10,
+    14
+   ],
+   "kept_baselines": [
+    10,
+    10
+   ],
+   "tokens_all": 19820,
+   "tokens_kept": 8017,
+   "episodes": 3
+  },
+  "q001/tier-2": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 19067,
+   "over_median_multiple": 0,
+   "beyond_k": 1,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b1:q201-476a5bb9:L1",
+    "kaggle-arena-duck-teacher-episodes-b2:q230-bf52be4d:L1"
+   ],
+   "kept_tokens": [
+    14988,
+    19067
+   ],
+   "kept_actions": [
+    30,
+    24
+   ],
+   "kept_baselines": [
+    13,
+    13
+   ],
+   "tokens_all": 71379,
+   "tokens_kept": 34055,
+   "episodes": 3
+  },
+  "q001/tier-3": {
+   "clears": 2,
+   "episodes_cleared": 2,
+   "median_tokens": 32607.0,
+   "over_median_multiple": 0,
+   "beyond_k": 0,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b3:q260-0760a968:L1",
+    "kaggle-arena-duck-teacher-episodes-b2:q231-46ba3ebb:L1"
+   ],
+   "kept_tokens": [
+    28701,
+    36513
+   ],
+   "kept_actions": [
+    59,
+    116
+   ],
+   "kept_baselines": [
+    40,
+    40
+   ],
+   "tokens_all": 65214,
+   "tokens_kept": 65214,
+   "episodes": 2
+  },
+  "q002/tier-1": {
+   "clears": 2,
+   "episodes_cleared": 2,
+   "median_tokens": 13369.0,
+   "over_median_multiple": 0,
+   "beyond_k": 0,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b2:q233-daae1ce2:L1",
+    "kaggle-arena-duck-teacher-episodes-b3:q262-db244f79:L1"
+   ],
+   "kept_tokens": [
+    12531,
+    14207
+   ],
+   "kept_actions": [
+    10,
+    10
+   ],
+   "kept_baselines": [
+    4,
+    4
+   ],
+   "tokens_all": 26738,
+   "tokens_kept": 26738,
+   "episodes": 2
+  },
+  "q002/tier-2": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 10397,
+   "over_median_multiple": 0,
+   "beyond_k": 1,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b4:q292-89f1baa3:L1",
+    "kaggle-arena-duck-teacher-episodes-b3:q263-66027a2a:L1"
+   ],
+   "kept_tokens": [
+    2812,
+    10397
+   ],
+   "kept_actions": [
+    7,
+    9
+   ],
+   "kept_baselines": [
+    5,
+    5
+   ],
+   "tokens_all": 28819,
+   "tokens_kept": 13209,
+   "episodes": 3
+  },
+  "q002/tier-3": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 9985,
+   "over_median_multiple": 0,
+   "beyond_k": 1,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b1:q203-fdb915d2:L1",
+    "kaggle-arena-duck-teacher-episodes-b2:q232-1feda998:L1"
+   ],
+   "kept_tokens": [
+    6858,
+    9985
+   ],
+   "kept_actions": [
+    14,
+    14
+   ],
+   "kept_baselines": [
+    8,
+    6
+   ],
+   "tokens_all": 27261,
+   "tokens_kept": 16843,
+   "episodes": 3
+  },
+  "q003/tier-1": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 30918,
+   "over_median_multiple": 0,
+   "beyond_k": 1,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b2:q234-bb8c4c14:L1",
+    "kaggle-arena-duck-teacher-episodes-b4:q295-ed0900e7:L1"
+   ],
+   "kept_tokens": [
+    15337,
+    30918
+   ],
+   "kept_actions": [
+    23,
+    56
+   ],
+   "kept_baselines": [
+    6,
+    8
+   ],
+   "tokens_all": 94157,
+   "tokens_kept": 46255,
+   "episodes": 3
+  },
+  "q003/tier-2": {
+   "clears": 2,
+   "episodes_cleared": 2,
+   "median_tokens": 11505.5,
+   "over_median_multiple": 0,
+   "beyond_k": 0,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b3:q264-6637a780:L1",
+    "kaggle-arena-duck-teacher-episodes-b2:q235-96f9b57f:L1"
+   ],
+   "kept_tokens": [
+    10089,
+    12922
+   ],
+   "kept_actions": [
+    20,
+    15
+   ],
+   "kept_baselines": [
+    9,
+    9
+   ],
+   "tokens_all": 23011,
+   "tokens_kept": 23011,
+   "episodes": 2
+  },
+  "q003/tier-3": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 14078,
+   "over_median_multiple": 1,
+   "beyond_k": 0,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b3:q265-1ddd47aa:L1",
+    "kaggle-arena-duck-teacher-episodes-b1:q204-0d919748:L1"
+   ],
+   "kept_tokens": [
+    5251,
+    14078
+   ],
+   "kept_actions": [
+    16,
+    30
+   ],
+   "kept_baselines": [
+    16,
+    12
+   ],
+   "tokens_all": 54462,
+   "tokens_kept": 19329,
+   "episodes": 3
+  },
+  "q004/tier-1": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 9205,
+   "over_median_multiple": 0,
+   "beyond_k": 1,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b4:q296-90b5e53c:L1",
+    "kaggle-arena-duck-teacher-episodes-b1:q206-b7003fce:L1"
+   ],
+   "kept_tokens": [
+    7611,
+    9205
+   ],
+   "kept_actions": [
+    7,
+    12
+   ],
+   "kept_baselines": [
+    6,
+    5
+   ],
+   "tokens_all": 26319,
+   "tokens_kept": 16816,
+   "episodes": 3
+  },
+  "q004/tier-2": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 25482,
+   "over_median_multiple": 0,
+   "beyond_k": 1,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b1:q207-cc2f0892:L1",
+    "kaggle-arena-duck-teacher-episodes-b4:q297-4cd248ba:L1"
+   ],
+   "kept_tokens": [
+    17824,
+    25482
+   ],
+   "kept_actions": [
+    16,
+    12
+   ],
+   "kept_baselines": [
+    8,
+    5
+   ],
+   "tokens_all": 82138,
+   "tokens_kept": 43306,
+   "episodes": 3
+  },
+  "q004/tier-3": {
+   "clears": 1,
+   "episodes_cleared": 1,
+   "median_tokens": 36651,
+   "over_median_multiple": 0,
+   "beyond_k": 0,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b3:q266-d0a982e3:L1"
+   ],
+   "kept_tokens": [
+    36651
+   ],
+   "kept_actions": [
+    14
+   ],
+   "kept_baselines": [
+    6
+   ],
+   "tokens_all": 36651,
+   "tokens_kept": 36651,
+   "episodes": 2
+  },
+  "q005/tier-1": {
+   "clears": 2,
+   "episodes_cleared": 2,
+   "median_tokens": 13715.0,
+   "over_median_multiple": 0,
+   "beyond_k": 0,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b3:q268-cae3ee78:L1",
+    "kaggle-arena-duck-teacher-episodes-b2:q239-80830061:L1"
+   ],
+   "kept_tokens": [
+    13664,
+    13766
+   ],
+   "kept_actions": [
+    39,
+    35
+   ],
+   "kept_baselines": [
+    11,
+    11
+   ],
+   "tokens_all": 27430,
+   "tokens_kept": 27430,
+   "episodes": 2
+  },
+  "q005/tier-2": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 8170,
+   "over_median_multiple": 1,
+   "beyond_k": 0,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b4:q298-32de00a9:L1",
+    "kaggle-arena-duck-teacher-episodes-b1:q208-831a47e2:L1"
+   ],
+   "kept_tokens": [
+    7727,
+    8170
+   ],
+   "kept_actions": [
+    20,
+    35
+   ],
+   "kept_baselines": [
+    14,
+    14
+   ],
+   "tokens_all": 37113,
+   "tokens_kept": 15897,
+   "episodes": 3
+  },
+  "q005/tier-3": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 8857,
+   "over_median_multiple": 1,
+   "beyond_k": 0,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b1:q209-e5bcf5c8:L1",
+    "kaggle-arena-duck-teacher-episodes-b4:q299-53092455:L1"
+   ],
+   "kept_tokens": [
+    5299,
+    8857
+   ],
+   "kept_actions": [
+    17,
+    17
+   ],
+   "kept_baselines": [
+    17,
+    17
+   ],
+   "tokens_all": 34788,
+   "tokens_kept": 14156,
+   "episodes": 3
+  },
+  "q007/tier-1": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 10434,
+   "over_median_multiple": 0,
+   "beyond_k": 1,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b2:q240-b639ca1e:L1",
+    "kaggle-arena-duck-teacher-episodes-b4:q301-0170ad9f:L1"
+   ],
+   "kept_tokens": [
+    9813,
+    10434
+   ],
+   "kept_actions": [
+    16,
+    31
+   ],
+   "kept_baselines": [
+    7,
+    7
+   ],
+   "tokens_all": 32455,
+   "tokens_kept": 20247,
+   "episodes": 3
+  },
+  "q007/tier-2": {
+   "clears": 2,
+   "episodes_cleared": 2,
+   "median_tokens": 10751.0,
+   "over_median_multiple": 0,
+   "beyond_k": 0,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b3:q270-71f2aaed:L1",
+    "kaggle-arena-duck-teacher-episodes-b2:q241-a8edf24a:L1"
+   ],
+   "kept_tokens": [
+    8478,
+    13024
+   ],
+   "kept_actions": [
+    20,
+    15
+   ],
+   "kept_baselines": [
+    9,
+    9
+   ],
+   "tokens_all": 21502,
+   "tokens_kept": 21502,
+   "episodes": 2
+  },
+  "q007/tier-3": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 26114,
+   "over_median_multiple": 0,
+   "beyond_k": 1,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b1:q210-5ff981d1:L1",
+    "kaggle-arena-duck-teacher-episodes-b3:q271-7d89a0e5:L1"
+   ],
+   "kept_tokens": [
+    22374,
+    26114
+   ],
+   "kept_actions": [
+    34,
+    105
+   ],
+   "kept_baselines": [
+    14,
+    14
+   ],
+   "tokens_all": 85457,
+   "tokens_kept": 48488,
+   "episodes": 3
+  },
+  "q008/tier-1": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 7106,
+   "over_median_multiple": 0,
+   "beyond_k": 1,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b3:q273-e3ef54e1:L1",
+    "kaggle-arena-duck-teacher-episodes-b4:q302-8bd1e3c7:L1"
+   ],
+   "kept_tokens": [
+    5319,
+    7106
+   ],
+   "kept_actions": [
+    11,
+    10
+   ],
+   "kept_baselines": [
+    9,
+    9
+   ],
+   "tokens_all": 20292,
+   "tokens_kept": 12425,
+   "episodes": 3
+  },
+  "q008/tier-2": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 10177,
+   "over_median_multiple": 0,
+   "beyond_k": 1,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b4:q303-bd755fc4:L1",
+    "kaggle-arena-duck-teacher-episodes-b2:q242-0017f285:L1"
+   ],
+   "kept_tokens": [
+    8952,
+    10177
+   ],
+   "kept_actions": [
+    14,
+    12
+   ],
+   "kept_baselines": [
+    10,
+    10
+   ],
+   "tokens_all": 34522,
+   "tokens_kept": 19129,
+   "episodes": 3
+  },
+  "q008/tier-3": {
+   "clears": 2,
+   "episodes_cleared": 2,
+   "median_tokens": 39901.5,
+   "over_median_multiple": 0,
+   "beyond_k": 0,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b2:q243-8827fe19:L1",
+    "kaggle-arena-duck-teacher-episodes-b3:q272-694fa9b8:L1"
+   ],
+   "kept_tokens": [
+    30362,
+    49441
+   ],
+   "kept_actions": [
+    16,
+    17
+   ],
+   "kept_baselines": [
+    11,
+    8
+   ],
+   "tokens_all": 79803,
+   "tokens_kept": 79803,
+   "episodes": 2
+  },
+  "q010/tier-1": {
+   "clears": 2,
+   "episodes_cleared": 2,
+   "median_tokens": 9682.0,
+   "over_median_multiple": 0,
+   "beyond_k": 0,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b2:q245-6203cfd4:L1",
+    "kaggle-arena-duck-teacher-episodes-b3:q274-dfccb5ac:L1"
+   ],
+   "kept_tokens": [
+    8317,
+    11047
+   ],
+   "kept_actions": [
+    13,
+    14
+   ],
+   "kept_baselines": [
+    6,
+    6
+   ],
+   "tokens_all": 19364,
+   "tokens_kept": 19364,
+   "episodes": 2
+  },
+  "q010/tier-2": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 46666,
+   "over_median_multiple": 0,
+   "beyond_k": 1,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b4:q304-c1f7cb15:L1",
+    "kaggle-arena-duck-teacher-episodes-b3:q275-c1369147:L1"
+   ],
+   "kept_tokens": [
+    29845,
+    46666
+   ],
+   "kept_actions": [
+    41,
+    46
+   ],
+   "kept_baselines": [
+    9,
+    8
+   ],
+   "tokens_all": 156108,
+   "tokens_kept": 76511,
+   "episodes": 3
+  },
+  "q010/tier-3": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 16002,
+   "over_median_multiple": 0,
+   "beyond_k": 1,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b4:q305-89ebd42c:L1",
+    "kaggle-arena-duck-teacher-episodes-b2:q244-fe42273f:L1"
+   ],
+   "kept_tokens": [
+    9585,
+    16002
+   ],
+   "kept_actions": [
+    12,
+    18
+   ],
+   "kept_baselines": [
+    8,
+    7
+   ],
+   "tokens_all": 43988,
+   "tokens_kept": 25587,
+   "episodes": 3
+  },
+  "q011/tier-1": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 6748,
+   "over_median_multiple": 1,
+   "beyond_k": 0,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b2:q246-ee54646b:L1",
+    "kaggle-arena-duck-teacher-episodes-b1:q217-2ad07f36:L1"
+   ],
+   "kept_tokens": [
+    4641,
+    6748
+   ],
+   "kept_actions": [
+    12,
+    10
+   ],
+   "kept_baselines": [
+    4,
+    4
+   ],
+   "tokens_all": 37499,
+   "tokens_kept": 11389,
+   "episodes": 3
+  },
+  "q011/tier-2": {
+   "clears": 2,
+   "episodes_cleared": 2,
+   "median_tokens": 18474.5,
+   "over_median_multiple": 0,
+   "beyond_k": 0,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b3:q276-c9c2f447:L1",
+    "kaggle-arena-duck-teacher-episodes-b2:q247-dcffe783:L1"
+   ],
+   "kept_tokens": [
+    11435,
+    25514
+   ],
+   "kept_actions": [
+    23,
+    174
+   ],
+   "kept_baselines": [
+    6,
+    7
+   ],
+   "tokens_all": 36949,
+   "tokens_kept": 36949,
+   "episodes": 2
+  },
+  "q011/tier-3": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 12835,
+   "over_median_multiple": 1,
+   "beyond_k": 0,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b3:q277-6794288e:L1",
+    "kaggle-arena-duck-teacher-episodes-b4:q306-22af3348:L1"
+   ],
+   "kept_tokens": [
+    11171,
+    12835
+   ],
+   "kept_actions": [
+    25,
+    43
+   ],
+   "kept_baselines": [
+    7,
+    9
+   ],
+   "tokens_all": 62176,
+   "tokens_kept": 24006,
+   "episodes": 3
+  },
+  "q012/tier-1": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 27946,
+   "over_median_multiple": 0,
+   "beyond_k": 1,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b4:q308-e5ce341c:L1",
+    "kaggle-arena-duck-teacher-episodes-b1:q218-1d8e0dff:L1"
+   ],
+   "kept_tokens": [
+    16346,
+    27946
+   ],
+   "kept_actions": [
+    16,
+    126
+   ],
+   "kept_baselines": [
+    4,
+    4
+   ],
+   "tokens_all": 80102,
+   "tokens_kept": 44292,
+   "episodes": 3
+  },
+  "q012/tier-2": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 13445,
+   "over_median_multiple": 1,
+   "beyond_k": 0,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b2:q248-83b5793d:L1",
+    "kaggle-arena-duck-teacher-episodes-b4:q309-afe2b345:L1"
+   ],
+   "kept_tokens": [
+    11608,
+    13445
+   ],
+   "kept_actions": [
+    22,
+    41
+   ],
+   "kept_baselines": [
+    5,
+    5
+   ],
+   "tokens_all": 54650,
+   "tokens_kept": 25053,
+   "episodes": 3
+  },
+  "q012/tier-3": {
+   "clears": 2,
+   "episodes_cleared": 2,
+   "median_tokens": 25485.5,
+   "over_median_multiple": 0,
+   "beyond_k": 0,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b3:q278-a1f193ac:L1",
+    "kaggle-arena-duck-teacher-episodes-b2:q249-b776230c:L1"
+   ],
+   "kept_tokens": [
+    13587,
+    37384
+   ],
+   "kept_actions": [
+    14,
+    117
+   ],
+   "kept_baselines": [
+    7,
+    9
+   ],
+   "tokens_all": 50971,
+   "tokens_kept": 50971,
+   "episodes": 2
+  },
+  "q014/tier-1": {
+   "clears": 2,
+   "episodes_cleared": 2,
+   "median_tokens": 51623.5,
+   "over_median_multiple": 0,
+   "beyond_k": 0,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b3:q280-7945e7b6:L1",
+    "kaggle-arena-duck-teacher-episodes-b2:q251-2c6da862:L1"
+   ],
+   "kept_tokens": [
+    15834,
+    87413
+   ],
+   "kept_actions": [
+    7,
+    69
+   ],
+   "kept_baselines": [
+    5,
+    5
+   ],
+   "tokens_all": 103247,
+   "tokens_kept": 103247,
+   "episodes": 2
+  },
+  "q014/tier-2": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 50243,
+   "over_median_multiple": 0,
+   "beyond_k": 1,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b4:q310-32eee0f7:L1",
+    "kaggle-arena-duck-teacher-episodes-b1:q220-f03f46a0:L1"
+   ],
+   "kept_tokens": [
+    47777,
+    50243
+   ],
+   "kept_actions": [
+    22,
+    83
+   ],
+   "kept_baselines": [
+    7,
+    10
+   ],
+   "tokens_all": 174669,
+   "tokens_kept": 98020,
+   "episodes": 3
+  },
+  "q014/tier-3": {
+   "clears": 1,
+   "episodes_cleared": 1,
+   "median_tokens": 95966,
+   "over_median_multiple": 0,
+   "beyond_k": 0,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b2:q250-3161253a:L1"
+   ],
+   "kept_tokens": [
+    95966
+   ],
+   "kept_actions": [
+    29
+   ],
+   "kept_baselines": [
+    9
+   ],
+   "tokens_all": 95966,
+   "tokens_kept": 95966,
+   "episodes": 3
+  },
+  "q016/tier-1": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 41342,
+   "over_median_multiple": 0,
+   "beyond_k": 1,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b1:q223-62cbc174:L1",
+    "kaggle-arena-duck-teacher-episodes-b2:q252-d7a04ecb:L1"
+   ],
+   "kept_tokens": [
+    19460,
+    41342
+   ],
+   "kept_actions": [
+    22,
+    31
+   ],
+   "kept_baselines": [
+    8,
+    11
+   ],
+   "tokens_all": 109141,
+   "tokens_kept": 60802,
+   "episodes": 3
+  },
+  "q016/tier-2": {
+   "clears": 2,
+   "episodes_cleared": 2,
+   "median_tokens": 15506.0,
+   "over_median_multiple": 0,
+   "beyond_k": 0,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b3:q282-56cf7232:L1",
+    "kaggle-arena-duck-teacher-episodes-b2:q253-a71280a8:L1"
+   ],
+   "kept_tokens": [
+    13538,
+    17474
+   ],
+   "kept_actions": [
+    21,
+    19
+   ],
+   "kept_baselines": [
+    11,
+    12
+   ],
+   "tokens_all": 31012,
+   "tokens_kept": 31012,
+   "episodes": 2
+  },
+  "q016/tier-3": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 21797,
+   "over_median_multiple": 0,
+   "beyond_k": 1,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b4:q312-f519a082:L1",
+    "kaggle-arena-duck-teacher-episodes-b3:q283-114f5164:L1"
+   ],
+   "kept_tokens": [
+    10801,
+    21797
+   ],
+   "kept_actions": [
+    21,
+    27
+   ],
+   "kept_baselines": [
+    11,
+    16
+   ],
+   "tokens_all": 71614,
+   "tokens_kept": 32598,
+   "episodes": 3
+  },
+  "q017/tier-1": {
+   "clears": 0,
+   "episodes_cleared": 0,
+   "kept": [],
+   "episodes": 3
+  },
+  "q017/tier-2": {
+   "clears": 0,
+   "episodes_cleared": 0,
+   "kept": [],
+   "episodes": 3
+  },
+  "q017/tier-3": {
+   "clears": 0,
+   "episodes_cleared": 0,
+   "kept": [],
+   "episodes": 2
+  },
+  "q019/tier-1": {
+   "clears": 2,
+   "episodes_cleared": 2,
+   "median_tokens": 20706.0,
+   "over_median_multiple": 0,
+   "beyond_k": 0,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b2:q257-5c4f0607:L1",
+    "kaggle-arena-duck-teacher-episodes-b3:q286-10fda8a4:L1"
+   ],
+   "kept_tokens": [
+    12519,
+    28893
+   ],
+   "kept_actions": [
+    12,
+    20
+   ],
+   "kept_baselines": [
+    7,
+    11
+   ],
+   "tokens_all": 41412,
+   "tokens_kept": 41412,
+   "episodes": 2
+  },
+  "q019/tier-2": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 15190,
+   "over_median_multiple": 0,
+   "beyond_k": 1,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b4:q316-13216e68:L1",
+    "kaggle-arena-duck-teacher-episodes-b1:q226-6817fb92:L1"
+   ],
+   "kept_tokens": [
+    14449,
+    15190
+   ],
+   "kept_actions": [
+    30,
+    24
+   ],
+   "kept_baselines": [
+    13,
+    17
+   ],
+   "tokens_all": 49544,
+   "tokens_kept": 29639,
+   "episodes": 3
+  },
+  "q019/tier-3": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 19633,
+   "over_median_multiple": 0,
+   "beyond_k": 1,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b4:q317-072a4d3b:L1",
+    "kaggle-arena-duck-teacher-episodes-b2:q256-e576db52:L1"
+   ],
+   "kept_tokens": [
+    11531,
+    19633
+   ],
+   "kept_actions": [
+    15,
+    23
+   ],
+   "kept_baselines": [
+    14,
+    10
+   ],
+   "tokens_all": 57192,
+   "tokens_kept": 31164,
+   "episodes": 3
+  },
+  "q020/tier-1": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 19967,
+   "over_median_multiple": 0,
+   "beyond_k": 1,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b2:q258-5f62dd3f:L1",
+    "kaggle-arena-duck-teacher-episodes-b4:q319-f76baefb:L1"
+   ],
+   "kept_tokens": [
+    14240,
+    19967
+   ],
+   "kept_actions": [
+    17,
+    27
+   ],
+   "kept_baselines": [
+    10,
+    10
+   ],
+   "tokens_all": 57194,
+   "tokens_kept": 34207,
+   "episodes": 3
+  },
+  "q020/tier-2": {
+   "clears": 2,
+   "episodes_cleared": 2,
+   "median_tokens": 10500.0,
+   "over_median_multiple": 0,
+   "beyond_k": 0,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b3:q288-869bf480:L1",
+    "kaggle-arena-duck-teacher-episodes-b2:q259-29b2560e:L1"
+   ],
+   "kept_tokens": [
+    6467,
+    14533
+   ],
+   "kept_actions": [
+    16,
+    21
+   ],
+   "kept_baselines": [
+    16,
+    10
+   ],
+   "tokens_all": 21000,
+   "tokens_kept": 21000,
+   "episodes": 2
+  },
+  "q020/tier-3": {
+   "clears": 3,
+   "episodes_cleared": 3,
+   "median_tokens": 27768,
+   "over_median_multiple": 0,
+   "beyond_k": 1,
+   "kept": [
+    "kaggle-arena-duck-teacher-episodes-b3:q289-d3e2bb24:L1",
+    "kaggle-arena-duck-teacher-episodes-b1:q228-9c6d25db:L1"
+   ],
+   "kept_tokens": [
+    14086,
+    27768
+   ],
+   "kept_actions": [
+    21,
+    30
+   ],
+   "kept_baselines": [
+    16,
+    18
+   ],
+   "tokens_all": 95478,
+   "tokens_kept": 41854,
+   "episodes": 3
+  }
+ },
+ "groups_without_clears": [
+  "q017/tier-1",
+  "q017/tier-2",
+  "q017/tier-3"
+ ],
+ "held_out_check": {
+  "passed": true,
+  "rejected_segments": [],
+  "held_out_episodes_in_notes": [],
+  "episodes_checked": 120,
+  "held_out_mechanics": [
+   "q006",
+   "q009",
+   "q013",
+   "q015",
+   "q018"
+  ]
+ },
+ "skipped": {},
+ "inputs": {
+  "segments": [
+   "data/posttrain/teacher-episodes/segments.jsonl"
+  ],
+  "episodes": [
+   "data/posttrain/episodes"
+  ],
+  "episode_games": 120
+ }
+}

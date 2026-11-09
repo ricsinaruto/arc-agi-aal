@@ -1,0 +1,1 @@
+When a level stalls (a stuck check appears, or several actions in a row change nothing), run `print(coverage())` before choosing the next action: it lists the board objects no click has touched and the actions not yet tried on this level. Test an untried object or action next instead of repeating one that already failed.

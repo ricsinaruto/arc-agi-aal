@@ -1,0 +1,16 @@
+Volume mounted at /runs is using 83.8% of available inodes (418998 out of 500000). If you reach the limit, creating new files will fail.
+Traceback (most recent call last):
+  File "/pkg/modal/_runtime/container_io_manager.py", line 987, in handle_input_exception
+    yield
+  File "/pkg/modal/_container_entrypoint.py", line 189, in run_input_sync
+    values = io_context.call_function_sync()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/pkg/modal/_runtime/container_io_manager.py", line 266, in call_function_sync
+    expected_value_or_values = self.finalized_function.callable(*args, **kwargs)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/modal_rl1.py", line 898, in heal_plan
+    env.update(PYTHONPATH=str(source / "rl1"), PYTHONUNBUFFERED="1", **env_pairs(kw.get("heal_env", "")))
+                                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/modal_rl1.py", line 559, in env_pairs
+    raise ValueError(f"trainer env {k!r}: only HEAL_* flags")
+ValueError: trainer env 'NCCL_DEBUG': only HEAL_* flags

@@ -1,0 +1,121 @@
+{
+ "game_id": "q284-da421afa",
+ "name": "flow-skin",
+ "tags": [
+  "click",
+  "path-drawing",
+  "pairs",
+  "rule-change",
+  "skin"
+ ],
+ "note": "q017 flow: draw a path between each pair of same-coloured dots by clicking cells.\n\nHidden rules: each colour (red, blue, magenta, yellow) has exactly two endpoint dots. Clicking an\nendpoint selects its colour and starts that colour's path afresh from the clicked dot (any earlier\npath of that colour is erased); the board's border turns the selected colour. Clicking an empty cell\nnext to (up, down, left or right of) the end of the selected colour's path extends the path onto it;\npath cells are drawn in a darker or paler shade (red: dark red, blue: sky blue, magenta: pink, yellow:\norange). Clicking the other endpoint of the same colour next to the path's end completes that path,\nand a completed path takes no more cells. Paths cannot cross each other or pass through a dot, and all\nother clicks do nothing. Levels 1-3 clear when every pair is joined. From level 4 the level clears\nonly when every pair is joined and every board cell is covered by a path or a dot.\n\nSkin of q017 (flow): the same rules and levels as above, shown differently. The board is turned 90 degrees clockwise, so every direction, side and axis named in the rules above refers to the unturned board. Clicks act on the cell clicked on screen. Every colour is replaced: white -> blue, light gray -> magenta, gray -> sky blue, dark gray -> black, charcoal -> gray, black -> dark gray, magenta -> charcoal, pink -> red, red -> dark red, blue -> purple, sky blue -> orange, yellow -> light gray, orange -> white, dark red -> green, green -> pink, purple -> yellow.",
+ "episode_of": "q017",
+ "mechanic": "flow",
+ "tier": 3,
+ "seed": 0,
+ "skin_of": "q017",
+ "batch": 3,
+ "level_source": "generated",
+ "skin": {
+  "flip": false,
+  "turns": 1,
+  "palette": [
+   9,
+   6,
+   10,
+   5,
+   2,
+   3,
+   4,
+   8,
+   13,
+   15,
+   12,
+   1,
+   0,
+   14,
+   7,
+   11
+  ],
+  "keys": {},
+  "actions": [
+   6
+  ]
+ },
+ "solution": [
+  [
+   [
+    6,
+    [
+     3,
+     2
+    ]
+   ],
+   [
+    6,
+    [
+     3,
+     1
+    ]
+   ],
+   [
+    6,
+    [
+     2,
+     1
+    ]
+   ],
+   [
+    6,
+    [
+     3,
+     3
+    ]
+   ],
+   [
+    6,
+    [
+     3,
+     4
+    ]
+   ],
+   [
+    6,
+    [
+     3,
+     5
+    ]
+   ],
+   [
+    6,
+    [
+     1,
+     1
+    ]
+   ],
+   [
+    6,
+    [
+     1,
+     2
+    ]
+   ],
+   [
+    6,
+    [
+     1,
+     3
+    ]
+   ]
+  ]
+ ],
+ "level": {
+  "attempt": 0,
+  "baseline": 9,
+  "random": 0.0,
+  "tier_band": [
+   9,
+   20
+  ]
+ }
+}

@@ -1,0 +1,75 @@
+{
+ "repo": "ornith-ai/Ornith-1.5-35B-A3B-NVFP4",
+ "revision": "94e431d9cc47fa1986a7a1a4e9a80f7f118b03aa",
+ "license": "mit",
+ "dataset": "richardcsaky/arc-ornith15-35b-a3b-nvfp4",
+ "files": {
+  "chat_template.jinja": {
+   "bytes": 7536,
+   "sha256": "182e77dd83bd8e9ca818b240b82e28f243762cd5dda32e6eef327df7b1cd107e"
+  },
+  "config.json": {
+   "bytes": 58155,
+   "sha256": "319ee1293a279a57990fcfc18fdb533101ffaf264a990a7d0bcb1c3d24fc720d"
+  },
+  "generation_config.json": {
+   "bytes": 202,
+   "sha256": "e70c136c1b78ddc1fb0905bac8e733a4dc448d4f852a5dd75143fffc70be550e"
+  },
+  "hf_quant_config.json": {
+   "bytes": 42244,
+   "sha256": "c619bbfc5a50768332a15ef34ebb96fd3874c64301e0bc462f412920cefa46eb"
+  },
+  "merges.txt": {
+   "bytes": 3353259,
+   "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d"
+  },
+  "model-00001-of-00003.safetensors": {
+   "bytes": 10005851848,
+   "sha256": "648fe83171485f4be03ea58d86089e088c94c2a3dc88922233f9002f30d8bc8b"
+  },
+  "model-00002-of-00003.safetensors": {
+   "bytes": 10006454416,
+   "sha256": "cb5c5978721a1e87406ae68f1cd5a855326e40ff8bc13832644c392115336987"
+  },
+  "model-00003-of-00003.safetensors": {
+   "bytes": 3408113436,
+   "sha256": "8303cef7d375021d69dcafc60d3fad5f8186995b18b0db5e2a609aadeb8a4f51"
+  },
+  "model.safetensors.index.json": {
+   "bytes": 10380665,
+   "sha256": "52af7e400d0138ffde60f127fbf3ce494e6ebf682748f7e44545c25b68d28128"
+  },
+  "preprocessor_config.json": {
+   "bytes": 390,
+   "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516"
+  },
+  "processor_config.json": {
+   "bytes": 1191,
+   "sha256": "d89ef49ce9cd37fbf510158e13c1ef063d9286411c1ec9049932dbe0487143b1"
+  },
+  "tokenizer.json": {
+   "bytes": 12807982,
+   "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42"
+  },
+  "tokenizer_config.json": {
+   "bytes": 16718,
+   "sha256": "5186f0defcd7f232382c7f0aebcd2252d073bb921ab240e407b7ae8745d2b29b"
+  },
+  "video_preprocessor_config.json": {
+   "bytes": 385,
+   "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+  },
+  "vocab.json": {
+   "bytes": 6722759,
+   "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+  }
+ },
+ "documentation_provenance": {
+  "upstream_README.md": {
+   "bytes": 29864,
+   "sha256": "a4f67cd2a7b78583e2faf57518d4666338334e8646ac3aacea24d53bfcef9fd8"
+  },
+  "note": "Pending private Kaggle dataset, to be uploaded from the pinned Hugging Face revision after local full-byte verification. Shard sha256 values are the upstream LFS hashes from the revision API; every other file was fetched from the pinned revision and hashed locally (git blob ids matched). README.md, assets/*.png, .gitattributes and the .model_only_pruned, .quant_summary.txt and .sync_complete dotfiles are documentation or upload markers and are excluded from the required inventory. No public Kaggle mirror of this NVFP4 checkpoint was found on 26 September 2026 (only GGUF, BF16 and 9B variants)."
+ }
+}

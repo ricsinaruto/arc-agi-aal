@@ -1,0 +1,913 @@
+"""Phase-4 serving overlay for the pinned Qwen3.8-Flash-Next vLLM runtime (kernel work, phase 4).
+
+Copied into ``vllm/arc_serving_kernels.py`` by ``arc_infra.serving_kernels_patch``; its settings are
+``arc_serving_kernels.json`` next to it. Each patched pinned file calls one entry point here. No arc
+dependency inside the serving worker; vLLM imports are deferred so that the kernels can be loaded
+standalone by the microbenchmark (scripts/kernel_bench_phase4.py).
+
+Entry points (each is only reached when its pinned file was patched, i.e. its option is on):
+
+- ``draft_quant_hook(draft_vllm_config)`` (mtp.py, ``draft_experts: "nvfp4"``): the MTP draft layer's
+  512 BF16 routed experts are quantized to NvFp4 at load (one FP32 global scale per expert, E4M3 scale
+  per 16 weights, vLLM's own online quantizer) and served by FlashInfer's fused SM120 b12x kernel, which
+  quantizes activations dynamically, so no calibrated activation scale is needed. Draft-only: it moves
+  the acceptance rate, never the verified output. A load-time check compares the layer against its BF16
+  weights on fixed random tokens (``ARC_SK_CHECK``).
+- ``shared_b12x_wrapper(experts)`` (flashinfer_b12x_moe.py): one ``B12xMoEWrapper`` (and its CUDA-graph
+  workspace, ~0.6 GB at 4,096 batched tokens) per MoE geometry instead of one per layer (49 x ~0.6 GB).
+  Layers run one after another on one stream and the result is copied out at once, so they can share it.
+- ``hc_up_mix(module, xn, lora)`` (hyperconnection.py, ``hc_fusion``): silu -> HC up GEMV (10240 x 320)
+  -> sigmoid gate-mix in one Triton kernel at decode sizes (the pinned chain is three launches: hc_silu,
+  cuBLAS, hc_gate_mix). Same BF16 rounding points; only the reduction order inside the dot changes.
+- ``topk_first(logits, k, p)`` (topk_topp_sampler.py + states.py, ``topk_sampler``): top-k first, then
+  top-p over the k survivors, instead of sorting the 248K vocabulary. The kept set equals vLLM's
+  (``logits >= k-th value``, ties kept) and the top-p cut is taken over the same renormalised top-k
+  distribution; it only runs when every row's top-k is known on the host to be <= TOPK_MAX.
+
+Serving tweaks (28 September; docs/validation-20260927/serving-tweaks.md):
+
+- ``draft_logits(model, hidden_states)`` (mtp.py ``compute_logits``, ``draft_vocab``): the draft head over
+  the fixed token subset in ``arc_draft_vocab.json``: the shared target head's rows for those ids (INT8
+  + scales under the phase-2 A+C kernels) are gathered once, the logits are computed over 16,384 rows
+  and written into a persistent full-width row that stays -inf everywhere else. The speculator's greedy
+  draft takes its argmax, so a draft token is always in the subset; the target verifies every token, so
+  the output is exact and only acceptance can move. Built on the first call (the profile run, before
+  graph capture) with a load-time check against the full head (``ARC_SK_CHECK``).
+- ``ple_uva_device`` / ``ple_uva_place`` (ple_layer.py, ``ple_uva``): the PLE n-gram table is built in
+  page-locked, device-mapped host memory (anonymous mmap + cuMemHostRegister) and the parameter becomes
+  its CUDA (UVA) view, so the GPU worker's own PLE path (hash on the GPU, ``F.embedding``) reads the
+  2,560 bytes per token over PCIe inside the graph; the CPU offload process, its ZMQ hop and the GPU's
+  wait on its semaphore are gone (``VLLM_PLE_CPU_OFFLOAD=0``). Checkpoint shards are copied into the
+  host table through its CPU alias. After loading, a check compares the GPU path on the UVA table with
+  the offload process's CPU path on the same table (``ARC_SK_CHECK``).
+- ``host_embedding(factory)`` (model.py, ``embed_host``): the same for the target's input embedding.
+"""
+
+import atexit
+import json
+import mmap
+import os
+import sys
+import types
+from functools import partial
+from pathlib import Path
+
+import torch
+import triton
+import triton.language as tl
+
+CONFIG_PATH = Path(__file__).with_name("arc_serving_kernels.json")
+DRAFT_VOCAB_PATH = Path(__file__).with_name("arc_draft_vocab.json")
+# Draft head check: the subset kernel against the full head's columns on the same rows (the W8A16 split-K
+# differs with N, so BF16 rounding may differ; a wrong row mapping is ~100%).
+DRAFT_HEAD_ERROR_LIMIT = 0.02
+# cuMemHostRegister flags: PORTABLE (every context) | DEVICEMAP (a device pointer for UVA reads).
+HOST_REGISTER_FLAGS = 0x01 | 0x02
+# Host-table checks: rows gathered through UVA against the CPU alias, and the PLE probe batch.
+HOST_CHECK_ROWS = 4096
+# HC fusion: largest token count that takes the fused kernel (larger M: the pinned three-kernel chain).
+HC_FUSED_MAX_M = 32
+HC_BLOCK_M = 16
+HC_BLOCK_I = 16
+HC_WARPS = 4
+HC_STAGES = 1
+# Top-k-first sampler: rows' top-k must be <= TOPK_MAX; the window adds TOPK_MARGIN so that ties at the
+# k-th value rarely overflow it (an overflowing row keeps vLLM's top-k set and skips the top-p cut).
+TOPK_MAX = 64
+TOPK_MARGIN = 16
+TOPK_MAX_ROWS = 256
+# Phase-4 microbenchmark: ~0.29 ms at every batch against the pinned sort's 0.19 ms at one row and 0.51-1.26 ms
+# at 2-32 rows (the pinned Triton path, taken from 8 rows, 1.4-2.2 ms); one row keeps the pinned sort.
+TOPK_MIN_ROWS = 2
+# Draft-expert check: NvFp4 W4A4 against the BF16 layer (weights and dynamic activation quantization
+# together) is ~10-15% relative error, ~27% with b12x's baked block scales (phase-4 microbenchmark); a
+# layout mistake is ~100%.
+DRAFT_ERROR_LIMIT = 0.40
+# b12x picks micro (<= 40 routed rows), static (<= this many) or dynamic kernels by routed rows = tokens x 10.
+# Micro and static kernels are compiled per token count, dynamic ones once. vLLM pads decode batches to its
+# CUDA-graph sizes (<= 32 tokens here), but eager batches of 33-64 tokens would each compile a static kernel
+# mid-run at the default 640; at 320 they take the dynamic kernel, and the static workspace halves (0.42 GB
+# measured for the whole wrapper). When b12x serves only the one draft layer, 40 (micro, then dynamic) keeps
+# its static workspace at ~26 MB: the KV pool is what the six 64K windows need.
+B12X_STATIC_CUTOVER_PAIRS = 320
+B12X_DRAFT_ONLY_CUTOVER_PAIRS = 40
+B12X_CUTOVER_ENV = "FLASHINFER_B12X_STATIC_COMPACT_CUTOVER_PAIRS"
+
+_STATE = {"config": None, "b12x": {}, "hc_warm": {}, "counts": {}, "draft_head": None, "host_tables": [],
+          "ple_layers": {}}
+
+
+def load_config():
+    if _STATE["config"] is None:
+        _STATE["config"] = json.loads(CONFIG_PATH.read_text()) if CONFIG_PATH.is_file() else {}
+    return _STATE["config"]
+
+
+def log(kind, payload):
+    print(f"ARC_SK_{kind} " + json.dumps(payload, sort_keys=True, default=str), flush=True)
+
+
+def _count(name):
+    """Count an entry-point call; logged as ``ARC_SK_COUNT`` at 1, 2, 4, 8, ... calls (so a server killed before a
+    clean exit still shows the order of magnitude) and all counts as ``ARC_SK_COUNTS`` at interpreter exit."""
+    n = _STATE["counts"][name] = _STATE["counts"].get(name, 0) + 1
+    if n & (n - 1) == 0:
+        log("COUNT", {"name": name, "count": n, "pid": os.getpid()})
+
+
+def _log_counts():
+    if _STATE["counts"]:
+        log("COUNTS", {**_STATE["counts"], "pid": os.getpid()})
+
+
+atexit.register(_log_counts)
+
+
+# ============================================================================ 1. NvFp4 draft experts
+def draft_quant_hook(draft_vllm_config):
+    """Called at the end of the pinned ``_make_draft_vllm_config``: route the draft's MoE layers to an
+    NvFp4 online-quantized method served by b12x (the draft quant config is the draft's own instance)."""
+    mode = load_config().get("draft_experts")
+    if mode is None:
+        return
+    if mode != "nvfp4":
+        raise RuntimeError(f"ARC serving kernels: unknown draft_experts {mode!r}")
+    quant_config = draft_vllm_config.quant_config
+    if quant_config is None:
+        raise RuntimeError("ARC NvFp4 draft experts need the draft's quant config instance")
+    original = quant_config.get_quant_method
+
+    def get_quant_method(layer, prefix):
+        from vllm.model_executor.layers.fused_moe import RoutedExperts
+
+        if isinstance(layer, RoutedExperts):
+            return _draft_method_class()(layer=layer, prefix=prefix)
+        return original(layer, prefix)
+
+    quant_config.get_quant_method = get_quant_method
+    log("DRAFT", {"draft_experts": mode, "quant_config": type(quant_config).__name__})
+
+
+_DRAFT_CLASS = []
+
+
+def _draft_method_class():
+    if _DRAFT_CLASS:
+        return _DRAFT_CLASS[0]
+    from vllm.model_executor.layers.fused_moe.oracle.nvfp4 import (
+        NvFp4MoeBackend,
+        select_nvfp4_moe_backend,
+    )
+    from vllm.model_executor.layers.quantization.online.moe_base import OnlineMoEMethodBase
+    from vllm.model_executor.layers.quantization.online.nvfp4 import Nvfp4OnlineMoEMethod
+    from vllm.model_executor.layers.quantization.utils.quant_utils import (
+        kNvfp4Dynamic,
+        kNvfp4Static,
+    )
+
+    class ArcNvfp4DraftMoEMethod(Nvfp4OnlineMoEMethod):
+        """vLLM's online NvFp4 MoE method (BF16 experts loaded, quantized after loading) on the SM120 b12x
+        kernel instead of the SM100-only TRT-LLM one; the draft layer's own backend is b12x whatever the
+        target's ``--moe-backend`` is."""
+
+        def __init__(self, *, layer, prefix=""):
+            OnlineMoEMethodBase.__init__(self, layer.moe_config)
+            self.moe.moe_backend = "flashinfer_b12x"  # this draft layer's own FusedMoEConfig
+            self.nvfp4_backend, self.experts_cls = select_nvfp4_moe_backend(
+                config=self.moe, weight_key=kNvfp4Static, activation_key=kNvfp4Dynamic)
+            if self.nvfp4_backend != NvFp4MoeBackend.FLASHINFER_B12X:
+                raise RuntimeError(f"ARC NvFp4 draft experts need b12x, got {self.nvfp4_backend}")
+            self.arc_prefix = prefix
+
+        def process_weights_after_loading(self, layer):
+            if getattr(layer, "_already_called_process_weights_after_loading", False):
+                return
+            probe = _draft_probe(layer)
+            bf16_bytes = layer.w13_weight.numel() * 2 + layer.w2_weight.numel() * 2
+            super().process_weights_after_loading(layer)
+            stored = sum(getattr(layer, n).numel() * getattr(layer, n).element_size()
+                         for n in ("w13_weight", "w13_weight_scale", "w2_weight", "w2_weight_scale"))
+            _draft_check(self, layer, probe, {"prefix": self.arc_prefix, "bf16_bytes": bf16_bytes,
+                                              "nvfp4_bytes": stored, "backend": self.nvfp4_backend.value})
+            torch.cuda.empty_cache()
+
+    _DRAFT_CLASS.append(ArcNvfp4DraftMoEMethod)
+    return ArcNvfp4DraftMoEMethod
+
+
+def _draft_probe(layer, tokens=4):
+    """Fixed random tokens and routes, with the BF16 layer's FP32 reference output (before quantization)."""
+    w13, w2 = layer.w13_weight, layer.w2_weight  # [E, 2I, H] ([gate; up]), [E, H, I]
+    experts, hidden, inter = w13.shape[0], w13.shape[2], w2.shape[2]
+    top_k = int(layer.top_k)
+    generator = torch.Generator(device=w13.device).manual_seed(0)
+    x = torch.randn((tokens, hidden), generator=generator, device=w13.device).to(torch.bfloat16)
+    ids = torch.stack([torch.randperm(experts, generator=generator, device=w13.device)[:top_k]
+                       for _ in range(tokens)]).to(torch.int32)
+    weights = torch.softmax(torch.randn((tokens, top_k), generator=generator, device=w13.device), dim=-1)
+    ref = torch.zeros((tokens, hidden), dtype=torch.float32, device=w13.device)
+    with torch.no_grad():
+        for t in range(tokens):
+            xt = x[t].float()
+            for j in range(top_k):
+                e = int(ids[t, j])
+                h = w13[e].float() @ xt
+                a = torch.nn.functional.silu(h[:inter]) * h[inter:]
+                ref[t] += weights[t, j] * (w2[e].float() @ a)
+    return {"x": x, "ids": ids, "weights": weights.float(), "ref": ref}
+
+
+def _draft_check(method, layer, probe, info):
+    out = torch.empty_like(probe["x"])
+    with torch.no_grad():
+        method.moe_kernel.fused_experts.apply(
+            out, probe["x"], layer.w13_weight, layer.w2_weight, probe["weights"], probe["ids"],
+            activation=layer.activation, global_num_experts=layer.global_num_experts, expert_map=None,
+            a1q_scale=None, a2_scale=None, workspace13=None, workspace2=None, expert_tokens_meta=None,
+            apply_router_weight_on_input=False)
+        torch.cuda.synchronize()
+    ref = probe["ref"]
+    rel = ((out.float() - ref).norm() / ref.norm().clamp(min=1e-12)).item()
+    cos = torch.nn.functional.cosine_similarity(out.float().flatten(), ref.flatten(), dim=0).item()
+    result = {**info, "nvfp4_b12x_vs_bf16_rel_error": rel, "cosine": cos, "tokens": int(ref.shape[0])}
+    if not rel <= DRAFT_ERROR_LIMIT:
+        log("CHECK", {**result, "failed": True})
+        raise RuntimeError(f"ARC NvFp4 draft-expert self-check failed: {result}")
+    log("CHECK", result)
+
+
+# ============================================================================ 2. shared b12x workspace
+def shared_b12x_wrapper(experts):
+    """One ``B12xMoEWrapper`` per geometry, shared by every layer of that geometry."""
+    key = (experts.global_num_experts, experts.topk, experts.hidden_dim, experts.intermediate_size_per_partition,
+           experts.max_num_tokens, experts.num_local_experts, experts._activation_str)
+    wrapper = _STATE["b12x"].get(key)
+    if wrapper is None:
+        # Read (and cached) by FlashInfer on the first b12x call, which is this wrapper's allocation.
+        target_b12x = load_config().get("moe_backend") == "flashinfer_b12x"
+        os.environ.setdefault(B12X_CUTOVER_ENV,
+                              str(B12X_STATIC_CUTOVER_PAIRS if target_b12x else B12X_DRAFT_ONLY_CUTOVER_PAIRS))
+        from flashinfer.fused_moe import B12xMoEWrapper
+
+        torch.cuda.synchronize()
+        before = torch.cuda.memory_allocated()
+        wrapper = B12xMoEWrapper(
+            num_experts=experts.global_num_experts, top_k=experts.topk, hidden_size=experts.hidden_dim,
+            intermediate_size=experts.intermediate_size_per_partition, use_cuda_graph=True,
+            max_num_tokens=experts.max_num_tokens, num_local_experts=experts.num_local_experts,
+            activation=experts._activation_str)
+        torch.cuda.synchronize()
+        _STATE["b12x"][key] = wrapper
+        log("B12X", {"geometry": list(key), "workspace_bytes": torch.cuda.memory_allocated() - before,
+                     "static_cutover_pairs": os.environ.get(B12X_CUTOVER_ENV)})
+    _count("b12x_layers")
+    return wrapper
+
+
+# ============================================================================ 3. HC up + gate-mix fusion
+@triton.jit
+def _hc_up_mix_kernel(lora_ptr, w_ptr, xn_ptr, out_ptr, M, stride_lora, stride_xn, stride_out,
+                      HC_DIM: tl.constexpr, HC: tl.constexpr, R: tl.constexpr, R_PAD: tl.constexpr,
+                      BLOCK_M: tl.constexpr, BLOCK_I: tl.constexpr):
+    """out[m, i] = mean_s sigmoid(bf16(silu(lora[m] / HC) @ W[s*HC_DIM + i])) * xn[m, s*HC_DIM + i].
+
+    The rounding points follow the pinned chain: silu output in BF16 (hc_silu), the up GEMV in FP32
+    accumulation rounded to BF16 (cuBLAS), the gate-mix in FP32 stored as BF16 (hc_gate_mix).
+    """
+    pid_i = tl.program_id(0)
+    pid_m = tl.program_id(1)
+    offs_m = pid_m * BLOCK_M + tl.arange(0, BLOCK_M)
+    offs_i = pid_i * BLOCK_I + tl.arange(0, BLOCK_I)
+    offs_r = tl.arange(0, R_PAD)
+    m_mask = offs_m < M
+    i_mask = offs_i < HC_DIM
+    r_mask = offs_r < R
+    x = tl.load(lora_ptr + offs_m[:, None] * stride_lora + offs_r[None, :],
+                mask=m_mask[:, None] & r_mask[None, :], other=0.0).to(tl.float32) / HC
+    a = (x * tl.sigmoid(x)).to(tl.bfloat16)
+    acc = tl.zeros((BLOCK_M, BLOCK_I), dtype=tl.float32)
+    for s in tl.static_range(HC):
+        rows = s * HC_DIM + offs_i
+        w = tl.load(w_ptr + rows[:, None] * R + offs_r[None, :], mask=i_mask[:, None] & r_mask[None, :], other=0.0,
+                    eviction_policy="evict_first")
+        gate = tl.dot(a, tl.trans(w)).to(tl.bfloat16).to(tl.float32)
+        xn = tl.load(xn_ptr + offs_m[:, None] * stride_xn + rows[None, :], mask=m_mask[:, None] & i_mask[None, :],
+                     other=0.0).to(tl.float32)
+        acc += tl.sigmoid(gate) * xn
+    acc = acc / HC
+    tl.store(out_ptr + offs_m[:, None] * stride_out + offs_i[None, :], acc.to(tl.bfloat16),
+             mask=m_mask[:, None] & i_mask[None, :])
+
+
+def hc_up_mix_triton(xn, lora, weight, hc_count, *, block_m=HC_BLOCK_M, block_i=HC_BLOCK_I, num_warps=HC_WARPS,
+                     num_stages=HC_STAGES):
+    """Fused silu + up GEMV + gate-mix. xn [M, HC*H] BF16, lora [M, R] (row stride free), weight [HC*H, R]."""
+    m, dim = xn.shape
+    rank = lora.shape[1]
+    hc_dim = dim // hc_count
+    if (weight.shape != (dim, rank) or weight.dtype != torch.bfloat16 or xn.dtype != torch.bfloat16
+            or lora.dtype != torch.bfloat16 or xn.stride(1) != 1 or lora.stride(1) != 1 or not weight.is_contiguous()):
+        raise RuntimeError(f"ARC HC fusion got unexpected operands {tuple(xn.shape)} {tuple(lora.shape)} "
+                           f"{tuple(weight.shape)} {weight.dtype}")
+    out = torch.empty((m, hc_dim), dtype=torch.bfloat16, device=xn.device)
+    if m == 0:
+        return out
+    grid = (triton.cdiv(hc_dim, block_i), triton.cdiv(m, block_m))
+    _hc_up_mix_kernel[grid](lora, weight, xn, out, m, lora.stride(0), xn.stride(0), out.stride(0),
+                            HC_DIM=hc_dim, HC=hc_count, R=rank, R_PAD=triton.next_power_of_2(rank),
+                            BLOCK_M=block_m, BLOCK_I=block_i, num_warps=num_warps, num_stages=num_stages)
+    return out
+
+
+def hc_up_mix_reference(xn, lora, weight, hc_count):
+    """The pinned three-kernel chain's math in torch (BF16 rounding at the same points)."""
+    x = lora.float() / hc_count
+    a = (x * torch.sigmoid(x)).to(torch.bfloat16)
+    gate = torch.nn.functional.linear(a, weight)
+    m, dim = xn.shape
+    g = torch.sigmoid(gate.float()).view(m, hc_count, dim // hc_count)
+    return (g * xn.float().view(m, hc_count, dim // hc_count)).sum(1).div(hc_count).to(torch.bfloat16)
+
+
+def _pinned_chain(xn, lora, weight, hc_count):
+    silu = torch.ops.vllm.qwen3_8_flash_next_hc_silu(lora, hc_count)
+    gate = torch.nn.functional.linear(silu, weight)
+    return torch.ops.vllm.qwen3_8_flash_next_hc_gate_mix(xn, gate, hc_count)
+
+
+def _arc_hc_up_mix(xn: torch.Tensor, lora: torch.Tensor, weight: torch.Tensor, hc_count: int) -> torch.Tensor:
+    # The op body runs on real tensors only (torch.compile sees the fake impl), so the one-time check and
+    # the warm-up registration live here rather than in the traced forward.
+    key = (tuple(weight.shape), hc_count)
+    if key not in _STATE["hc_warm"] and not torch.cuda.is_current_stream_capturing():
+        _STATE["hc_warm"][key] = (weight, xn.device)
+        _check_hc(xn, lora, weight, hc_count)
+    if 0 < xn.shape[0] <= HC_FUSED_MAX_M:
+        _count("hc_fused")
+        return hc_up_mix_triton(xn, lora, weight, hc_count)
+    return _pinned_chain(xn, lora, weight, hc_count)
+
+
+def _arc_hc_up_mix_fake(xn: torch.Tensor, lora: torch.Tensor, weight: torch.Tensor, hc_count: int) -> torch.Tensor:
+    return xn.new_empty((xn.shape[0], xn.shape[1] // hc_count))
+
+
+def _register_hc_op():
+    from vllm.model_executor.warmup.cutedsl_warmup import register_cutedsl_warmup_provider
+    from vllm.utils.torch_utils import direct_register_custom_op
+
+    if not hasattr(torch.ops.vllm, "arc_hc_up_mix"):
+        direct_register_custom_op(op_name="arc_hc_up_mix", op_func=_arc_hc_up_mix, fake_impl=_arc_hc_up_mix_fake)
+        register_cutedsl_warmup_provider(_HC_WARMUP)
+        log("HC", {"fused_max_m": HC_FUSED_MAX_M, "block_m": HC_BLOCK_M, "block_i": HC_BLOCK_I, "warps": HC_WARPS})
+
+
+def hc_up_mix(module, xn, lora):
+    """The patched ``GatedResidual`` calls this in place of hc_silu -> input_mix_weight_up -> hc_gate_mix.
+
+    Traced by torch.compile: no side effects here, only the opaque op (registered at import).
+    """
+    return torch.ops.vllm.arc_hc_up_mix(xn, lora, module.input_mix_weight_up.weight, module.hc_count)
+
+
+def _check_hc(xn, lora, weight, hc_count):
+    """First call per shape: the fused kernel against the pinned chain on the live operands (<= 16 rows)."""
+    rows = min(int(xn.shape[0]), 16)
+    if rows == 0 or weight.dtype != torch.bfloat16:
+        raise RuntimeError(f"ARC HC fusion expects BF16 HC up weights and rows, got {weight.dtype}, {rows} rows")
+    fused = hc_up_mix_triton(xn[:rows], lora[:rows], weight, hc_count)
+    pinned = _pinned_chain(xn[:rows], lora[:rows], weight, hc_count)
+    diff = (fused.float() - pinned.float())
+    rel = (diff.norm() / pinned.float().norm().clamp(min=1e-12)).item()
+    result = {"shape": list(weight.shape), "rows": rows, "rel_error_vs_pinned": rel,
+              "max_abs_diff": diff.abs().max().item(),
+              "bitwise_equal_fraction": (fused == pinned).float().mean().item()}
+    if rel > 0.01:
+        log("CHECK", {**result, "failed": True})
+        raise RuntimeError(f"ARC HC fusion self-check failed: {result}")
+    log("CHECK", result)
+
+
+class _HcWarmup:
+    """Compiles the fused kernel's Triton specializations at every decode size before graph capture."""
+
+    def get_cutedsl_warmup_compile_units(self):
+        from vllm.model_executor.warmup.cutedsl_warmup import CuTeDSLCompileUnit
+
+        return tuple(CuTeDSLCompileUnit(name="ARC HC up+mix Triton", key=("arc-hc-up-mix", key),
+                                        compile=partial(_warm_hc, key))
+                     for key in sorted(_STATE["hc_warm"]))
+
+
+def _warm_hc(key):
+    weight, device = _STATE["hc_warm"][key]
+    (dim, rank), hc_count = key
+    xn = torch.zeros((HC_FUSED_MAX_M, dim), dtype=torch.bfloat16, device=device)
+    lora = torch.zeros((HC_FUSED_MAX_M, rank + 16), dtype=torch.bfloat16, device=device)[:, :rank]
+    for m in range(1, HC_FUSED_MAX_M + 1):
+        hc_up_mix_triton(xn[:m], lora[:m], weight, hc_count)
+    torch.cuda.synchronize()
+
+
+_HC_WARMUP = _HcWarmup()
+
+
+# ============================================================================ 4. top-k-first sampler
+def topk_first_impl(logits, k, p, max_k):
+    """vLLM's top-k then top-p mask, computed on a top-(max_k + margin) window instead of a full sort.
+
+    ``logits`` [B, V] is updated in place (as the pinned PyTorch path does). Rows with top-k == V are not
+    allowed here (the caller checks ``max_k``). Top-p follows vLLM's rule on the renormalised top-k
+    distribution: a token is dropped when the probability mass strictly above it is >= p (the largest
+    token is always kept); rows with p >= 1 are left untouched by the top-p step.
+    """
+    window = min(logits.shape[1], int(max_k) + TOPK_MARGIN)
+    vals, idx = logits.topk(window, dim=-1)
+    kk = k.to(torch.long).clamp(1, window) - 1
+    kth = vals.gather(1, kk.unsqueeze(1))
+    logits.masked_fill_(logits < kth, float("-inf"))
+    if p is None:
+        return logits
+    kept = vals.masked_fill(vals < kth, float("-inf"))
+    probs = kept.float().softmax(dim=-1)
+    above = probs.cumsum(dim=-1) - probs
+    drop = above >= p.to(probs.dtype).unsqueeze(1)
+    drop[:, 0] = False
+    # A row whose kept set reaches the window's end may have more tied tokens outside it: keep vLLM's top-k
+    # set and skip its top-p cut (the only case that can differ from the pinned sort).
+    overflow = vals[:, -1:] >= kth
+    drop &= ~overflow
+    drop &= (p < 1.0).unsqueeze(1)
+    logits.scatter_(1, idx, kept.masked_fill(drop, float("-inf")))
+    return logits
+
+
+def topk_first(logits, k, p):
+    """Patched ``apply_top_k_top_p``: None falls back to the pinned implementation."""
+    # Only reached off vLLM's FlashInfer sampling path (a greedy or seeded request in the batch, or processed
+    # logprobs); arena gameplay batches sample through FlashInfer (docs/validation-20260927/hero-behavior.md).
+    if k is None or logits.dim() != 2 or not TOPK_MIN_ROWS <= logits.shape[0] <= TOPK_MAX_ROWS:
+        _count("topk_pinned")
+        return None
+    max_k = getattr(k, "_arc_max_k", None)
+    if max_k is None or not 1 <= max_k <= TOPK_MAX or max_k >= logits.shape[1]:
+        _count("topk_pinned")
+        return None
+    _count("topk_first")
+    return topk_first_impl(logits, k, p, max_k)
+
+
+def top_k_hint(top_k_gpu, top_k_np):
+    """Patched ``SamplingStates.get_top_k_top_p``: attach the batch's largest top-k (known on the host)."""
+    if top_k_gpu is not None and len(top_k_np):
+        top_k_gpu._arc_max_k = int(top_k_np.max())
+    return top_k_gpu
+
+
+# ============================================================================ 5. draft head over a token subset
+def load_draft_vocab(path=None):
+    """The draft subset record (``serving_draft_vocab.json``): sorted distinct ids below ``vocab_rows``."""
+    record = json.loads(Path(path or DRAFT_VOCAB_PATH).read_text())
+    ids = record["ids"]
+    if (len(ids) != record["size"] or ids != sorted(set(ids)) or not ids
+            or not 0 <= ids[0] <= ids[-1] < record["vocab_rows"]):
+        raise RuntimeError("ARC draft vocabulary file is malformed")
+    return record
+
+
+class DraftHead:
+    """The draft head over the subset ``ids``: logits for those rows only, written into a persistent full-width
+    row buffer whose other columns are -inf and are never written (the greedy draft is always in the subset).
+
+    ``weight`` [K, H] holds the head rows of ``ids``: INT8 with per-row FP32 ``scale`` (the phase-2 A+C head, run
+    by the same W8A16 op) or a float weight with ``scale`` None (F.linear, as the unquantized head).
+    """
+
+    def __init__(self, weight, scale, ids, width, rows, dtype):
+        self.weight, self.scale, self.ids, self.width = weight, scale, ids, int(width)
+        self.buffer = torch.full((int(rows), self.width), float("-inf"), dtype=dtype, device=weight.device)
+
+    @classmethod
+    def from_head(cls, lm_head, ids, width, rows, dtype):
+        weight = lm_head.weight.detach()
+        index = torch.as_tensor(ids, dtype=torch.long, device=weight.device)
+        scale = getattr(lm_head, "weight_scale", None)
+        if weight.dtype == torch.int8:
+            if scale is None:
+                raise RuntimeError("ARC draft head: an INT8 head without its per-row scales")
+            return cls(weight.index_select(0, index).contiguous(), scale.detach().index_select(0, index).contiguous(),
+                       index, width, rows, dtype)
+        if weight.dtype in (torch.bfloat16, torch.float16, torch.float32):
+            return cls(weight.index_select(0, index).contiguous(), None, index, width, rows, dtype)
+        raise RuntimeError(f"ARC draft head: unsupported head weight dtype {weight.dtype}")
+
+    def sub_logits(self, hidden_states):
+        if self.scale is not None:
+            return torch.ops.vllm.arc_w8a16_linear(hidden_states, self.weight, self.scale)
+        return torch.nn.functional.linear(hidden_states.to(self.weight.dtype), self.weight)
+
+    def __call__(self, hidden_states):
+        rows = hidden_states.shape[0]
+        sub = self.sub_logits(hidden_states)
+        if rows <= self.buffer.shape[0]:
+            out = self.buffer[:rows]
+        else:  # more rows than max_num_seqs: never expected from the speculator; a fresh -inf row block
+            _count("draft_head_wide_batch")
+            out = torch.full((rows, self.width), float("-inf"), dtype=self.buffer.dtype, device=self.buffer.device)
+        out.index_copy_(1, self.ids, sub.to(out.dtype))
+        return out
+
+
+def draft_logits(model, hidden_states):
+    """Patched ``Qwen3_8FlashNextMTP.compute_logits``: the subset head once built, else the pinned head."""
+    head = _STATE["draft_head"]
+    if head is not None:
+        return head(hidden_states)
+    if not load_config().get("draft_vocab"):
+        return model.logits_processor(model.lm_head, hidden_states)
+    if hidden_states.is_cuda and torch.cuda.is_current_stream_capturing():
+        # The profile run's eager draft prefill builds it; a graph captured with the full head would keep it.
+        raise RuntimeError("ARC draft head must be built before CUDA graph capture")
+    return build_draft_head(model, hidden_states)(hidden_states)
+
+
+def build_draft_head(model, probe, record=None, rows=None):
+    """Gather the subset rows of the draft's (shared, target) head, check them against the full head and compile the
+    W8A16 specialisations for every batch size up to max_num_seqs before graph capture."""
+    record = record or load_draft_vocab()
+    processor, lm_head = model.logits_processor, model.lm_head
+    if (processor.soft_cap is not None or processor.scale != 1.0 or getattr(processor, "logits_as_input", False)
+            or getattr(processor, "head_dtype", None) not in (None, probe.dtype)
+            or getattr(lm_head, "tp_size", 1) != 1):
+        raise RuntimeError("ARC draft head expects the plain TP=1 head (no soft cap, scale 1, head dtype = model)")
+    width = int(processor.org_vocab_size)
+    if record["ids"][-1] >= width:
+        raise RuntimeError(f"ARC draft vocabulary reaches id {record['ids'][-1]} beyond the head's {width} rows")
+    rows = int(rows or model.vllm_config.scheduler_config.max_num_seqs)
+    # Normal (not inference) tensors: the speculator writes the persistent buffer in place under inference mode.
+    with torch.inference_mode(False), torch.no_grad():
+        head = DraftHead.from_head(lm_head, record["ids"], width, rows, probe.dtype)
+        check = check_draft_head(model, head, probe.shape[-1], probe.dtype)
+        warm = torch.zeros((rows, probe.shape[-1]), dtype=probe.dtype, device=probe.device)
+        for m in range(1, rows + 1):
+            head(warm[:m])
+        if probe.is_cuda:
+            torch.cuda.synchronize()
+    _STATE["draft_head"] = head
+    log("DRAFT_VOCAB", {"name": record.get("name"), "size": len(record["ids"]), "width": width, "rows": rows,
+                        "kind": "int8" if head.scale is not None else str(head.weight.dtype),
+                        "weight_bytes": head.weight.numel() * head.weight.element_size(),
+                        "buffer_bytes": head.buffer.numel() * head.buffer.element_size(), "check": check})
+    return head
+
+
+def check_draft_head(model, head, hidden, dtype, rows=4):
+    """The subset logits against the full head's columns on fixed random rows; the full-width row keeps -inf
+    outside the subset and its argmax is the subset's argmax."""
+    device = head.weight.device
+    generator = torch.Generator(device=device).manual_seed(0)
+    h = torch.randn((rows, hidden), generator=generator, device=device).to(dtype)
+    full = model.logits_processor(model.lm_head, h)
+    reference = full.index_select(1, head.ids).float()
+    sub = head.sub_logits(h).float()
+    rel = ((sub - reference).norm() / reference.norm().clamp(min=1e-12)).item()
+    out = head(h)
+    outside = out.shape[1] - head.ids.numel()
+    result = {"rel_error_vs_full_head": rel, "rows": rows,
+              "neg_inf_outside_subset": bool((torch.isneginf(out).sum(1) == outside).all().item()),
+              "argmax_equal_fraction": (out.argmax(-1) == head.ids[reference.argmax(-1)]).float().mean().item(),
+              "full_head_argmax_in_subset_fraction": torch.isin(full.argmax(-1), head.ids).float().mean().item()}
+    if not (rel <= DRAFT_HEAD_ERROR_LIMIT and result["neg_inf_outside_subset"]
+            and result["argmax_equal_fraction"] == 1.0):
+        log("CHECK", {"draft_head": result, "failed": True})
+        raise RuntimeError(f"ARC draft-head self-check failed: {result}")
+    log("CHECK", {"draft_head": result})
+    return result
+
+
+# ============================================================================ 6. host tables read through UVA
+class _DeviceBuffer:
+    """``__cuda_array_interface__`` of a device-mapped host region (torch keeps this object, and so ``owner``,
+    alive for as long as the tensor)."""
+
+    def __init__(self, pointer, nbytes, owner):
+        self.owner = owner
+        self.__cuda_array_interface__ = {"shape": (int(nbytes),), "typestr": "|u1", "data": (int(pointer), False),
+                                         "strides": None, "version": 2}
+
+
+def _cuda_check(result, what):
+    error = result[0] if isinstance(result, tuple) else result
+    if int(getattr(error, "value", error)) != 0:
+        raise RuntimeError(f"ARC {what} failed: {error}")
+    return result
+
+
+def _registered_region(driver, nbytes, name):
+    """Anonymous mmap (page-aligned; the pinned caching host allocator would round 47.7 GiB up to 64 GiB) registered
+    PORTABLE | DEVICEMAP; if the registration is refused, the driver's own mapped allocation (cuMemHostAlloc)."""
+    region = mmap.mmap(-1, nbytes, flags=mmap.MAP_PRIVATE | mmap.MAP_ANONYMOUS)
+    if hasattr(mmap, "MADV_HUGEPAGE"):
+        try:
+            region.madvise(mmap.MADV_HUGEPAGE)
+        except OSError:
+            pass
+    raw = torch.frombuffer(region, dtype=torch.uint8, count=nbytes)
+    try:
+        _cuda_check(driver.cuMemHostRegister(raw.data_ptr(), nbytes, HOST_REGISTER_FLAGS), f"cuMemHostRegister({name})")
+        return raw, region, "cuMemHostRegister"
+    except RuntimeError as error:
+        log("HOST_TABLE", {"name": name, "register_refused": str(error)})
+    del raw
+    try:
+        region.close()
+    except BufferError:
+        pass
+    import ctypes
+
+    _, pointer = _cuda_check(driver.cuMemHostAlloc(nbytes, HOST_REGISTER_FLAGS), f"cuMemHostAlloc({name})")
+    buffer = (ctypes.c_uint8 * nbytes).from_address(int(pointer))
+    return torch.frombuffer(buffer, dtype=torch.uint8, count=nbytes), buffer, "cuMemHostAlloc"
+
+
+def host_table(shape, dtype, device, name):
+    """A page-locked, device-mapped host table: (CPU alias, CUDA view of the same bytes)."""
+    import time
+
+    from cuda.bindings import driver
+
+    numel = 1
+    for size in shape:
+        numel *= int(size)
+    nbytes = numel * torch.empty((), dtype=dtype).element_size()
+    torch.zeros(1, device=device)  # the device's primary context is current on this thread
+    started = time.perf_counter()
+    raw, owner, method = _registered_region(driver, nbytes, name)
+    pinned = time.perf_counter() - started
+    _, pointer = _cuda_check(driver.cuMemHostGetDevicePointer(raw.data_ptr(), 0), f"cuMemHostGetDevicePointer({name})")
+    try:
+        view = torch.as_tensor(_DeviceBuffer(int(pointer), nbytes, (owner, raw)), device=device)
+    except Exception as error:  # vLLM's own UVA view (cudaHostGetDevicePointer + from_blob)
+        log("HOST_TABLE", {"name": name, "array_interface_refused": str(error)})
+        view = torch.ops._C.get_cuda_view_from_cpu_tensor(raw)
+    if view.device.type != "cuda" or view.numel() != nbytes or view.data_ptr() != int(pointer):
+        raise RuntimeError(f"ARC host table {name}: the CUDA view is not the mapped region ({view.device})")
+    entry = {"name": name, "bytes": nbytes, "method": method, "pin_seconds": pinned,
+             "uva_equal_pointer": int(pointer) == raw.data_ptr()}
+    _STATE["host_tables"].append({**entry, "owner": owner, "raw": raw, "view": view})
+    log("HOST_TABLE", entry)
+    return raw.view(dtype).view(shape), view.view(dtype).view(shape)
+
+
+def _worker_device():
+    return torch.device("cuda", torch.cuda.current_device())
+
+
+def _default_device_type():
+    """The device a model is being built on (vLLM builds under ``with torch.device(...)``)."""
+    return torch.empty(0).device.type
+
+
+def _move_small_tensors(module, keep, device):
+    """Every parameter and buffer of ``module`` except ``keep`` to ``device`` (built on the CPU with the table)."""
+    for sub in module.modules():
+        for param in sub.parameters(recurse=False):
+            if param is not keep:
+                param.data = param.data.to(device)
+        for key, buffer in list(sub._buffers.items()):
+            if buffer is not None:
+                sub._buffers[key] = buffer.to(device)
+
+
+def _after_load(layer, check):
+    """Run ``check`` right after the layer's quant method has processed the loaded weights."""
+    method = layer.quant_method
+    original = method.process_weights_after_loading
+
+    def process_weights_after_loading(module):
+        original(module)
+        check()
+
+    method.process_weights_after_loading = process_weights_after_loading
+
+
+def _gather(index, table):
+    """A host-table lookup; the FP8 PLE table as a byte gather (F.embedding of the uint8 view, viewed back): the
+    same bytes as the pinned ``F.embedding(input_, layer.weight)``, without relying on FP8 index kernels."""
+    if table.element_size() == 1:
+        return torch.nn.functional.embedding(index, table.view(torch.uint8)).view(table.dtype)
+    return torch.nn.functional.embedding(index, table)
+
+
+def _arc_uva_embedding(index: torch.Tensor, table: torch.Tensor) -> torch.Tensor:
+    return _gather(index, table)
+
+
+def _arc_uva_embedding_fake(index: torch.Tensor, table: torch.Tensor) -> torch.Tensor:
+    return table.new_empty((*index.shape, table.shape[1]))
+
+
+def _register_uva_op():
+    """The host-table lookup as an opaque op: Inductor must never generate, autotune or benchmark a kernel with a
+    host table as input (smoke v3: autotuning the backbone tried to allocate a 95.37 GiB copy of the PLE table)."""
+    from vllm.utils.torch_utils import direct_register_custom_op
+
+    if not hasattr(torch.ops.vllm, "arc_uva_embedding"):
+        direct_register_custom_op(op_name="arc_uva_embedding", op_func=_arc_uva_embedding,
+                                  fake_impl=_arc_uva_embedding_fake)
+
+
+def _arc_ple_lookup(input_ids: torch.Tensor, query_start_loc: torch.Tensor, ngram_context: torch.Tensor,
+                    layer: str) -> torch.Tensor:
+    ple = _STATE["ple_layers"][layer]
+    return type(ple).forward_impl(ple, None, input_ids, query_start_loc, ngram_context)
+
+
+def _arc_ple_lookup_fake(input_ids: torch.Tensor, query_start_loc: torch.Tensor, ngram_context: torch.Tensor,
+                         layer: str) -> torch.Tensor:
+    ple = _STATE["ple_layers"][layer]
+    return input_ids.new_empty((input_ids.reshape(-1).shape[0], ple.embedding_dim),
+                               dtype=ple.ngram_embedding.weight.dtype)
+
+
+def _register_ple_op():
+    """The whole GPU PLE lookup (hashing, packing and the host-table gather) as one opaque op: the pinned eager
+    code runs as is inside the graphs, and the compiler never traces or autotunes over the host table."""
+    from vllm.utils.torch_utils import direct_register_custom_op
+
+    if not hasattr(torch.ops.vllm, "arc_ple_lookup"):
+        direct_register_custom_op(op_name="arc_ple_lookup", op_func=_arc_ple_lookup, fake_impl=_arc_ple_lookup_fake)
+
+
+def _ple_forward(layer, hidden_states, input_ids, query_start_loc, ngram_context, output_buffer=None):
+    """The PLE embedding's ``forward_impl`` (instance attribute) on the worker: the opaque lookup."""
+    if output_buffer is not None:
+        raise RuntimeError("ARC PLE via UVA has no offload output buffer")
+    return torch.ops.vllm.arc_ple_lookup(input_ids, query_start_loc, ngram_context, layer)
+
+
+def uva_embedding(layer, input_):
+    """The embedding method of a host-table layer (instance attribute on its quant method): the opaque lookup,
+    byte-wise for the FP8 PLE table (the same bytes as the pinned ``F.embedding``)."""
+    return torch.ops.vllm.arc_uva_embedding(input_, layer.weight)
+
+
+def _gather_check(name, cpu_table, gpu_table, timed_rows, rows=HOST_CHECK_ROWS, min_nonzero=0.0):
+    """Rows gathered on the GPU through UVA (as served) against the CPU alias; a table that is still all zeros was
+    never loaded (``min_nonzero``: a dense embedding; hashed PLE rows may be zero). Also times gathers of
+    ``timed_rows`` rows (decode- and prefill-sized)."""
+    generator = torch.Generator().manual_seed(0)
+    index = torch.randint(0, cpu_table.shape[0], (rows,), generator=generator)
+    device = gpu_table.device
+    via_uva = _gather(index.to(device), gpu_table)
+    direct = cpu_table.index_select(0, index)
+    result = {"table": name, "rows": rows, "gather_equal": torch.equal(via_uva.cpu().view(torch.uint8),
+                                                                       direct.view(torch.uint8)),
+              "nonzero_byte_fraction": (direct.view(torch.uint8) != 0).float().mean().item()}
+    for count in timed_rows:
+        label = f"us_{count}_rows"
+        sample = torch.randint(0, cpu_table.shape[0], (count,), generator=generator).to(device)
+        _gather(sample, gpu_table)
+        start, end = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
+        start.record()
+        for _ in range(20):
+            _gather(sample, gpu_table)
+        end.record()
+        end.synchronize()
+        result[label] = start.elapsed_time(end) * 1000 / 20
+    if not result["gather_equal"] or result["nonzero_byte_fraction"] < min_nonzero:
+        log("CHECK", {"host_table": result, "failed": True})
+        raise RuntimeError(f"ARC host-table self-check failed: {result}")
+    return result
+
+
+def _ple_mirror(ple, cpu_table):
+    """The PLE module's CPU twin for the offload process's own code path (same table, CPU buffers)."""
+    cls = type(ple)
+    names = ("eos_token_id", "ngram_size", "heads_per_ngram", "embedding_dim", "head_dim")
+    tensors = ("positions_buffer", "padded_buffer", "layer_multipliers", "ngram_heads_vocab_sizes",
+               "ngram_heads_offsets")
+    return types.SimpleNamespace(**{n: getattr(ple, n) for n in names},
+                                 **{n: getattr(ple, n).detach().cpu().clone() for n in tensors},
+                                 ngram_embedding=types.SimpleNamespace(weight=cpu_table),
+                                 _shift_precompute=cls._shift_precompute, _shift_apply=cls._shift_apply)
+
+
+def ple_probe(vocab, eos, context_len, generator):
+    """A CUDA-graph-like batch: three requests (5, 1 and 7 tokens, an EOS inside the first), a zero-length padded
+    request and three padding tokens after the 13 real ones."""
+    ids = torch.randint(0, vocab, (16,), generator=generator, dtype=torch.int64)
+    ids[3] = eos
+    query_start_loc = torch.tensor([0, 5, 6, 13, 13], dtype=torch.int32)
+    context = torch.randint(0, vocab, (4, context_len), generator=generator, dtype=torch.int64)
+    context[1, 0] = eos
+    context[3] = eos
+    return ids.to(torch.int32), query_start_loc, context.to(torch.int32), 13
+
+
+def _ple_check(ple, cpu_table, gpu_table):
+    """The UVA table gathers exactly, and the GPU PLE path on it equals the offload process's CPU path (the served
+    path until now) on the real tokens of a padded probe batch, byte for byte."""
+    # 24 decode tokens (six MTP-3 streams) and a 4,096-token prefill chunk, 16 rows each.
+    result = _gather_check("ple", cpu_table.view(-1, ple.head_dim), gpu_table.view(-1, ple.head_dim),
+                           (24 * 16, 4096 * 16))
+    generator = torch.Generator().manual_seed(1)
+    ids, qsl, context, real = ple_probe(ple.unigram_vocab_size, ple.eos_token_id, ple.ngram_size - 1, generator)
+    device = gpu_table.device
+    with torch.no_grad():
+        on_gpu = ple.forward_impl(None, ids.to(device), qsl.to(device), context.to(device))
+        module = sys.modules[type(ple).__module__]
+        saved = module.is_offload_process
+        module.is_offload_process = lambda: True
+        try:
+            output = torch.empty((ids.shape[0], ple.embedding_dim), dtype=cpu_table.dtype)
+            # As the offload worker calls it: (hidden_states=input_ids, input_ids, query_start_loc, ngram_context).
+            reference = type(ple).forward_impl(_ple_mirror(ple, cpu_table), ids, ids, qsl[:4], context[:3],
+                                               output_buffer=output)
+        finally:
+            module.is_offload_process = saved
+    result["offload_path_equal"] = torch.equal(on_gpu[:real].cpu().view(torch.uint8),
+                                               reference[:real].view(torch.uint8))
+    result["probe_tokens"] = real
+    if not result["offload_path_equal"]:
+        log("CHECK", {"ple_uva": result, "failed": True})
+        raise RuntimeError(f"ARC PLE UVA self-check failed: {result}")
+    log("CHECK", {"ple_uva": result})
+
+
+def ple_uva_device(default):
+    """Patched PLE constructor: build the n-gram embedding on the CPU (then ``ple_uva_place``)."""
+    if not load_config().get("ple_uva"):
+        return default
+    import vllm.envs as envs
+    from vllm.model_executor.layers.ple_offload_layer import is_offload_process
+
+    if envs.VLLM_PLE_CPU_OFFLOAD or is_offload_process():
+        raise RuntimeError("ARC PLE via UVA needs VLLM_PLE_CPU_OFFLOAD=0 (no PLE offload process)")
+    return torch.device("cpu")
+
+
+def ple_uva_place(ple):
+    """The n-gram table into a host table (its parameter becomes the CUDA view), everything else of the PLE
+    embedding to the GPU; checkpoint shards are copied through the CPU alias; checks after loading."""
+    if not load_config().get("ple_uva"):
+        return
+    device = _worker_device()
+    weight = ple.ngram_embedding.weight
+    if weight.device.type != "cpu":
+        raise RuntimeError(f"ARC PLE via UVA expects the table built on the CPU, got {weight.device}")
+    cpu_table, gpu_table = host_table(tuple(weight.shape), weight.dtype, device, "ple")
+    _move_small_tensors(ple, weight, device)
+    weight.data = gpu_table
+    load_weights = ple.load_weights
+
+    def load_through_cpu_alias(weights):
+        weight.data = cpu_table
+        try:
+            return load_weights(weights)
+        finally:
+            weight.data = gpu_table
+
+    ple.load_weights = load_through_cpu_alias
+    _register_uva_op()
+    ple.ngram_embedding.quant_method.embedding = uva_embedding
+    _register_ple_op()
+    key = f"ple{len(_STATE['ple_layers'])}"
+    _STATE["ple_layers"][key] = ple
+    ple.forward_impl = partial(_ple_forward, key)
+    _after_load(ple.ngram_embedding, partial(_ple_check, ple, cpu_table, gpu_table))
+    log("PLE", {"table_shape": list(weight.shape), "dtype": str(weight.dtype), "device": str(device)})
+
+
+def host_embedding(factory):
+    """Patched ``Qwen3_8FlashNextModel`` embedding: built on the CPU into a host table read through UVA (a model
+    built on another device, e.g. the PLE offload process's meta model, keeps the pinned construction)."""
+    if not load_config().get("embed_host") or _default_device_type() != "cuda":
+        return factory()
+    device = _worker_device()
+    with torch.device("cpu"):
+        layer = factory()
+    weight = layer.weight
+    cpu_table, gpu_table = host_table(tuple(weight.shape), weight.dtype, device, "embed_tokens")
+    _move_small_tensors(layer, weight, device)
+    weight.data = gpu_table
+    loader = weight.weight_loader
+
+    def load_through_cpu_alias(param, loaded_weight, *args, **kwargs):
+        param.data = cpu_table
+        try:
+            return loader(param, loaded_weight, *args, **kwargs)
+        finally:
+            param.data = gpu_table
+
+    weight.weight_loader = load_through_cpu_alias
+    _register_uva_op()
+    layer.quant_method.embedding = uva_embedding
+    _after_load(layer, lambda: log("CHECK", {"embed_host": _gather_check("embed_tokens", cpu_table, gpu_table,
+                                                                         (24, 4096), min_nonzero=0.5)}))
+    log("EMBED", {"shape": list(weight.shape), "dtype": str(weight.dtype), "device": str(device)})
+    return layer
+
+
+if load_config().get("hc_fusion"):
+    _register_hc_op()

@@ -1,0 +1,9 @@
+{
+  "runtime": "v0.1.dev20073+g8e685d198",
+  "path": "vllm/v1/core/sched/scheduler.py",
+  "sha256": "c710f49e41e974e5b7b8f1cd2f5fb9722523f4da0165252e16351199ebd03124",
+  "method": "Scheduler._mamba_block_aligned_split",
+  "first_line": 366,
+  "last_line": 441,
+  "engine_block_size": "vllm/v1/engine/core.py:322-324 sets cache_config.block_size = min(g.kv_cache_spec.block_size for g in kv_cache_groups); the QSA CircularBufferSpec ring is 4 tokens (8 on MTP-3)"
+}

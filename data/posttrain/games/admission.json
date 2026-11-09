@@ -1,0 +1,1790 @@
+{
+ "mechanics": {
+  "q001": {
+   "game_id": "q001-c8ba2de3",
+   "issues": [],
+   "baseline_actions": [
+    10,
+    13,
+    40,
+    33
+   ],
+   "replay_frames": 100,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 10,
+     "random_clear_rate": 0.005
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 13,
+     "random_clear_rate": 0.005
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 40,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 33,
+     "random_clear_rate": 0.0
+    }
+   ]
+  },
+  "q002": {
+   "game_id": "q002-4ec7e433",
+   "issues": [],
+   "baseline_actions": [
+    4,
+    5,
+    7,
+    8
+   ],
+   "replay_frames": 28,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 4,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 5,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 7,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 8,
+     "random_clear_rate": 0.0
+    }
+   ]
+  },
+  "q003": {
+   "game_id": "q003-fa4c376b",
+   "issues": [],
+   "baseline_actions": [
+    5,
+    13,
+    12,
+    19,
+    22
+   ],
+   "replay_frames": 76,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 5,
+     "random_clear_rate": 0.03
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 13,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 12,
+     "random_clear_rate": 0.01
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 19,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 22,
+     "random_clear_rate": 0.0
+    }
+   ]
+  },
+  "q004": {
+   "game_id": "q004-c194034b",
+   "issues": [],
+   "baseline_actions": [
+    5,
+    7,
+    11,
+    8,
+    10
+   ],
+   "replay_frames": 46,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 5,
+     "random_clear_rate": 0.025
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 7,
+     "random_clear_rate": 0.01
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 11,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 8,
+     "random_clear_rate": 0.015
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 10,
+     "random_clear_rate": 0.005
+    }
+   ]
+  },
+  "q005": {
+   "game_id": "q005-6c347d0d",
+   "issues": [],
+   "baseline_actions": [
+    11,
+    14,
+    17,
+    20,
+    23
+   ],
+   "replay_frames": 90,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 11,
+     "random_clear_rate": 0.05
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 14,
+     "random_clear_rate": 0.015
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 17,
+     "random_clear_rate": 0.02
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 20,
+     "random_clear_rate": 0.035
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 23,
+     "random_clear_rate": 0.01
+    }
+   ]
+  },
+  "q006": {
+   "game_id": "q006-a3e60ccd",
+   "issues": [],
+   "baseline_actions": [
+    5,
+    4,
+    9,
+    5
+   ],
+   "replay_frames": 27,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 5,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 4,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 9,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 5,
+     "random_clear_rate": 0.0
+    }
+   ]
+  },
+  "q007": {
+   "game_id": "q007-3f6c1b1e",
+   "issues": [],
+   "baseline_actions": [
+    7,
+    9,
+    14,
+    7
+   ],
+   "replay_frames": 41,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 7,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 9,
+     "random_clear_rate": 0.01
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 14,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 7,
+     "random_clear_rate": 0.0
+    }
+   ]
+  },
+  "q008": {
+   "game_id": "q008-219f83f1",
+   "issues": [],
+   "baseline_actions": [
+    9,
+    11,
+    8,
+    10,
+    12
+   ],
+   "replay_frames": 55,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 9,
+     "random_clear_rate": 0.05
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 11,
+     "random_clear_rate": 0.04
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 8,
+     "random_clear_rate": 0.01
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 10,
+     "random_clear_rate": 0.03
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 12,
+     "random_clear_rate": 0.015
+    }
+   ]
+  },
+  "q009": {
+   "game_id": "q009-6696a439",
+   "issues": [],
+   "baseline_actions": [
+    8,
+    8,
+    9,
+    10,
+    11
+   ],
+   "replay_frames": 51,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 8,
+     "random_clear_rate": 0.025
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 8,
+     "random_clear_rate": 0.01
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 9,
+     "random_clear_rate": 0.03
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 10,
+     "random_clear_rate": 0.015
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 11,
+     "random_clear_rate": 0.01
+    }
+   ]
+  },
+  "q010": {
+   "game_id": "q010-70e3829b",
+   "issues": [],
+   "baseline_actions": [
+    7,
+    10,
+    6,
+    11,
+    10
+   ],
+   "replay_frames": 49,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 7,
+     "random_clear_rate": 0.015
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 10,
+     "random_clear_rate": 0.005
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 6,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 11,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 10,
+     "random_clear_rate": 0.0
+    }
+   ]
+  },
+  "q011": {
+   "game_id": "q011-582cc975",
+   "issues": [],
+   "baseline_actions": [
+    4,
+    5,
+    10,
+    13,
+    12
+   ],
+   "replay_frames": 49,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 4,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 5,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 10,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 13,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 12,
+     "random_clear_rate": 0.0
+    }
+   ]
+  },
+  "q012": {
+   "game_id": "q012-4d4f24c6",
+   "issues": [],
+   "baseline_actions": [
+    4,
+    6,
+    9,
+    5,
+    9
+   ],
+   "replay_frames": 38,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 4,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 6,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 9,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 5,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 9,
+     "random_clear_rate": 0.0
+    }
+   ]
+  },
+  "q013": {
+   "game_id": "q013-91bc7865",
+   "issues": [],
+   "baseline_actions": [
+    6,
+    11,
+    18,
+    13,
+    15
+   ],
+   "replay_frames": 68,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 6,
+     "random_clear_rate": 0.01
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 11,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 18,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 13,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 15,
+     "random_clear_rate": 0.0
+    }
+   ]
+  },
+  "q014": {
+   "game_id": "q014-a3191849",
+   "issues": [],
+   "baseline_actions": [
+    7,
+    7,
+    8,
+    7,
+    7
+   ],
+   "replay_frames": 41,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 7,
+     "random_clear_rate": 0.035
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 7,
+     "random_clear_rate": 0.005
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 8,
+     "random_clear_rate": 0.015
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 7,
+     "random_clear_rate": 0.005
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 7,
+     "random_clear_rate": 0.005
+    }
+   ]
+  },
+  "q015": {
+   "game_id": "q015-544a385b",
+   "issues": [],
+   "baseline_actions": [
+    7,
+    8,
+    15,
+    8,
+    15
+   ],
+   "replay_frames": 58,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 7,
+     "random_clear_rate": 0.005
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 8,
+     "random_clear_rate": 0.005
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 15,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 8,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 15,
+     "random_clear_rate": 0.0
+    }
+   ]
+  },
+  "q016": {
+   "game_id": "q016-fb8b5e28",
+   "issues": [],
+   "baseline_actions": [
+    9,
+    9,
+    9,
+    12,
+    22
+   ],
+   "replay_frames": 66,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 9,
+     "random_clear_rate": 0.02
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 9,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 9,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 12,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 22,
+     "random_clear_rate": 0.0
+    }
+   ]
+  },
+  "q017": {
+   "game_id": "q017-b0e60f45",
+   "issues": [],
+   "baseline_actions": [
+    8,
+    8,
+    11,
+    12,
+    16
+   ],
+   "replay_frames": 60,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 8,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 8,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 11,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 12,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 16,
+     "random_clear_rate": 0.0
+    }
+   ]
+  },
+  "q018": {
+   "game_id": "q018-e2171764",
+   "issues": [],
+   "baseline_actions": [
+    6,
+    10,
+    12,
+    14,
+    16
+   ],
+   "replay_frames": 63,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 6,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 10,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 12,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 14,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 16,
+     "random_clear_rate": 0.0
+    }
+   ]
+  },
+  "q019": {
+   "game_id": "q019-810bf976",
+   "issues": [],
+   "baseline_actions": [
+    6,
+    11,
+    12,
+    9,
+    11
+   ],
+   "replay_frames": 54,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 6,
+     "random_clear_rate": 0.05
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 11,
+     "random_clear_rate": 0.01
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 12,
+     "random_clear_rate": 0.035
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 9,
+     "random_clear_rate": 0.01
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 11,
+     "random_clear_rate": 0.045
+    }
+   ]
+  },
+  "q020": {
+   "game_id": "q020-38389cf6",
+   "issues": [],
+   "baseline_actions": [
+    10,
+    10,
+    14,
+    15,
+    21
+   ],
+   "replay_frames": 75,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 10,
+     "random_clear_rate": 0.005
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 10,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 14,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 15,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 21,
+     "random_clear_rate": 0.0
+    }
+   ]
+  }
+ },
+ "skins": {
+  "q101": {
+   "game_id": "q101-d8be35ca",
+   "issues": [],
+   "baseline_actions": [
+    10,
+    13,
+    40,
+    33
+   ],
+   "replay_frames": 100,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 10,
+     "random_clear_rate": 0.01
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 13,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 40,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 33,
+     "random_clear_rate": 0.0
+    }
+   ],
+   "skin_of": "q001",
+   "skin_of_game_id": "q001-c8ba2de3"
+  },
+  "q102": {
+   "game_id": "q102-ba06bc23",
+   "issues": [],
+   "baseline_actions": [
+    4,
+    5,
+    7,
+    8
+   ],
+   "replay_frames": 28,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 4,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 5,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 7,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 8,
+     "random_clear_rate": 0.0
+    }
+   ],
+   "skin_of": "q002",
+   "skin_of_game_id": "q002-4ec7e433"
+  },
+  "q103": {
+   "game_id": "q103-eca75392",
+   "issues": [],
+   "baseline_actions": [
+    5,
+    13,
+    12,
+    19,
+    22
+   ],
+   "replay_frames": 76,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 5,
+     "random_clear_rate": 0.01
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 13,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 12,
+     "random_clear_rate": 0.01
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 19,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 22,
+     "random_clear_rate": 0.0
+    }
+   ],
+   "skin_of": "q003",
+   "skin_of_game_id": "q003-fa4c376b"
+  },
+  "q104": {
+   "game_id": "q104-996915fe",
+   "issues": [],
+   "baseline_actions": [
+    5,
+    7,
+    11,
+    8,
+    10
+   ],
+   "replay_frames": 46,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 5,
+     "random_clear_rate": 0.05
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 7,
+     "random_clear_rate": 0.035
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 11,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 8,
+     "random_clear_rate": 0.025
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 10,
+     "random_clear_rate": 0.005
+    }
+   ],
+   "skin_of": "q004",
+   "skin_of_game_id": "q004-c194034b"
+  },
+  "q105": {
+   "game_id": "q105-8e7c61b4",
+   "issues": [],
+   "baseline_actions": [
+    11,
+    14,
+    17,
+    20,
+    23
+   ],
+   "replay_frames": 90,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 11,
+     "random_clear_rate": 0.05
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 14,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 17,
+     "random_clear_rate": 0.015
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 20,
+     "random_clear_rate": 0.04
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 23,
+     "random_clear_rate": 0.01
+    }
+   ],
+   "skin_of": "q005",
+   "skin_of_game_id": "q005-6c347d0d"
+  },
+  "q106": {
+   "game_id": "q106-773d8123",
+   "issues": [],
+   "baseline_actions": [
+    5,
+    4,
+    9,
+    5
+   ],
+   "replay_frames": 27,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 5,
+     "random_clear_rate": 0.005
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 4,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 9,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 5,
+     "random_clear_rate": 0.0
+    }
+   ],
+   "skin_of": "q006",
+   "skin_of_game_id": "q006-a3e60ccd"
+  },
+  "q107": {
+   "game_id": "q107-c44a3706",
+   "issues": [],
+   "baseline_actions": [
+    7,
+    9,
+    14,
+    7
+   ],
+   "replay_frames": 41,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 7,
+     "random_clear_rate": 0.01
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 9,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 14,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 7,
+     "random_clear_rate": 0.005
+    }
+   ],
+   "skin_of": "q007",
+   "skin_of_game_id": "q007-3f6c1b1e"
+  },
+  "q108": {
+   "game_id": "q108-5be004f9",
+   "issues": [],
+   "baseline_actions": [
+    9,
+    11,
+    8,
+    10,
+    12
+   ],
+   "replay_frames": 55,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 9,
+     "random_clear_rate": 0.05
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 11,
+     "random_clear_rate": 0.04
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 8,
+     "random_clear_rate": 0.01
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 10,
+     "random_clear_rate": 0.03
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 12,
+     "random_clear_rate": 0.015
+    }
+   ],
+   "skin_of": "q008",
+   "skin_of_game_id": "q008-219f83f1"
+  },
+  "q109": {
+   "game_id": "q109-cbce58d0",
+   "issues": [],
+   "baseline_actions": [
+    8,
+    8,
+    9,
+    10,
+    11
+   ],
+   "replay_frames": 51,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 8,
+     "random_clear_rate": 0.02
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 8,
+     "random_clear_rate": 0.005
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 9,
+     "random_clear_rate": 0.03
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 10,
+     "random_clear_rate": 0.01
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 11,
+     "random_clear_rate": 0.015
+    }
+   ],
+   "skin_of": "q009",
+   "skin_of_game_id": "q009-6696a439"
+  },
+  "q110": {
+   "game_id": "q110-9103d655",
+   "issues": [],
+   "baseline_actions": [
+    7,
+    10,
+    6,
+    11,
+    10
+   ],
+   "replay_frames": 49,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 7,
+     "random_clear_rate": 0.005
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 10,
+     "random_clear_rate": 0.01
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 6,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 11,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 10,
+     "random_clear_rate": 0.0
+    }
+   ],
+   "skin_of": "q010",
+   "skin_of_game_id": "q010-70e3829b"
+  },
+  "q111": {
+   "game_id": "q111-43994785",
+   "issues": [],
+   "baseline_actions": [
+    4,
+    5,
+    10,
+    13,
+    12
+   ],
+   "replay_frames": 49,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 4,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 5,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 10,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 13,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 12,
+     "random_clear_rate": 0.0
+    }
+   ],
+   "skin_of": "q011",
+   "skin_of_game_id": "q011-582cc975"
+  },
+  "q112": {
+   "game_id": "q112-25b4d8d4",
+   "issues": [],
+   "baseline_actions": [
+    4,
+    6,
+    9,
+    5,
+    9
+   ],
+   "replay_frames": 38,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 4,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 6,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 9,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 5,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 9,
+     "random_clear_rate": 0.0
+    }
+   ],
+   "skin_of": "q012",
+   "skin_of_game_id": "q012-4d4f24c6"
+  },
+  "q113": {
+   "game_id": "q113-2f0e9b1a",
+   "issues": [],
+   "baseline_actions": [
+    6,
+    11,
+    18,
+    13,
+    15
+   ],
+   "replay_frames": 68,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 6,
+     "random_clear_rate": 0.02
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 11,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 18,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 13,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 15,
+     "random_clear_rate": 0.0
+    }
+   ],
+   "skin_of": "q013",
+   "skin_of_game_id": "q013-91bc7865"
+  },
+  "q114": {
+   "game_id": "q114-3a47b6af",
+   "issues": [],
+   "baseline_actions": [
+    7,
+    7,
+    8,
+    7,
+    7
+   ],
+   "replay_frames": 41,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 7,
+     "random_clear_rate": 0.035
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 7,
+     "random_clear_rate": 0.02
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 8,
+     "random_clear_rate": 0.025
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 7,
+     "random_clear_rate": 0.01
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 7,
+     "random_clear_rate": 0.01
+    }
+   ],
+   "skin_of": "q014",
+   "skin_of_game_id": "q014-a3191849"
+  },
+  "q115": {
+   "game_id": "q115-51409022",
+   "issues": [],
+   "baseline_actions": [
+    7,
+    8,
+    15,
+    8,
+    15
+   ],
+   "replay_frames": 58,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 7,
+     "random_clear_rate": 0.01
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 8,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 15,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 8,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 15,
+     "random_clear_rate": 0.0
+    }
+   ],
+   "skin_of": "q015",
+   "skin_of_game_id": "q015-544a385b"
+  },
+  "q116": {
+   "game_id": "q116-8bd6b053",
+   "issues": [],
+   "baseline_actions": [
+    9,
+    9,
+    9,
+    12,
+    22
+   ],
+   "replay_frames": 66,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 9,
+     "random_clear_rate": 0.02
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 9,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 9,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 12,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 22,
+     "random_clear_rate": 0.0
+    }
+   ],
+   "skin_of": "q016",
+   "skin_of_game_id": "q016-fb8b5e28"
+  },
+  "q117": {
+   "game_id": "q117-6b352e65",
+   "issues": [],
+   "baseline_actions": [
+    8,
+    8,
+    11,
+    12,
+    16
+   ],
+   "replay_frames": 60,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 8,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 8,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 11,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 12,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 16,
+     "random_clear_rate": 0.0
+    }
+   ],
+   "skin_of": "q017",
+   "skin_of_game_id": "q017-b0e60f45"
+  },
+  "q118": {
+   "game_id": "q118-96bf64c5",
+   "issues": [],
+   "baseline_actions": [
+    6,
+    10,
+    12,
+    14,
+    16
+   ],
+   "replay_frames": 63,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 6,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 10,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 12,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 14,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 16,
+     "random_clear_rate": 0.0
+    }
+   ],
+   "skin_of": "q018",
+   "skin_of_game_id": "q018-e2171764"
+  },
+  "q119": {
+   "game_id": "q119-217e7715",
+   "issues": [],
+   "baseline_actions": [
+    6,
+    11,
+    12,
+    9,
+    11
+   ],
+   "replay_frames": 54,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 6,
+     "random_clear_rate": 0.03
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 11,
+     "random_clear_rate": 0.02
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 12,
+     "random_clear_rate": 0.03
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 9,
+     "random_clear_rate": 0.005
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 11,
+     "random_clear_rate": 0.0
+    }
+   ],
+   "skin_of": "q019",
+   "skin_of_game_id": "q019-810bf976"
+  },
+  "q120": {
+   "game_id": "q120-b79ff550",
+   "issues": [],
+   "baseline_actions": [
+    10,
+    10,
+    14,
+    15,
+    21
+   ],
+   "replay_frames": 75,
+   "admitted": true,
+   "levels": [
+    {
+     "level": 1,
+     "solved": true,
+     "baseline": 10,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 2,
+     "solved": true,
+     "baseline": 10,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 3,
+     "solved": true,
+     "baseline": 14,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 4,
+     "solved": true,
+     "baseline": 15,
+     "random_clear_rate": 0.0
+    },
+    {
+     "level": 5,
+     "solved": true,
+     "baseline": 21,
+     "random_clear_rate": 0.0
+    }
+   ],
+   "skin_of": "q020",
+   "skin_of_game_id": "q020-38389cf6"
+  }
+ }
+}

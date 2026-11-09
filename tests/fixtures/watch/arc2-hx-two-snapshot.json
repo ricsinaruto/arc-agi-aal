@@ -1,0 +1,567 @@
+{
+ "trial": "c240",
+ "elapsed_seconds": 1203.8,
+ "wall_seconds": 7000.0,
+ "gate": {
+  "capacity": 863,
+  "units": "cache_blocks",
+  "slots": 49,
+  "reserved": 845,
+  "inflight": 35,
+  "waiting": 14,
+  "peak_reserved": 863,
+  "peak_inflight": 48,
+  "peak_waiting": 15,
+  "admitted": 123,
+  "opening_burst_requests": 1,
+  "affinity_admissions": 0
+ },
+ "failures": 0,
+ "arm_tokens": {
+  "tool-cap16384-effortmedium-augment4-confirm_attempts3-imagesTrue-image_side224-two_readingsTrue": 1768530
+ },
+ "gpu": {
+  "play": {
+   "samples": 239,
+   "util_mean": 95.4,
+   "idle_share": 0.0,
+   "memory_mean_gib": 92.3,
+   "memory_peak_gib": 92.6,
+   "memory_total_gib": 95.6
+  },
+  "recent": {
+   "samples": 120,
+   "util_mean": 96.4,
+   "idle_share": 0.0,
+   "memory_mean_gib": 92.6,
+   "memory_peak_gib": 92.6,
+   "memory_total_gib": 95.6
+  },
+  "all": {
+   "samples": 239,
+   "util_mean": 95.4,
+   "idle_share": 0.0,
+   "memory_mean_gib": 92.3,
+   "memory_peak_gib": 92.6,
+   "memory_total_gib": 95.6
+  }
+ },
+ "stop_request": null,
+ "tasks": 240,
+ "test_outputs": 334,
+ "final": {
+  "score_outputs": 14.970059880239521,
+  "score_tasks": 12.708333333333334,
+  "verified_tasks": 0.1625,
+  "by_source": {
+   "fallback": {
+    "outputs": 255,
+    "correct": 0,
+    "accuracy": 0.0
+   },
+   "unverified": {
+    "outputs": 18,
+    "correct": 0,
+    "accuracy": 0.0
+   },
+   "verified": {
+    "outputs": 61,
+    "correct": 50,
+    "accuracy": 0.819672131147541
+   }
+  }
+ },
+ "curve": [
+  {
+   "budget": 5000,
+   "score_outputs": 0.0,
+   "score_tasks": 0.0,
+   "verified_tasks": 0.0,
+   "by_source": {
+    "fallback": {
+     "outputs": 334,
+     "correct": 0,
+     "accuracy": 0.0
+    }
+   },
+   "mean_tokens": 1521.4708333333333,
+   "complete": false,
+   "tasks_reached": 73
+  },
+  {
+   "budget": 10000,
+   "score_outputs": 3.2934131736526946,
+   "score_tasks": 3.75,
+   "verified_tasks": 0.0375,
+   "by_source": {
+    "fallback": {
+     "outputs": 323,
+     "correct": 0,
+     "accuracy": 0.0
+    },
+    "verified": {
+     "outputs": 11,
+     "correct": 11,
+     "accuracy": 1.0
+    }
+   },
+   "mean_tokens": 2913.5583333333334,
+   "complete": false,
+   "tasks_reached": 62
+  },
+  {
+   "budget": 20000,
+   "score_outputs": 9.580838323353293,
+   "score_tasks": 8.333333333333334,
+   "verified_tasks": 0.08333333333333333,
+   "by_source": {
+    "fallback": {
+     "outputs": 293,
+     "correct": 0,
+     "accuracy": 0.0
+    },
+    "unverified": {
+     "outputs": 8,
+     "correct": 1,
+     "accuracy": 0.125
+    },
+    "verified": {
+     "outputs": 33,
+     "correct": 31,
+     "accuracy": 0.9393939393939394
+    }
+   },
+   "mean_tokens": 5160.95,
+   "complete": false,
+   "tasks_reached": 43
+  },
+  {
+   "budget": 30000,
+   "score_outputs": 13.173652694610778,
+   "score_tasks": 11.25,
+   "verified_tasks": 0.13333333333333333,
+   "by_source": {
+    "fallback": {
+     "outputs": 264,
+     "correct": 0,
+     "accuracy": 0.0
+    },
+    "unverified": {
+     "outputs": 19,
+     "correct": 1,
+     "accuracy": 0.05263157894736842
+    },
+    "verified": {
+     "outputs": 51,
+     "correct": 43,
+     "accuracy": 0.8431372549019608
+    }
+   },
+   "mean_tokens": 6604.470833333334,
+   "complete": false,
+   "tasks_reached": 27
+  },
+  {
+   "budget": 40000,
+   "score_outputs": 14.67065868263473,
+   "score_tasks": 12.5,
+   "verified_tasks": 0.15416666666666667,
+   "by_source": {
+    "fallback": {
+     "outputs": 257,
+     "correct": 0,
+     "accuracy": 0.0
+    },
+    "unverified": {
+     "outputs": 19,
+     "correct": 0,
+     "accuracy": 0.0
+    },
+    "verified": {
+     "outputs": 58,
+     "correct": 49,
+     "accuracy": 0.8448275862068966
+    }
+   },
+   "mean_tokens": 7212.391666666666,
+   "complete": false,
+   "tasks_reached": 9
+  },
+  {
+   "budget": 50000,
+   "score_outputs": 14.970059880239521,
+   "score_tasks": 12.708333333333334,
+   "verified_tasks": 0.1625,
+   "by_source": {
+    "fallback": {
+     "outputs": 255,
+     "correct": 0,
+     "accuracy": 0.0
+    },
+    "unverified": {
+     "outputs": 18,
+     "correct": 0,
+     "accuracy": 0.0
+    },
+    "verified": {
+     "outputs": 61,
+     "correct": 50,
+     "accuracy": 0.819672131147541
+    }
+   },
+   "mean_tokens": 7377.1875,
+   "complete": false,
+   "tasks_reached": 1
+  },
+  {
+   "budget": 60000,
+   "score_outputs": 14.970059880239521,
+   "score_tasks": 12.708333333333334,
+   "verified_tasks": 0.1625,
+   "by_source": {
+    "fallback": {
+     "outputs": 255,
+     "correct": 0,
+     "accuracy": 0.0
+    },
+    "unverified": {
+     "outputs": 18,
+     "correct": 0,
+     "accuracy": 0.0
+    },
+    "verified": {
+     "outputs": 61,
+     "correct": 50,
+     "accuracy": 0.819672131147541
+    }
+   },
+   "mean_tokens": 7378.920833333334,
+   "complete": false,
+   "tasks_reached": 0
+  },
+  {
+   "budget": 80000,
+   "score_outputs": 14.970059880239521,
+   "score_tasks": 12.708333333333334,
+   "verified_tasks": 0.1625,
+   "by_source": {
+    "fallback": {
+     "outputs": 255,
+     "correct": 0,
+     "accuracy": 0.0
+    },
+    "unverified": {
+     "outputs": 18,
+     "correct": 0,
+     "accuracy": 0.0
+    },
+    "verified": {
+     "outputs": 61,
+     "correct": 50,
+     "accuracy": 0.819672131147541
+    }
+   },
+   "mean_tokens": 7378.920833333334,
+   "complete": false,
+   "tasks_reached": 0
+  },
+  {
+   "budget": 100000,
+   "score_outputs": 14.970059880239521,
+   "score_tasks": 12.708333333333334,
+   "verified_tasks": 0.1625,
+   "by_source": {
+    "fallback": {
+     "outputs": 255,
+     "correct": 0,
+     "accuracy": 0.0
+    },
+    "unverified": {
+     "outputs": 18,
+     "correct": 0,
+     "accuracy": 0.0
+    },
+    "verified": {
+     "outputs": 61,
+     "correct": 50,
+     "accuracy": 0.819672131147541
+    }
+   },
+   "mean_tokens": 7378.920833333334,
+   "complete": false,
+   "tasks_reached": 0
+  },
+  {
+   "budget": 150000,
+   "score_outputs": 14.970059880239521,
+   "score_tasks": 12.708333333333334,
+   "verified_tasks": 0.1625,
+   "by_source": {
+    "fallback": {
+     "outputs": 255,
+     "correct": 0,
+     "accuracy": 0.0
+    },
+    "unverified": {
+     "outputs": 18,
+     "correct": 0,
+     "accuracy": 0.0
+    },
+    "verified": {
+     "outputs": 61,
+     "correct": 50,
+     "accuracy": 0.819672131147541
+    }
+   },
+   "mean_tokens": 7378.920833333334,
+   "complete": false,
+   "tasks_reached": 0
+  },
+  {
+   "budget": 200000,
+   "score_outputs": 14.970059880239521,
+   "score_tasks": 12.708333333333334,
+   "verified_tasks": 0.1625,
+   "by_source": {
+    "fallback": {
+     "outputs": 255,
+     "correct": 0,
+     "accuracy": 0.0
+    },
+    "unverified": {
+     "outputs": 18,
+     "correct": 0,
+     "accuracy": 0.0
+    },
+    "verified": {
+     "outputs": 61,
+     "correct": 50,
+     "accuracy": 0.819672131147541
+    }
+   },
+   "mean_tokens": 7378.920833333334,
+   "complete": false,
+   "tasks_reached": 0
+  },
+  {
+   "budget": 300000,
+   "score_outputs": 14.970059880239521,
+   "score_tasks": 12.708333333333334,
+   "verified_tasks": 0.1625,
+   "by_source": {
+    "fallback": {
+     "outputs": 255,
+     "correct": 0,
+     "accuracy": 0.0
+    },
+    "unverified": {
+     "outputs": 18,
+     "correct": 0,
+     "accuracy": 0.0
+    },
+    "verified": {
+     "outputs": 61,
+     "correct": 50,
+     "accuracy": 0.819672131147541
+    }
+   },
+   "mean_tokens": 7378.920833333334,
+   "complete": false,
+   "tasks_reached": 0
+  }
+ ],
+ "completion_tokens": 1770941,
+ "prompt_tokens": 14930177,
+ "tokens_per_task": {
+  "mean": 7378.920833333334,
+  "max": 50416,
+  "min": 0
+ },
+ "ended": {
+  "unfinished": 240
+ },
+ "where_tokens_go": {
+  "by_reply_outcome": {
+   "tool": {
+    "replies": 544,
+    "tokens": 1351781
+   },
+   "verified": {
+    "replies": 39,
+    "tokens": 55943
+   },
+   "wrong": {
+    "replies": 32,
+    "tokens": 76728
+   },
+   "no_code": {
+    "replies": 4,
+    "tokens": 21934
+   },
+   "truncated": {
+    "replies": 16,
+    "tokens": 262144
+   }
+  },
+  "by_phase": {
+   "open": {
+    "replies": 635,
+    "tokens": 1768530
+   }
+  },
+  "by_attempt": {
+   "1": {
+    "tokens": 1768530,
+    "attempts": 74,
+    "verified": 39
+   }
+  },
+  "reasoning_share_by_characters": 0.9503388090859499,
+  "on_tasks_solved": 539413,
+  "on_tasks_not_solved": 1231528,
+  "after_first_verified": 0,
+  "reply_tokens": {
+   "p10": 159,
+   "p50": 1044,
+   "p90": 8087,
+   "max": 16384
+  },
+  "truncated_replies": 16
+ },
+ "replies": 635,
+ "candidates": 103,
+ "request_errors": 0,
+ "roster": {
+  "tokens": 1768530.0000000028,
+  "exact_through": 1144030.3942019262,
+  "marks": {
+   "v22-5k": {
+    "tokens": 2300000.0,
+    "tokens_per_task": 9583.333333333334,
+    "reached": false,
+    "score_outputs": 14.970059880239521,
+    "score_tasks": 12.708333333333334,
+    "verified_tasks": 0.1625,
+    "by_source": {
+     "fallback": {
+      "outputs": 255,
+      "correct": 0,
+      "accuracy": 0.0
+     },
+     "unverified": {
+      "outputs": 18,
+      "correct": 0,
+      "accuracy": 0.0
+     },
+     "verified": {
+      "outputs": 61,
+      "correct": 50,
+      "accuracy": 0.819672131147541
+     }
+    }
+   },
+   "4.6M": {
+    "tokens": 4600000.0,
+    "tokens_per_task": 19166.666666666668,
+    "reached": false,
+    "score_outputs": 14.970059880239521,
+    "score_tasks": 12.708333333333334,
+    "verified_tasks": 0.1625,
+    "by_source": {
+     "fallback": {
+      "outputs": 255,
+      "correct": 0,
+      "accuracy": 0.0
+     },
+     "unverified": {
+      "outputs": 18,
+      "correct": 0,
+      "accuracy": 0.0
+     },
+     "verified": {
+      "outputs": 61,
+      "correct": 50,
+      "accuracy": 0.819672131147541
+     }
+    }
+   },
+   "v13-12h": {
+    "tokens": 9260000.0,
+    "tokens_per_task": 38583.333333333336,
+    "reached": false,
+    "score_outputs": 14.970059880239521,
+    "score_tasks": 12.708333333333334,
+    "verified_tasks": 0.1625,
+    "by_source": {
+     "fallback": {
+      "outputs": 255,
+      "correct": 0,
+      "accuracy": 0.0
+     },
+     "unverified": {
+      "outputs": 18,
+      "correct": 0,
+      "accuracy": 0.0
+     },
+     "verified": {
+      "outputs": 61,
+      "correct": 50,
+      "accuracy": 0.819672131147541
+     }
+    }
+   },
+   "14M": {
+    "tokens": 14000000.0,
+    "tokens_per_task": 58333.333333333336,
+    "reached": false,
+    "score_outputs": 14.970059880239521,
+    "score_tasks": 12.708333333333334,
+    "verified_tasks": 0.1625,
+    "by_source": {
+     "fallback": {
+      "outputs": 255,
+      "correct": 0,
+      "accuracy": 0.0
+     },
+     "unverified": {
+      "outputs": 18,
+      "correct": 0,
+      "accuracy": 0.0
+     },
+     "verified": {
+      "outputs": 61,
+      "correct": 50,
+      "accuracy": 0.819672131147541
+     }
+    }
+   },
+   "18M": {
+    "tokens": 18000000.0,
+    "tokens_per_task": 75000.0,
+    "reached": false,
+    "score_outputs": 14.970059880239521,
+    "score_tasks": 12.708333333333334,
+    "verified_tasks": 0.1625,
+    "by_source": {
+     "fallback": {
+      "outputs": 255,
+      "correct": 0,
+      "accuracy": 0.0
+     },
+     "unverified": {
+      "outputs": 18,
+      "correct": 0,
+      "accuracy": 0.0
+     },
+     "verified": {
+      "outputs": 61,
+      "correct": 50,
+      "accuracy": 0.819672131147541
+     }
+    }
+   }
+  }
+ },
+ "play_seconds": 1203.8,
+ "tokens_per_second": 1471.1766402393441
+}

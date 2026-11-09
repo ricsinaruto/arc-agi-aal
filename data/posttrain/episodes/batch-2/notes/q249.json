@@ -1,0 +1,95 @@
+{
+ "game_id": "q249-b776230c",
+ "name": "loopover",
+ "tags": [
+  "click",
+  "permutation",
+  "pattern-copy",
+  "rule-change"
+ ],
+ "note": "q012 loopover: rotate rows and columns of the right-hand board until it matches the left-hand picture.\n\nHidden rules: the picture left of the dark-gray divider is fixed. The board on the right holds the same\ncoloured cells in a scrambled order, with light-gray handles beside its rows and columns. Levels 1-3:\nthe handles sit left of each row and above each column; clicking a row handle shifts that row one cell\nto the right, cyclically (the rightmost cell wraps round to the left end), and clicking a column\nhandle shifts that column one cell down, cyclically (the bottom cell wraps to the top). From level 4\nthe handles sit right of each row and below each column and shift the other way: a row handle shifts\nits row one cell left, a column handle shifts its column one cell up (both cyclic). Clicks elsewhere\ndo nothing. The level clears when the board equals the picture.",
+ "episode_of": "q012",
+ "mechanic": "loopover",
+ "tier": 3,
+ "seed": 1,
+ "skin_of": null,
+ "batch": 2,
+ "level_source": "generated",
+ "skin": null,
+ "solution": [
+  [
+   [
+    6,
+    [
+     6,
+     3
+    ]
+   ],
+   [
+    6,
+    [
+     6,
+     3
+    ]
+   ],
+   [
+    6,
+    [
+     7,
+     1
+    ]
+   ],
+   [
+    6,
+    [
+     9,
+     1
+    ]
+   ],
+   [
+    6,
+    [
+     6,
+     2
+    ]
+   ],
+   [
+    6,
+    [
+     6,
+     2
+    ]
+   ],
+   [
+    6,
+    [
+     9,
+     1
+    ]
+   ],
+   [
+    6,
+    [
+     6,
+     2
+    ]
+   ],
+   [
+    6,
+    [
+     6,
+     3
+    ]
+   ]
+  ]
+ ],
+ "level": {
+  "attempt": 0,
+  "baseline": 9,
+  "random": 0.0,
+  "tier_band": [
+   6,
+   16
+  ]
+ }
+}

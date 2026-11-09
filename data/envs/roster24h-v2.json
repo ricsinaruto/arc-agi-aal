@@ -1,0 +1,388 @@
+{
+ "what": "24 h v9b SFT-data run roster, 125 slots (owner 30 Oct ~11:15): 25 public x1, 30 vetted non-public x3 (tier A 20 + B 10 of roster24h-v1), 10 tier variants x1",
+ "vetting": "data/envs/roster24h-v1.json (bar ka59 49.9K tokens/level at 100K from L1)",
+ "game_files": {
+  "public": "the tree's public environment_files",
+  "nonpublic": "~/arc-envs-data/mg/pool-games/environment_files/<game>/<hash>",
+  "tier_variant": "~/arc-envs-data/admit-tiers/tiers-b1/environment_files/<game>/<hash> (envs-tiers 53cd83e5c variants.json)"
+ },
+ "needs": "puzzlescript games (p*) need py_mini_racer (mini-racer 0.14.1 cp312 wheel) in the runtime",
+ "slots": 125,
+ "games": [
+  {
+   "game": "ar25-0c556536",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "bp35-0a0ad940",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "cd82-fb555c5d",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "cn04-2fe56bfb",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "dc22-fdcac232",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "ft09-0d8bbf25",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "g50t-5849a774",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "ka59-38d34dbb",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "lf52-271a04aa",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "lp85-305b61c3",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "ls20-9607627b",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "m0r0-492f87ba",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "r11l-495a7899",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "re86-8af5384d",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "s5i5-18d95033",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "sb26-7fbdac44",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "sc25-635fd71a",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "sk48-d8078629",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "sp80-589a99af",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "su15-1944f8ab",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "tn36-ef4dde99",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "tr87-cd924810",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "tu93-0768757b",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "vc33-5430563c",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "wa30-ee6fef47",
+   "clones": 1,
+   "source": "public"
+  },
+  {
+   "game": "p04o-c1e38bd1",
+   "clones": 3,
+   "source": "puzzlescript",
+   "tier": "A"
+  },
+  {
+   "game": "p064-3ba67f4f",
+   "clones": 3,
+   "source": "puzzlescript",
+   "tier": "A"
+  },
+  {
+   "game": "w02f-5ac0668f",
+   "clones": 3,
+   "source": "witness",
+   "tier": "A"
+  },
+  {
+   "game": "p0kh-32b963e5",
+   "clones": 3,
+   "source": "puzzlescript",
+   "tier": "A"
+  },
+  {
+   "game": "p0cj-1e206181",
+   "clones": 3,
+   "source": "puzzlescript",
+   "tier": "A"
+  },
+  {
+   "game": "x01y-05f2bcdf",
+   "clones": 3,
+   "source": "sonpham_interactive",
+   "tier": "A"
+  },
+  {
+   "game": "x02f-8c05e5c0",
+   "clones": 3,
+   "source": "sonpham_interactive",
+   "tier": "A"
+  },
+  {
+   "game": "p0fl-e405960b",
+   "clones": 3,
+   "source": "puzzlescript",
+   "tier": "A"
+  },
+  {
+   "game": "q314-8856fc42",
+   "clones": 3,
+   "source": "generated",
+   "tier": "A"
+  },
+  {
+   "game": "w004-437a74e8",
+   "clones": 3,
+   "source": "witness",
+   "tier": "A"
+  },
+  {
+   "game": "w02d-db5d7050",
+   "clones": 3,
+   "source": "witness",
+   "tier": "A"
+  },
+  {
+   "game": "w02e-6c5db149",
+   "clones": 3,
+   "source": "witness",
+   "tier": "A"
+  },
+  {
+   "game": "q313-c727658c",
+   "clones": 3,
+   "source": "generated",
+   "tier": "A"
+  },
+  {
+   "game": "q334-79c5fd45",
+   "clones": 3,
+   "source": "generated",
+   "tier": "A"
+  },
+  {
+   "game": "w00j-48870e81",
+   "clones": 3,
+   "source": "witness",
+   "tier": "A"
+  },
+  {
+   "game": "p0c7-6aec6417",
+   "clones": 3,
+   "source": "puzzlescript",
+   "tier": "A"
+  },
+  {
+   "game": "p0k5-70d19f73",
+   "clones": 3,
+   "source": "puzzlescript",
+   "tier": "A"
+  },
+  {
+   "game": "w003-e33185c1",
+   "clones": 3,
+   "source": "witness",
+   "tier": "A"
+  },
+  {
+   "game": "w00l-56b1c283",
+   "clones": 3,
+   "source": "witness",
+   "tier": "A"
+  },
+  {
+   "game": "x01k-e1dea76b",
+   "clones": 3,
+   "source": "sonpham_interactive",
+   "tier": "A"
+  },
+  {
+   "game": "q346-e92ed16b",
+   "clones": 3,
+   "source": "generated",
+   "tier": "B"
+  },
+  {
+   "game": "w002-122d3149",
+   "clones": 3,
+   "source": "witness",
+   "tier": "B"
+  },
+  {
+   "game": "w00m-cea0d906",
+   "clones": 3,
+   "source": "witness",
+   "tier": "B"
+  },
+  {
+   "game": "x013-3171a0bf",
+   "clones": 3,
+   "source": "sonpham_interactive",
+   "tier": "B"
+  },
+  {
+   "game": "x01e-63f56147",
+   "clones": 3,
+   "source": "sonpham_interactive",
+   "tier": "B"
+  },
+  {
+   "game": "p0jt-b79a1550",
+   "clones": 3,
+   "source": "puzzlescript",
+   "tier": "B"
+  },
+  {
+   "game": "q004-c194034b",
+   "clones": 3,
+   "source": "generated",
+   "tier": "B"
+  },
+  {
+   "game": "q365-2c82f6dc",
+   "clones": 3,
+   "source": "generated",
+   "tier": "B"
+  },
+  {
+   "game": "x024-8bf6936a",
+   "clones": 3,
+   "source": "sonpham_interactive",
+   "tier": "B"
+  },
+  {
+   "game": "p02s-67e8b8b2",
+   "clones": 3,
+   "source": "puzzlescript",
+   "tier": "B"
+  },
+  {
+   "game": "r309-d4b987e9",
+   "clones": 1,
+   "source": "tier_variant",
+   "parent": "q309",
+   "why": "reseed of q309 (52.3K); 2 probes: 50.0K/level, 4 clears"
+  },
+  {
+   "game": "r335-9d33ff46",
+   "clones": 1,
+   "source": "tier_variant",
+   "parent": "q335",
+   "why": "reseed of q335; 2 probes: 50.0K/level, 4 clears (parent 26.7K)"
+  },
+  {
+   "game": "r313-7a9d5346",
+   "clones": 1,
+   "source": "tier_variant",
+   "parent": "q313",
+   "why": "no data; parent q313 118.1K (hardest generated parent)"
+  },
+  {
+   "game": "s313-218b0ef3",
+   "clones": 1,
+   "source": "tier_variant",
+   "parent": "q313",
+   "why": "no data; parent q313 118.1K"
+  },
+  {
+   "game": "r004-63114a4e",
+   "clones": 1,
+   "source": "tier_variant",
+   "parent": "q004",
+   "why": "no data; parent q004 72.5K"
+  },
+  {
+   "game": "s004-f3f4306e",
+   "clones": 1,
+   "source": "tier_variant",
+   "parent": "q004",
+   "why": "no data; parent q004 72.5K"
+  },
+  {
+   "game": "r365-508c0556",
+   "clones": 1,
+   "source": "tier_variant",
+   "parent": "q365",
+   "why": "no data; parent q365 66.7K"
+  },
+  {
+   "game": "r331-3c5a169a",
+   "clones": 1,
+   "source": "tier_variant",
+   "parent": "q331",
+   "why": "no data; parent q331 60.0K"
+  },
+  {
+   "game": "s331-dc22abe3",
+   "clones": 1,
+   "source": "tier_variant",
+   "parent": "q331",
+   "why": "no data; parent q331 60.0K"
+  },
+  {
+   "game": "r327-7c50ebd7",
+   "clones": 1,
+   "source": "tier_variant",
+   "parent": "q327",
+   "why": "no data; parent q327 53.6K"
+  }
+ ]
+}

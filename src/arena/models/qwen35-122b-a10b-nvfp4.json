@@ -1,0 +1,86 @@
+{
+ "repo": "nvidia/Qwen3.5-122B-A10B-NVFP4",
+ "revision": "98915d837c4e7c87ac8296d02e89de19b3207e6d",
+ "dataset": "richardcsaky/arc-qwen35-122b-nvfp4",
+ "files": {
+  "chat_template.jinja": {
+   "bytes": 7756,
+   "sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715"
+  },
+  "config.json": {
+   "bytes": 14274,
+   "sha256": "4bbd5a6e8662d412cb6e57efeee5dfd4f8e13dc07e2b43398994f85a58f9993d"
+  },
+  "generation_config.json": {
+   "bytes": 244,
+   "sha256": "303aba891d66ab63908a7b3cc9163bcb835fdf8b9f6301c73216f3f1eb3992dd"
+  },
+  "hf_quant_config.json": {
+   "bytes": 9583,
+   "sha256": "0ee08c97b6123d808734e28951385ce0722c61737ac8c14a9f9a9e3889646c83"
+  },
+  "model-00001-of-00009.safetensors": {
+   "bytes": 10000615592,
+   "sha256": "1250c8e43ec02e981fe3945317923d03e294543710e50018b9de6dc3e5ca5a98"
+  },
+  "model-00002-of-00009.safetensors": {
+   "bytes": 10002004216,
+   "sha256": "e82c2c017adeb6f7fd7ccb8514c9d502e994f2a1a3276a33cbbd5fa7550195de"
+  },
+  "model-00003-of-00009.safetensors": {
+   "bytes": 10001267992,
+   "sha256": "9739b910c9cd1995bbb25ac8ee75d14cda47bb5c9caca72290e4625df451cb85"
+  },
+  "model-00004-of-00009.safetensors": {
+   "bytes": 10002020448,
+   "sha256": "1c971546e7b89b0ecaef7397eda0efcd42814ceb749efec0d6617e0bee48819c"
+  },
+  "model-00005-of-00009.safetensors": {
+   "bytes": 10001267592,
+   "sha256": "abbf91a68fc49cc7011801cadc590d0748f3ad4f3eb1a1fe7e0517e683d96a6d"
+  },
+  "model-00006-of-00009.safetensors": {
+   "bytes": 9974109760,
+   "sha256": "f3b73a17118bf693b700904cf4f71f3feb889084731fb71bd62f75cd8871d089"
+  },
+  "model-00007-of-00009.safetensors": {
+   "bytes": 10002339192,
+   "sha256": "1080813452cbde25f1f44cda024fed273f2c98706917598624d611041da71fea"
+  },
+  "model-00008-of-00009.safetensors": {
+   "bytes": 9999073984,
+   "sha256": "b1b5056e7c0fd993a114a471037a0fb0e59a7d7c3d0115f076270e5b53d3b88b"
+  },
+  "model-00009-of-00009.safetensors": {
+   "bytes": 3512306232,
+   "sha256": "ea8a02e3dbb998dd9010bf9a2871925363da998d05b8197b2a5d949832d6c9b0"
+  },
+  "model.safetensors.index.json": {
+   "bytes": 16456165,
+   "sha256": "b0f1f40086d4c60f765c4c0f19a05bed95b39e072be8f18a68c55dd69dccadb7"
+  },
+  "preprocessor_config.json": {
+   "bytes": 390,
+   "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516"
+  },
+  "tokenizer.json": {
+   "bytes": 12807982,
+   "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42"
+  },
+  "tokenizer_config.json": {
+   "bytes": 16710,
+   "sha256": "316230d6a809701f4db5ea8f8fc862bc3a6f3229c937c174e674ff3ca0a64ac8"
+  },
+  "video_preprocessor_config.json": {
+   "bytes": 385,
+   "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+  },
+  "vocab.json": {
+   "bytes": 6722759,
+   "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+  }
+ },
+ "documentation_provenance": {
+  "note": "Private Kaggle dataset uploaded from the pinned Hugging Face revision after local full-byte verification (9 shards, index, tokenizer, vocab, configs, template, image/video preprocessor configs). LFS files carry the upstream sha256; the rest were hashed from the pinned files. README.md is documentation and is excluded from the required inventory."
+ }
+}

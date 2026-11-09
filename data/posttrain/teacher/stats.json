@@ -1,0 +1,2285 @@
+{
+ "teacher": "Qwen3.8-Flash-Next-NVFP4 xhigh",
+ "totals": {
+  "segments": 130,
+  "verified": 130,
+  "usable_verified": 130,
+  "unique_verified": 122,
+  "failed_verification": {},
+  "excluded_after_verification": {},
+  "completion_tokens_usable": 1222803,
+  "completion_tokens_unique": 1184669,
+  "reasoning_tokens_unique": 996166,
+  "user_source_unique": {
+   "transcript_verified": 122,
+   "transcript": 0,
+   "simulated": 0
+  },
+  "starts_after_compaction_unique": 0,
+  "with_compaction_inside_unique": 0,
+  "caveats_unique": {},
+  "level_score_unique": {
+   "n": 122,
+   "min": 0.142,
+   "median": 66.016,
+   "mean": 61.163,
+   "max": 100.0
+  },
+  "score_histogram_unique": {
+   "0-10": 16,
+   "10-25": 11,
+   "25-50": 26,
+   "50-75": 15,
+   "75-100": 4,
+   "100-115": 50
+  }
+ },
+ "games_processed": 60,
+ "games_with_transcript": 60,
+ "games_transcript_aligned": 60,
+ "prompt_simulation": {
+  "turns": 908,
+  "user_exact": 908,
+  "system_exact": 908,
+  "followups": 1,
+  "followup_exact": 1,
+  "mismatch_examples": []
+ },
+ "skipped": {
+  "non_teacher_trials": [],
+  "holdout_or_other_games": 0,
+  "other_set_games": 0
+ },
+ "per_game_level": [
+  {
+   "game": "q001",
+   "level": 1,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 10,
+   "median_actions": 15.0,
+   "min_actions": 13,
+   "score": {
+    "n": 2,
+    "min": 34.602,
+    "median": 46.887,
+    "mean": 46.887,
+    "max": 59.172
+   },
+   "completion_tokens": {
+    "sum": 14569,
+    "median": 7284.5
+   }
+  },
+  {
+   "game": "q001",
+   "level": 2,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 13,
+   "median_actions": 16.0,
+   "min_actions": 16,
+   "score": {
+    "n": 2,
+    "min": 66.016,
+    "median": 66.016,
+    "mean": 66.016,
+    "max": 66.016
+   },
+   "completion_tokens": {
+    "sum": 16089,
+    "median": 8044.5
+   }
+  },
+  {
+   "game": "q001",
+   "level": 3,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 40,
+   "median_actions": 48.0,
+   "min_actions": 41,
+   "score": {
+    "n": 2,
+    "min": 52.893,
+    "median": 74.037,
+    "mean": 74.037,
+    "max": 95.181
+   },
+   "completion_tokens": {
+    "sum": 26653,
+    "median": 13326.5
+   }
+  },
+  {
+   "game": "q001",
+   "level": 4,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 33,
+   "median_actions": 33,
+   "min_actions": 33,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 6569,
+    "median": 6569
+   }
+  },
+  {
+   "game": "q002",
+   "level": 1,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 4,
+   "median_actions": 7.0,
+   "min_actions": 4,
+   "score": {
+    "n": 2,
+    "min": 16.0,
+    "median": 58.0,
+    "mean": 58.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 8683,
+    "median": 4341.5
+   }
+  },
+  {
+   "game": "q002",
+   "level": 2,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 5,
+   "median_actions": 8.0,
+   "min_actions": 5,
+   "score": {
+    "n": 2,
+    "min": 20.661,
+    "median": 60.331,
+    "mean": 60.331,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 14536,
+    "median": 7268.0
+   }
+  },
+  {
+   "game": "q002",
+   "level": 3,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 7,
+   "median_actions": 10.0,
+   "min_actions": 9,
+   "score": {
+    "n": 2,
+    "min": 40.496,
+    "median": 50.495,
+    "mean": 50.495,
+    "max": 60.494
+   },
+   "completion_tokens": {
+    "sum": 17801,
+    "median": 8900.5
+   }
+  },
+  {
+   "game": "q002",
+   "level": 4,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 8,
+   "median_actions": 8.0,
+   "min_actions": 8,
+   "score": {
+    "n": 2,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 4935,
+    "median": 2467.5
+   }
+  },
+  {
+   "game": "q003",
+   "level": 1,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 5,
+   "median_actions": 30.0,
+   "min_actions": 25,
+   "score": {
+    "n": 2,
+    "min": 2.041,
+    "median": 3.021,
+    "mean": 3.021,
+    "max": 4.0
+   },
+   "completion_tokens": {
+    "sum": 37438,
+    "median": 18719.0
+   }
+  },
+  {
+   "game": "q003",
+   "level": 2,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 13,
+   "median_actions": 13.0,
+   "min_actions": 13,
+   "score": {
+    "n": 2,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 5698,
+    "median": 2849.0
+   }
+  },
+  {
+   "game": "q003",
+   "level": 3,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 12,
+   "median_actions": 12.0,
+   "min_actions": 12,
+   "score": {
+    "n": 2,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 5546,
+    "median": 2773.0
+   }
+  },
+  {
+   "game": "q003",
+   "level": 4,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 19,
+   "median_actions": 19,
+   "min_actions": 19,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 749,
+    "median": 749
+   }
+  },
+  {
+   "game": "q003",
+   "level": 5,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 22,
+   "median_actions": 22,
+   "min_actions": 22,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 400,
+    "median": 400
+   }
+  },
+  {
+   "game": "q004",
+   "level": 1,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 5,
+   "median_actions": 29.0,
+   "min_actions": 18,
+   "score": {
+    "n": 2,
+    "min": 1.562,
+    "median": 4.639,
+    "mean": 4.639,
+    "max": 7.716
+   },
+   "completion_tokens": {
+    "sum": 78827,
+    "median": 39413.5
+   }
+  },
+  {
+   "game": "q004",
+   "level": 2,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 7,
+   "median_actions": 12.0,
+   "min_actions": 7,
+   "score": {
+    "n": 2,
+    "min": 16.955,
+    "median": 58.477,
+    "mean": 58.477,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 13346,
+    "median": 6673.0
+   }
+  },
+  {
+   "game": "q005",
+   "level": 1,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 11,
+   "median_actions": 49.5,
+   "min_actions": 48,
+   "score": {
+    "n": 2,
+    "min": 4.652,
+    "median": 4.952,
+    "mean": 4.952,
+    "max": 5.252
+   },
+   "completion_tokens": {
+    "sum": 34919,
+    "median": 17459.5
+   }
+  },
+  {
+   "game": "q005",
+   "level": 2,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 14,
+   "median_actions": 14.0,
+   "min_actions": 14,
+   "score": {
+    "n": 2,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 6400,
+    "median": 3200.0
+   }
+  },
+  {
+   "game": "q005",
+   "level": 3,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 17,
+   "median_actions": 17.0,
+   "min_actions": 17,
+   "score": {
+    "n": 2,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 1528,
+    "median": 764.0
+   }
+  },
+  {
+   "game": "q005",
+   "level": 4,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 20,
+   "median_actions": 20.0,
+   "min_actions": 20,
+   "score": {
+    "n": 2,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 1590,
+    "median": 795.0
+   }
+  },
+  {
+   "game": "q005",
+   "level": 5,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 23,
+   "median_actions": 23.0,
+   "min_actions": 23,
+   "score": {
+    "n": 2,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 828,
+    "median": 414.0
+   }
+  },
+  {
+   "game": "q007",
+   "level": 1,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 7,
+   "median_actions": 18.0,
+   "min_actions": 16,
+   "score": {
+    "n": 2,
+    "min": 12.25,
+    "median": 15.695,
+    "mean": 15.695,
+    "max": 19.141
+   },
+   "completion_tokens": {
+    "sum": 14911,
+    "median": 7455.5
+   }
+  },
+  {
+   "game": "q007",
+   "level": 2,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 9,
+   "median_actions": 9.0,
+   "min_actions": 9,
+   "score": {
+    "n": 2,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 7530,
+    "median": 3765.0
+   }
+  },
+  {
+   "game": "q007",
+   "level": 3,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 14,
+   "median_actions": 17.5,
+   "min_actions": 14,
+   "score": {
+    "n": 2,
+    "min": 44.444,
+    "median": 72.222,
+    "mean": 72.222,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 7101,
+    "median": 3550.5
+   }
+  },
+  {
+   "game": "q007",
+   "level": 4,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 7,
+   "median_actions": 10.5,
+   "min_actions": 7,
+   "score": {
+    "n": 2,
+    "min": 25.0,
+    "median": 62.5,
+    "mean": 62.5,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 3886,
+    "median": 1943.0
+   }
+  },
+  {
+   "game": "q008",
+   "level": 1,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 9,
+   "median_actions": 11.5,
+   "min_actions": 10,
+   "score": {
+    "n": 2,
+    "min": 47.929,
+    "median": 64.465,
+    "mean": 64.465,
+    "max": 81.0
+   },
+   "completion_tokens": {
+    "sum": 18477,
+    "median": 9238.5
+   }
+  },
+  {
+   "game": "q008",
+   "level": 2,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 11,
+   "median_actions": 11.0,
+   "min_actions": 11,
+   "score": {
+    "n": 2,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 19262,
+    "median": 9631.0
+   }
+  },
+  {
+   "game": "q008",
+   "level": 3,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 8,
+   "median_actions": 8,
+   "min_actions": 8,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 13987,
+    "median": 13987
+   }
+  },
+  {
+   "game": "q008",
+   "level": 4,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 10,
+   "median_actions": 12,
+   "min_actions": 12,
+   "score": {
+    "n": 1,
+    "min": 69.444,
+    "median": 69.444,
+    "mean": 69.444,
+    "max": 69.444
+   },
+   "completion_tokens": {
+    "sum": 15552,
+    "median": 15552
+   }
+  },
+  {
+   "game": "q010",
+   "level": 1,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 7,
+   "median_actions": 43,
+   "min_actions": 43,
+   "score": {
+    "n": 1,
+    "min": 2.65,
+    "median": 2.65,
+    "mean": 2.65,
+    "max": 2.65
+   },
+   "completion_tokens": {
+    "sum": 33726,
+    "median": 33726
+   }
+  },
+  {
+   "game": "q010",
+   "level": 2,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 10,
+   "median_actions": 10,
+   "min_actions": 10,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 7449,
+    "median": 7449
+   }
+  },
+  {
+   "game": "q011",
+   "level": 1,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 4,
+   "median_actions": 13.0,
+   "min_actions": 8,
+   "score": {
+    "n": 2,
+    "min": 4.938,
+    "median": 14.969,
+    "mean": 14.969,
+    "max": 25.0
+   },
+   "completion_tokens": {
+    "sum": 19766,
+    "median": 9883.0
+   }
+  },
+  {
+   "game": "q011",
+   "level": 2,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 5,
+   "median_actions": 5.0,
+   "min_actions": 5,
+   "score": {
+    "n": 2,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 3220,
+    "median": 1610.0
+   }
+  },
+  {
+   "game": "q011",
+   "level": 3,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 10,
+   "median_actions": 19.0,
+   "min_actions": 10,
+   "score": {
+    "n": 2,
+    "min": 12.755,
+    "median": 56.377,
+    "mean": 56.377,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 7768,
+    "median": 3884.0
+   }
+  },
+  {
+   "game": "q011",
+   "level": 4,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 13,
+   "median_actions": 16.0,
+   "min_actions": 13,
+   "score": {
+    "n": 2,
+    "min": 46.814,
+    "median": 73.407,
+    "mean": 73.407,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 8271,
+    "median": 4135.5
+   }
+  },
+  {
+   "game": "q011",
+   "level": 5,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 12,
+   "median_actions": 12.0,
+   "min_actions": 12,
+   "score": {
+    "n": 2,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 2635,
+    "median": 1317.5
+   }
+  },
+  {
+   "game": "q012",
+   "level": 1,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 4,
+   "median_actions": 46.5,
+   "min_actions": 9,
+   "score": {
+    "n": 2,
+    "min": 0.227,
+    "median": 9.99,
+    "mean": 9.99,
+    "max": 19.753
+   },
+   "completion_tokens": {
+    "sum": 47841,
+    "median": 23920.5
+   }
+  },
+  {
+   "game": "q012",
+   "level": 2,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 6,
+   "median_actions": 6.0,
+   "min_actions": 6,
+   "score": {
+    "n": 2,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 7544,
+    "median": 3772.0
+   }
+  },
+  {
+   "game": "q012",
+   "level": 3,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 9,
+   "median_actions": 9,
+   "min_actions": 9,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 2602,
+    "median": 2602
+   }
+  },
+  {
+   "game": "q012",
+   "level": 4,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 5,
+   "median_actions": 6,
+   "min_actions": 6,
+   "score": {
+    "n": 1,
+    "min": 69.444,
+    "median": 69.444,
+    "mean": 69.444,
+    "max": 69.444
+   },
+   "completion_tokens": {
+    "sum": 3431,
+    "median": 3431
+   }
+  },
+  {
+   "game": "q012",
+   "level": 5,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 9,
+   "median_actions": 9,
+   "min_actions": 9,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 942,
+    "median": 942
+   }
+  },
+  {
+   "game": "q014",
+   "level": 1,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 7,
+   "median_actions": 14,
+   "min_actions": 14,
+   "score": {
+    "n": 1,
+    "min": 25.0,
+    "median": 25.0,
+    "mean": 25.0,
+    "max": 25.0
+   },
+   "completion_tokens": {
+    "sum": 47917,
+    "median": 47917
+   }
+  },
+  {
+   "game": "q016",
+   "level": 1,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 9,
+   "median_actions": 31.0,
+   "min_actions": 29,
+   "score": {
+    "n": 2,
+    "min": 7.438,
+    "median": 8.534,
+    "mean": 8.534,
+    "max": 9.631
+   },
+   "completion_tokens": {
+    "sum": 48352,
+    "median": 24176.0
+   }
+  },
+  {
+   "game": "q016",
+   "level": 2,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 9,
+   "median_actions": 21,
+   "min_actions": 21,
+   "score": {
+    "n": 1,
+    "min": 18.367,
+    "median": 18.367,
+    "mean": 18.367,
+    "max": 18.367
+   },
+   "completion_tokens": {
+    "sum": 6986,
+    "median": 6986
+   }
+  },
+  {
+   "game": "q016",
+   "level": 3,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 9,
+   "median_actions": 18,
+   "min_actions": 18,
+   "score": {
+    "n": 1,
+    "min": 25.0,
+    "median": 25.0,
+    "mean": 25.0,
+    "max": 25.0
+   },
+   "completion_tokens": {
+    "sum": 2955,
+    "median": 2955
+   }
+  },
+  {
+   "game": "q019",
+   "level": 1,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 6,
+   "median_actions": 31.0,
+   "min_actions": 17,
+   "score": {
+    "n": 2,
+    "min": 1.778,
+    "median": 7.118,
+    "mean": 7.118,
+    "max": 12.457
+   },
+   "completion_tokens": {
+    "sum": 44931,
+    "median": 22465.5
+   }
+  },
+  {
+   "game": "q019",
+   "level": 2,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 11,
+   "median_actions": 13.0,
+   "min_actions": 13,
+   "score": {
+    "n": 2,
+    "min": 71.598,
+    "median": 71.598,
+    "mean": 71.598,
+    "max": 71.598
+   },
+   "completion_tokens": {
+    "sum": 15669,
+    "median": 7834.5
+   }
+  },
+  {
+   "game": "q020",
+   "level": 1,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 10,
+   "median_actions": 19.0,
+   "min_actions": 17,
+   "score": {
+    "n": 2,
+    "min": 22.676,
+    "median": 28.639,
+    "mean": 28.639,
+    "max": 34.602
+   },
+   "completion_tokens": {
+    "sum": 39008,
+    "median": 19504.0
+   }
+  },
+  {
+   "game": "q020",
+   "level": 2,
+   "segments": 2,
+   "verified": 2,
+   "unique_verified": 2,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 10,
+   "median_actions": 16.0,
+   "min_actions": 13,
+   "score": {
+    "n": 2,
+    "min": 27.701,
+    "median": 43.436,
+    "mean": 43.436,
+    "max": 59.172
+   },
+   "completion_tokens": {
+    "sum": 31118,
+    "median": 15559.0
+   }
+  },
+  {
+   "game": "q020",
+   "level": 3,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 14,
+   "median_actions": 15,
+   "min_actions": 15,
+   "score": {
+    "n": 1,
+    "min": 87.111,
+    "median": 87.111,
+    "mean": 87.111,
+    "max": 87.111
+   },
+   "completion_tokens": {
+    "sum": 6179,
+    "median": 6179
+   }
+  },
+  {
+   "game": "q020",
+   "level": 4,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 15,
+   "median_actions": 15,
+   "min_actions": 15,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 3962,
+    "median": 3962
+   }
+  },
+  {
+   "game": "q020",
+   "level": 5,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 21,
+   "median_actions": 30,
+   "min_actions": 30,
+   "score": {
+    "n": 1,
+    "min": 49.0,
+    "median": 49.0,
+    "mean": 49.0,
+    "max": 49.0
+   },
+   "completion_tokens": {
+    "sum": 16248,
+    "median": 16248
+   }
+  },
+  {
+   "game": "q101",
+   "level": 1,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 10,
+   "median_actions": 17,
+   "min_actions": 17,
+   "score": {
+    "n": 1,
+    "min": 34.602,
+    "median": 34.602,
+    "mean": 34.602,
+    "max": 34.602
+   },
+   "completion_tokens": {
+    "sum": 8105,
+    "median": 8105
+   }
+  },
+  {
+   "game": "q101",
+   "level": 2,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 13,
+   "median_actions": 21,
+   "min_actions": 21,
+   "score": {
+    "n": 1,
+    "min": 38.322,
+    "median": 38.322,
+    "mean": 38.322,
+    "max": 38.322
+   },
+   "completion_tokens": {
+    "sum": 14002,
+    "median": 14002
+   }
+  },
+  {
+   "game": "q101",
+   "level": 3,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 40,
+   "median_actions": 54,
+   "min_actions": 54,
+   "score": {
+    "n": 1,
+    "min": 54.87,
+    "median": 54.87,
+    "mean": 54.87,
+    "max": 54.87
+   },
+   "completion_tokens": {
+    "sum": 21542,
+    "median": 21542
+   }
+  },
+  {
+   "game": "q101",
+   "level": 4,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 33,
+   "median_actions": 60,
+   "min_actions": 60,
+   "score": {
+    "n": 1,
+    "min": 30.25,
+    "median": 30.25,
+    "mean": 30.25,
+    "max": 30.25
+   },
+   "completion_tokens": {
+    "sum": 1540,
+    "median": 1540
+   }
+  },
+  {
+   "game": "q102",
+   "level": 1,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 4,
+   "median_actions": 4,
+   "min_actions": 4,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 2564,
+    "median": 2564
+   }
+  },
+  {
+   "game": "q102",
+   "level": 2,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 5,
+   "median_actions": 5,
+   "min_actions": 5,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 6947,
+    "median": 6947
+   }
+  },
+  {
+   "game": "q102",
+   "level": 3,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 7,
+   "median_actions": 13,
+   "min_actions": 13,
+   "score": {
+    "n": 1,
+    "min": 28.994,
+    "median": 28.994,
+    "mean": 28.994,
+    "max": 28.994
+   },
+   "completion_tokens": {
+    "sum": 11675,
+    "median": 11675
+   }
+  },
+  {
+   "game": "q102",
+   "level": 4,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 8,
+   "median_actions": 11,
+   "min_actions": 11,
+   "score": {
+    "n": 1,
+    "min": 52.893,
+    "median": 52.893,
+    "mean": 52.893,
+    "max": 52.893
+   },
+   "completion_tokens": {
+    "sum": 3972,
+    "median": 3972
+   }
+  },
+  {
+   "game": "q103",
+   "level": 1,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 5,
+   "median_actions": 46,
+   "min_actions": 46,
+   "score": {
+    "n": 1,
+    "min": 1.181,
+    "median": 1.181,
+    "mean": 1.181,
+    "max": 1.181
+   },
+   "completion_tokens": {
+    "sum": 11713,
+    "median": 11713
+   }
+  },
+  {
+   "game": "q103",
+   "level": 2,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 13,
+   "median_actions": 13,
+   "min_actions": 13,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 3179,
+    "median": 3179
+   }
+  },
+  {
+   "game": "q103",
+   "level": 3,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 12,
+   "median_actions": 12,
+   "min_actions": 12,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 3323,
+    "median": 3323
+   }
+  },
+  {
+   "game": "q103",
+   "level": 4,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 19,
+   "median_actions": 19,
+   "min_actions": 19,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 470,
+    "median": 470
+   }
+  },
+  {
+   "game": "q103",
+   "level": 5,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 22,
+   "median_actions": 22,
+   "min_actions": 22,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 556,
+    "median": 556
+   }
+  },
+  {
+   "game": "q104",
+   "level": 1,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 5,
+   "median_actions": 5,
+   "min_actions": 5,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 8697,
+    "median": 8697
+   }
+  },
+  {
+   "game": "q104",
+   "level": 2,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 7,
+   "median_actions": 10,
+   "min_actions": 10,
+   "score": {
+    "n": 1,
+    "min": 49.0,
+    "median": 49.0,
+    "mean": 49.0,
+    "max": 49.0
+   },
+   "completion_tokens": {
+    "sum": 11004,
+    "median": 11004
+   }
+  },
+  {
+   "game": "q105",
+   "level": 1,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 11,
+   "median_actions": 11,
+   "min_actions": 11,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 4752,
+    "median": 4752
+   }
+  },
+  {
+   "game": "q105",
+   "level": 2,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 14,
+   "median_actions": 14,
+   "min_actions": 14,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 1902,
+    "median": 1902
+   }
+  },
+  {
+   "game": "q105",
+   "level": 3,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 17,
+   "median_actions": 17,
+   "min_actions": 17,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 3210,
+    "median": 3210
+   }
+  },
+  {
+   "game": "q105",
+   "level": 4,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 20,
+   "median_actions": 20,
+   "min_actions": 20,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 759,
+    "median": 759
+   }
+  },
+  {
+   "game": "q105",
+   "level": 5,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 23,
+   "median_actions": 23,
+   "min_actions": 23,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 598,
+    "median": 598
+   }
+  },
+  {
+   "game": "q107",
+   "level": 1,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 7,
+   "median_actions": 33,
+   "min_actions": 33,
+   "score": {
+    "n": 1,
+    "min": 4.5,
+    "median": 4.5,
+    "mean": 4.5,
+    "max": 4.5
+   },
+   "completion_tokens": {
+    "sum": 8733,
+    "median": 8733
+   }
+  },
+  {
+   "game": "q107",
+   "level": 2,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 9,
+   "median_actions": 9,
+   "min_actions": 9,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 2351,
+    "median": 2351
+   }
+  },
+  {
+   "game": "q107",
+   "level": 3,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 14,
+   "median_actions": 28,
+   "min_actions": 28,
+   "score": {
+    "n": 1,
+    "min": 25.0,
+    "median": 25.0,
+    "mean": 25.0,
+    "max": 25.0
+   },
+   "completion_tokens": {
+    "sum": 5643,
+    "median": 5643
+   }
+  },
+  {
+   "game": "q107",
+   "level": 4,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 7,
+   "median_actions": 14,
+   "min_actions": 14,
+   "score": {
+    "n": 1,
+    "min": 25.0,
+    "median": 25.0,
+    "mean": 25.0,
+    "max": 25.0
+   },
+   "completion_tokens": {
+    "sum": 2435,
+    "median": 2435
+   }
+  },
+  {
+   "game": "q108",
+   "level": 1,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 9,
+   "median_actions": 14,
+   "min_actions": 14,
+   "score": {
+    "n": 1,
+    "min": 41.327,
+    "median": 41.327,
+    "mean": 41.327,
+    "max": 41.327
+   },
+   "completion_tokens": {
+    "sum": 11053,
+    "median": 11053
+   }
+  },
+  {
+   "game": "q108",
+   "level": 2,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 11,
+   "median_actions": 11,
+   "min_actions": 11,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 23110,
+    "median": 23110
+   }
+  },
+  {
+   "game": "q110",
+   "level": 1,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 7,
+   "median_actions": 16,
+   "min_actions": 16,
+   "score": {
+    "n": 1,
+    "min": 19.141,
+    "median": 19.141,
+    "mean": 19.141,
+    "max": 19.141
+   },
+   "completion_tokens": {
+    "sum": 11152,
+    "median": 11152
+   }
+  },
+  {
+   "game": "q110",
+   "level": 2,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 10,
+   "median_actions": 10,
+   "min_actions": 10,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 6239,
+    "median": 6239
+   }
+  },
+  {
+   "game": "q110",
+   "level": 3,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 6,
+   "median_actions": 28,
+   "min_actions": 28,
+   "score": {
+    "n": 1,
+    "min": 4.592,
+    "median": 4.592,
+    "mean": 4.592,
+    "max": 4.592
+   },
+   "completion_tokens": {
+    "sum": 11793,
+    "median": 11793
+   }
+  },
+  {
+   "game": "q110",
+   "level": 4,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 11,
+   "median_actions": 13,
+   "min_actions": 13,
+   "score": {
+    "n": 1,
+    "min": 71.598,
+    "median": 71.598,
+    "mean": 71.598,
+    "max": 71.598
+   },
+   "completion_tokens": {
+    "sum": 2296,
+    "median": 2296
+   }
+  },
+  {
+   "game": "q110",
+   "level": 5,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 10,
+   "median_actions": 11,
+   "min_actions": 11,
+   "score": {
+    "n": 1,
+    "min": 82.645,
+    "median": 82.645,
+    "mean": 82.645,
+    "max": 82.645
+   },
+   "completion_tokens": {
+    "sum": 5527,
+    "median": 5527
+   }
+  },
+  {
+   "game": "q112",
+   "level": 1,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 4,
+   "median_actions": 106,
+   "min_actions": 106,
+   "score": {
+    "n": 1,
+    "min": 0.142,
+    "median": 0.142,
+    "mean": 0.142,
+    "max": 0.142
+   },
+   "completion_tokens": {
+    "sum": 52299,
+    "median": 52299
+   }
+  },
+  {
+   "game": "q112",
+   "level": 2,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 6,
+   "median_actions": 7,
+   "min_actions": 7,
+   "score": {
+    "n": 1,
+    "min": 73.469,
+    "median": 73.469,
+    "mean": 73.469,
+    "max": 73.469
+   },
+   "completion_tokens": {
+    "sum": 6164,
+    "median": 6164
+   }
+  },
+  {
+   "game": "q114",
+   "level": 1,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 7,
+   "median_actions": 11,
+   "min_actions": 11,
+   "score": {
+    "n": 1,
+    "min": 40.496,
+    "median": 40.496,
+    "mean": 40.496,
+    "max": 40.496
+   },
+   "completion_tokens": {
+    "sum": 31624,
+    "median": 31624
+   }
+  },
+  {
+   "game": "q114",
+   "level": 2,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 7,
+   "median_actions": 10,
+   "min_actions": 10,
+   "score": {
+    "n": 1,
+    "min": 49.0,
+    "median": 49.0,
+    "mean": 49.0,
+    "max": 49.0
+   },
+   "completion_tokens": {
+    "sum": 31666,
+    "median": 31666
+   }
+  },
+  {
+   "game": "q116",
+   "level": 1,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 9,
+   "median_actions": 16,
+   "min_actions": 16,
+   "score": {
+    "n": 1,
+    "min": 31.641,
+    "median": 31.641,
+    "mean": 31.641,
+    "max": 31.641
+   },
+   "completion_tokens": {
+    "sum": 17122,
+    "median": 17122
+   }
+  },
+  {
+   "game": "q116",
+   "level": 2,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 9,
+   "median_actions": 16,
+   "min_actions": 16,
+   "score": {
+    "n": 1,
+    "min": 31.641,
+    "median": 31.641,
+    "mean": 31.641,
+    "max": 31.641
+   },
+   "completion_tokens": {
+    "sum": 13949,
+    "median": 13949
+   }
+  },
+  {
+   "game": "q119",
+   "level": 1,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 6,
+   "median_actions": 7,
+   "min_actions": 7,
+   "score": {
+    "n": 1,
+    "min": 73.469,
+    "median": 73.469,
+    "mean": 73.469,
+    "max": 73.469
+   },
+   "completion_tokens": {
+    "sum": 5550,
+    "median": 5550
+   }
+  },
+  {
+   "game": "q119",
+   "level": 2,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 11,
+   "median_actions": 11,
+   "min_actions": 11,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 4289,
+    "median": 4289
+   }
+  },
+  {
+   "game": "q119",
+   "level": 3,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 12,
+   "median_actions": 12,
+   "min_actions": 12,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 2273,
+    "median": 2273
+   }
+  },
+  {
+   "game": "q119",
+   "level": 4,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 9,
+   "median_actions": 9,
+   "min_actions": 9,
+   "score": {
+    "n": 1,
+    "min": 100.0,
+    "median": 100.0,
+    "mean": 100.0,
+    "max": 100.0
+   },
+   "completion_tokens": {
+    "sum": 2907,
+    "median": 2907
+   }
+  },
+  {
+   "game": "q119",
+   "level": 5,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 11,
+   "median_actions": 20,
+   "min_actions": 20,
+   "score": {
+    "n": 1,
+    "min": 30.25,
+    "median": 30.25,
+    "mean": 30.25,
+    "max": 30.25
+   },
+   "completion_tokens": {
+    "sum": 3911,
+    "median": 3911
+   }
+  },
+  {
+   "game": "q120",
+   "level": 1,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 10,
+   "median_actions": 14,
+   "min_actions": 14,
+   "score": {
+    "n": 1,
+    "min": 51.02,
+    "median": 51.02,
+    "mean": 51.02,
+    "max": 51.02
+   },
+   "completion_tokens": {
+    "sum": 13683,
+    "median": 13683
+   }
+  },
+  {
+   "game": "q120",
+   "level": 2,
+   "segments": 1,
+   "verified": 1,
+   "unique_verified": 1,
+   "failed": {},
+   "excluded": {},
+   "baseline_actions": 10,
+   "median_actions": 18,
+   "min_actions": 18,
+   "score": {
+    "n": 1,
+    "min": 30.864,
+    "median": 30.864,
+    "mean": 30.864,
+    "max": 30.864
+   },
+   "completion_tokens": {
+    "sum": 20194,
+    "median": 20194
+   }
+  }
+ ],
+ "eval_split": {
+  "segments": 54,
+  "unique_verified": 49,
+  "games": [
+   "q006-a3e60ccd",
+   "q009-6696a439",
+   "q013-91bc7865",
+   "q015-544a385b",
+   "q018-e2171764",
+   "q106-773d8123",
+   "q109-cbce58d0",
+   "q113-2f0e9b1a",
+   "q115-51409022",
+   "q118-96bf64c5"
+  ],
+  "completion_tokens": 464574
+ },
+ "source": "teacher",
+ "run_patterns": [
+  "runs/kaggle-arena-duck-teacher-gen-v2/**/trials/duck-transfer",
+  "runs/kaggle-arena-duck-teacher-gen-v3/**/trials/duck-transfer",
+  "runs/kaggle-arena-duck-teacher-gen-v4/**/trials/duck-transfer"
+ ],
+ "errors": [],
+ "runs": [
+  "kaggle-arena-duck-teacher-gen-v2",
+  "kaggle-arena-duck-teacher-gen-v3",
+  "kaggle-arena-duck-teacher-gen-v4"
+ ],
+ "request_caps": {
+  "kaggle-arena-duck-teacher-gen-v2": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-duck-teacher-gen-v3": [
+   null,
+   "bundle"
+  ],
+  "kaggle-arena-duck-teacher-gen-v4": [
+   null,
+   "bundle"
+  ]
+ },
+ "images": true,
+ "seconds": 1.6
+}

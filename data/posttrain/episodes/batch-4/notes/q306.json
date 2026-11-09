@@ -1,0 +1,94 @@
+{
+ "game_id": "q306-22af3348",
+ "name": "mixer",
+ "tags": [
+  "click",
+  "colour-mixing",
+  "pattern-copy"
+ ],
+ "note": "q011 mixer: paint the right-hand canvas to match the left-hand picture by mixing colours.\n\nHidden rules: the picture on the left of the dark-gray divider is fixed; the canvas on the right starts\nwhite. Below them is a row of swatches: red, blue, yellow and, from level 4, a white eraser. Clicking a\nswatch selects it (a light-gray marker appears under the selected swatch). Clicking a canvas cell adds\nthe selected swatch's colour to it: white + a primary gives that primary; a primary + itself stays;\nred + blue gives purple, red + yellow gives orange, blue + yellow gives green; adding any colour to a\npurple, orange or green cell, or to charcoal, gives charcoal (mud). The eraser turns a canvas cell back\nto white. Clicking a canvas cell with no swatch selected, or clicking the picture, does nothing. The\nlevel clears when every canvas cell equals the picture cell in the same position. Levels 1-2 use only\nprimaries and white; level 3 needs mixed colours; from level 4 the canvas starts partly painted\n(including mud) and the eraser appears.",
+ "episode_of": "q011",
+ "mechanic": "mixer",
+ "tier": 3,
+ "seed": 1,
+ "skin_of": null,
+ "batch": 4,
+ "level_source": "generated",
+ "skin": null,
+ "solution": [
+  [
+   [
+    6,
+    [
+     1,
+     4
+    ]
+   ],
+   [
+    6,
+    [
+     4,
+     2
+    ]
+   ],
+   [
+    6,
+    [
+     2,
+     4
+    ]
+   ],
+   [
+    6,
+    [
+     4,
+     1
+    ]
+   ],
+   [
+    6,
+    [
+     5,
+     2
+    ]
+   ],
+   [
+    6,
+    [
+     3,
+     4
+    ]
+   ],
+   [
+    6,
+    [
+     4,
+     1
+    ]
+   ],
+   [
+    6,
+    [
+     5,
+     1
+    ]
+   ],
+   [
+    6,
+    [
+     4,
+     2
+    ]
+   ]
+  ]
+ ],
+ "level": {
+  "attempt": 0,
+  "baseline": 9,
+  "random": 0.0,
+  "tier_band": [
+   6,
+   12
+  ]
+ }
+}

@@ -1,0 +1,225 @@
+{
+ "captures": {
+  "run": "tp-usage-t37r15-nvfp4-v1-nebius-20261023",
+  "model": "NVFP4 checkpoint, all 512 experts, no overlay (Nebius RTX PRO 6000)",
+  "inputs_sha256": {
+   "usage.json": "29cf387e6178a5cd0d82049335a4fc53bb40a511e10609db89a384dc0596aacf",
+   "heldout.json": "1fcaa761003ffe3e73b86d2e1bb26d5314a5d8eff5fbb62da2fea8770d22f485"
+  },
+  "corpus": "runs/expert-usage/inputs-bal25-v71-v2 (v7.1 play transcripts, level-rotated), restricted to the 15 trainable games",
+  "sequences": 100,
+  "tokens": 3750000,
+  "tokens_per_game": {
+   "ar25": 250000,
+   "cd82": 250000,
+   "cn04": 250000,
+   "ft09": 250000,
+   "ka59": 250000,
+   "lp85": 250000,
+   "ls20": 250000,
+   "re86": 250000,
+   "sb26": 250000,
+   "sc25": 250000,
+   "sk48": 250000,
+   "tn36": 250000,
+   "tu93": 250000,
+   "vc33": 250000,
+   "wa30": 250000
+  },
+  "usage_tokens_per_second": 11556,
+  "cost_usd": 1.07,
+  "elapsed_seconds": 1519
+ },
+ "games": [
+  "ar25",
+  "cd82",
+  "cn04",
+  "ft09",
+  "ka59",
+  "lp85",
+  "ls20",
+  "re86",
+  "sb26",
+  "sc25",
+  "sk48",
+  "tn36",
+  "tu93",
+  "vc33",
+  "wa30"
+ ],
+ "held_out_games_excluded": [
+  "bp35",
+  "dc22",
+  "g50t",
+  "lf52",
+  "m0r0",
+  "r11l",
+  "s5i5",
+  "sp80",
+  "su15",
+  "tr87"
+ ],
+ "criterion": "per layer, prune the 192 experts with the least gate-weight mass (count breaks ties); = t37's rank_by weight, 192/512",
+ "overlap_with_t37cur": {
+  "mean_shared": 182.9375,
+  "min": 174,
+  "max": 188,
+  "mean_jaccard": 0.9102742609425961,
+  "per_layer_shared_of_192": [
+   185,
+   176,
+   182,
+   181,
+   181,
+   180,
+   184,
+   184,
+   185,
+   181,
+   183,
+   182,
+   184,
+   178,
+   185,
+   177,
+   174,
+   180,
+   186,
+   183,
+   184,
+   187,
+   186,
+   180,
+   184,
+   182,
+   180,
+   182,
+   185,
+   183,
+   185,
+   181,
+   184,
+   181,
+   184,
+   188,
+   184,
+   185,
+   188,
+   181,
+   184,
+   183,
+   188,
+   181,
+   185,
+   188,
+   184,
+   183
+  ]
+ },
+ "pruned_mass": {
+  "refit": {
+   "fit15_weight": 0.03485995276995902,
+   "screen_weight": 0.03606018540853914,
+   "screen_weight_max": 0.07476876006435942
+  },
+  "t37cur": {
+   "fit15_weight": 0.03624125440038908,
+   "screen_weight": 0.037430726607548405,
+   "screen_weight_max": 0.07707906637107956
+  }
+ },
+ "loo_family_stability_mean_overlap": {
+  "mean": 0.9945457175925926,
+  "min": 0.9935980902777777
+ },
+ "screen": {
+  "set": "excl5 screen sequences (ar25 ft09 lp85 tu93 vc33, 5 x 16K, reference = unmasked NVFP4)",
+  "passes": {
+   "repeat": {
+    "all": {
+     "positions": 79995,
+     "mean_kl": 0.4073884837293759,
+     "p50_kl": 0.06266505253769478,
+     "p90_kl": 1.220573825614884,
+     "p99_kl": 4.323244205091662,
+     "max_kl": 27.408289812618655,
+     "top1_agreement": 0.7632977061066316,
+     "top1_outside_ref_top20": 0.024664041502593912,
+     "nll_ref": 2.8471567630767822,
+     "nll": 2.8487465381622314,
+     "delta_nll": 0.0015897813718765974
+    },
+    "assistant": {
+     "positions": 29569,
+     "mean_kl": 0.06687481715979428,
+     "p50_kl": 0.005835682327687063,
+     "p90_kl": 0.18913715885614532,
+     "p99_kl": 0.7203919189428832,
+     "max_kl": 4.65846175720929,
+     "top1_agreement": 0.9190030099090264,
+     "top1_outside_ref_top20": 0.00013527681017281613,
+     "nll_ref": 0.5731934905052185,
+     "nll": 0.5709009170532227,
+     "delta_nll": -0.0022925168741494417
+    }
+   },
+   "mask-0.375": {
+    "all": {
+     "positions": 79995,
+     "mean_kl": 0.5094572839409107,
+     "p50_kl": 0.08145291073459893,
+     "p90_kl": 1.5690474379537438,
+     "p99_kl": 5.097510637266005,
+     "max_kl": 23.854530294479925,
+     "top1_agreement": 0.7321082567660478,
+     "top1_outside_ref_top20": 0.0384524032752047,
+     "nll_ref": 2.8471567630767822,
+     "nll": 2.8077590465545654,
+     "delta_nll": -0.03939796984195709
+    },
+    "assistant": {
+     "positions": 29569,
+     "mean_kl": 0.08279221966437506,
+     "p50_kl": 0.007633461760084391,
+     "p90_kl": 0.22705814161849616,
+     "p99_kl": 0.9200396490647877,
+     "max_kl": 6.616448849475844,
+     "top1_agreement": 0.9099056444249045,
+     "top1_outside_ref_top20": 0.00027055362034563227,
+     "nll_ref": 0.5731934905052185,
+     "nll": 0.5707307457923889,
+     "delta_nll": -0.0024626599624753
+    }
+   },
+   "extra-t37cur": {
+    "all": {
+     "positions": 79995,
+     "mean_kl": 0.5023386437344503,
+     "p50_kl": 0.07932464849296614,
+     "p90_kl": 1.5465608726468352,
+     "p99_kl": 5.012064719004231,
+     "max_kl": 16.92791509492268,
+     "top1_agreement": 0.736321020063754,
+     "top1_outside_ref_top20": 0.036352272017001065,
+     "nll_ref": 2.8471567630767822,
+     "nll": 2.815541982650757,
+     "delta_nll": -0.03161492198705673
+    },
+    "assistant": {
+     "positions": 29569,
+     "mean_kl": 0.0827866718395747,
+     "p50_kl": 0.00720244885960734,
+     "p90_kl": 0.2266167345419859,
+     "p99_kl": 0.8952848274313968,
+     "max_kl": 5.646464143558783,
+     "top1_agreement": 0.9092968987791268,
+     "top1_outside_ref_top20": 0.00016909601271602017,
+     "nll_ref": 0.5731934905052185,
+     "nll": 0.5687200427055359,
+     "delta_nll": -0.004473392851650715
+    }
+   }
+  },
+  "note": "The excl5 screen games are inside both fits (t37 was fit on them; the refit includes them among its 15), so this screen compares the two masks on shared ground, not on unseen games. Noise floor = the 'repeat' pass (same unmasked server twice; Marlin MoE is not deterministic). Current t37 was fit on routing of the all-expert INT3 requant model; the refit on the NVFP4 model."
+ }
+}

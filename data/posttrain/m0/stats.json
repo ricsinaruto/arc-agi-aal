@@ -1,0 +1,131 @@
+{
+ "config": {
+  "max_tokens": 32768,
+  "dev_cap_per_game": 8,
+  "sources": [
+   "dev",
+   "teacher"
+  ],
+  "level": 1
+ },
+ "tokenizer": {
+  "path": "<scratch>/ornith-tok/tokenizer.json",
+  "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42"
+ },
+ "image_tokens": 64,
+ "inputs": {
+  "train_packed.jsonl": {
+   "path": "./data/posttrain/dataset/train_packed.jsonl",
+   "sha256": "4dbb20ad2dc9c410a4d95b045e1abed1538f580f6c6be49aea35da64e030faf8"
+  },
+  "eval_packed.jsonl": {
+   "path": "./data/posttrain/dataset/eval_packed.jsonl",
+   "sha256": "74ea07a91d8897eacad161cb1845a128334f41f3d52281f385ef19119e27a76b"
+  },
+  "stats.json": {
+   "path": "./data/posttrain/dataset/stats.json",
+   "sha256": "134013ca9f6b5ccc6dcaa645bfd819c1ab967782e7cd862a4d9d8adb0e778927"
+  }
+ },
+ "train": {
+  "sequences": 103,
+  "tokens": 2196029,
+  "loss_tokens": 1226293,
+  "targets": 1249,
+  "targets_dropped_by_window": 132,
+  "truncated_sequences": 19,
+  "untruncated_tokens": 2527854,
+  "images": 649,
+  "straddling_tokens": 0,
+  "max_tokens_seen": 32490,
+  "median_tokens": 20442,
+  "by_source": {
+   "dev": {
+    "sequences": 64,
+    "tokens": 1329561,
+    "loss_tokens": 700295
+   },
+   "teacher": {
+    "sequences": 39,
+    "tokens": 866468,
+    "loss_tokens": 525998
+   }
+  },
+  "games": {
+   "ar25": 8,
+   "bp35": 2,
+   "cn04": 9,
+   "ka59": 2,
+   "lf52": 8,
+   "m0r0": 2,
+   "q001": 2,
+   "q002": 2,
+   "q003": 2,
+   "q004": 2,
+   "q005": 2,
+   "q007": 2,
+   "q008": 2,
+   "q010": 1,
+   "q011": 2,
+   "q012": 2,
+   "q014": 1,
+   "q016": 2,
+   "q019": 2,
+   "q020": 2,
+   "q101": 1,
+   "q102": 1,
+   "q103": 1,
+   "q104": 1,
+   "q105": 1,
+   "q107": 1,
+   "q108": 1,
+   "q110": 1,
+   "q112": 1,
+   "q114": 1,
+   "q116": 1,
+   "q119": 1,
+   "q120": 1,
+   "r11l": 8,
+   "sc25": 1,
+   "sp80": 3,
+   "tn36": 3,
+   "tu93": 4,
+   "vc33": 8,
+   "wa30": 6
+  },
+  "dropped": []
+ },
+ "eval": {
+  "sequences": 14,
+  "tokens": 298841,
+  "loss_tokens": 179541,
+  "targets": 167,
+  "targets_dropped_by_window": 1,
+  "truncated_sequences": 1,
+  "untruncated_tokens": 300938,
+  "images": 97,
+  "straddling_tokens": 0,
+  "max_tokens_seen": 31146,
+  "median_tokens": 22857,
+  "by_source": {
+   "teacher": {
+    "sequences": 14,
+    "tokens": 298841,
+    "loss_tokens": 179541
+   }
+  },
+  "games": {
+   "q006": 2,
+   "q009": 2,
+   "q013": 2,
+   "q015": 2,
+   "q018": 1,
+   "q106": 1,
+   "q109": 1,
+   "q113": 1,
+   "q115": 1,
+   "q118": 1
+  },
+  "dropped": []
+ }
+}
