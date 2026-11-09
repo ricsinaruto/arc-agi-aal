@@ -65,9 +65,9 @@ async def test_probe_requires_exact_count_no_preemptions_and_real_offload(monkey
     assert result['state'] == ('error' if failure else 'complete')
     if not failure:
         assert len(result['requests']) == 100 and result['gate']['reserved'] == 0
-        assert resets == ['true']
+        assert resets == (['false', 'true'] if cpu_gib else ['true'])  # GPU-only reset before the host revisit
     else:
-        assert not resets
+        assert resets == (['false'] if failure == 'no_load' else [])
     if failure == 'empty':
         assert result['requests'] and not result['requests'][0]['validated']
         assert result['requests'][0]['response']['choices'][0]['message']['reasoning'] == 'A colored image.'

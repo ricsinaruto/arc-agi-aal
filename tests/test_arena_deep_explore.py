@@ -30,14 +30,6 @@ ROOT = Path(__file__).resolve().parents[1]
 CONTROL = json.loads((ROOT / "configs/arena_30m.json").read_text())
 DEEP, EXPLORE = DEFAULTS["deep_window"], DEFAULTS["explore_window"]
 
-@pytest.fixture(autouse=True)
-def _fast_scheduler_ticks(monkeypatch):
-    """Real-wall trials: a 0.1 s tick keeps the audit's 1.1 s switch bar clear of CI CPU jitter (25 Oct flakes: 1.157 s
-    and 1.185 s on a 1 s tick)."""
-    from arena import trial
-    monkeypatch.setattr(trial, "TICK_SECONDS", 0.1)
-
-
 
 def build(count=12, **deep_explore):
     now = Now()

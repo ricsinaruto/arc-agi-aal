@@ -10,7 +10,6 @@ from pathlib import Path
 import httpx
 from PIL import Image
 
-from arc_infra import KEEPALIVE_EXPIRY
 from arc_infra.metrics import GpuMonitor
 from arc_infra.model_templates import template_kwargs, text_only
 from arc_infra.serving import MODEL
@@ -41,6 +40,17 @@ def payload(index, words, *, model=MODEL):
     }
 
 
+async def _post(client, url, **kwargs):
+    """client.post with transport-error retries (startup fragility, 18 Oct): same request, 1/2/4 s backoff."""
+    for attempt in range(4):
+        try:
+            return await client.post(url, **kwargs)
+        except httpx.TransportError:
+            if attempt == 3:
+                raise
+            await asyncio.sleep(2 ** attempt)
+
+
 async def run(server_dir, study, base_url):
     folder = Path(server_dir) / 'cache-probe'
     folder.mkdir()
@@ -53,18 +63,16 @@ async def run(server_dir, study, base_url):
     await monitor.sample()
     sampling = asyncio.create_task(monitor.run())
     try:
-        # Idle connections retire before the server's 5 s keep-alive closes them (a reused one fails the probe).
-        limits = httpx.Limits(keepalive_expiry=KEEPALIVE_EXPIRY)
-        async with asyncio.timeout(270), httpx.AsyncClient(timeout=240, trust_env=False, limits=limits) as client:
+        async with asyncio.timeout(270), httpx.AsyncClient(timeout=240, trust_env=False) as client:
             async def request(index, words):
                 body = payload(index, words, model=study.get('served_model', MODEL))
                 token_body = {k: body[k] for k in ('model', 'messages', 'chat_template_kwargs')}
-                counted = await client.post(base_url.removesuffix('/v1') + '/tokenize', json=token_body)
+                counted = await _post(client, base_url.removesuffix('/v1') + '/tokenize', json=token_body)
                 counted.raise_for_status()
                 count = counted.json()['count']
                 reservation = await gate.acquire(str(index), count + body['max_tokens'])
                 try:
-                    response = await client.post(base_url.rstrip('/') + '/chat/completions', json=body)
+                    response = await _post(client, base_url.rstrip('/') + '/chat/completions', json=body)
                     evidence = {'session': index, 'words': words, 'count': count,
                                 'request': body, 'http_status': response.status_code, 'validated': False}
                     record['requests'].append(evidence)
@@ -106,6 +114,19 @@ async def run(server_dir, study, base_url):
                 if monitor.summary().get('preemptions', 0):
                     raise RuntimeError('Block-admitted serving probe preempted; stop before gameplay')
             # Revisit earlier histories after cache pressure. CPU tier must demonstrate loads.
+            if study['cache_experiment']['cpu_cache_gib']:
+                # a GPU pool larger than the probe's working set never evicts it (arc2 v3b: 6.1M tokens vs ~0.9M), so
+                # drop the GPU prefix cache only: the revisit must then load from the host tier
+                await wait_idle(base_url)
+                for attempt in range(10):
+                    reset = await _post(client, base_url.removesuffix('/v1') + '/reset_prefix_cache',
+                                        params={'reset_external': 'false'})
+                    reset.raise_for_status()
+                    if reset.json().get('success'):
+                        break
+                    await asyncio.sleep(1)
+                else:
+                    raise RuntimeError('Unable to reset the GPU prefix cache before the CPU-tier revisit')
             await batch(8192)
             await wait_idle(base_url)
             await monitor.sample()
@@ -120,7 +141,7 @@ async def run(server_dir, study, base_url):
                     raise RuntimeError('CPU cache configured but no round-trip load demonstrated')
             # Prevent synthetic prefixes influencing the gameplay cache working set.
             for attempt in range(10):
-                reset = await client.post(base_url.removesuffix('/v1') + '/reset_prefix_cache',
+                reset = await _post(client, base_url.removesuffix('/v1') + '/reset_prefix_cache',
                                           params={'reset_external': 'true'})
                 reset.raise_for_status()
                 if reset.json().get('success'):

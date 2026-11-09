@@ -47,10 +47,12 @@ MODEL_CONFIG_SHA256 = "e765305daba0951974308f4d32c075b52a6a45974730d273f2216718a
 MODEL_QUANT_CONFIG_SHA256 = "7e69ef4b94302ae5b6f453b913621f698d5631a1d023d8b3e9e3b829721b98e8"
 MODEL_FILE_COUNT = 419
 MODEL_TOTAL_BYTES = 135_253_622_894
-MODEL_KAGGLE_PATH = Path(
+# ARC_MODEL_DIR: the checkpoint's folder when it is not the public model's mount (the private copy's parts,
+# linked into one folder by the notebook).
+MODEL_KAGGLE_PATH = Path(os.environ.get("ARC_MODEL_DIR") or (
     "/kaggle/input/models/keithtyser/qwen3-8-flash-next-nvfp4/"
     "pytorch/radixark-modelopt-fp4/1"
-)
+))
 
 VLLM_IMAGE = "vllm/vllm-openai:qwen38-flash-next"
 VLLM_INDEX_DIGEST = "sha256:fc120ece0a388cc0aa1caad4a9f1cd92113484ab7ec2fd0efadd62585be05bf8"
@@ -173,6 +175,21 @@ MTP_DYNAMIC_BATCH_SCHEDULE_ENV = "TAAF_VLLM_MTP_DYNAMIC_BATCH_SCHEDULE"
 DEFAULT_OMP_THREADS = 4
 DEFAULT_MTP_TOKENS = 3
 MAX_EXPLICIT_KV_CACHE_MEMORY_BYTES = 96 * 1024**3
+# GPUs this fork serves on (from the RL branch, B300 13 Oct): the CUDA arch list follows the device; anything else (L4,
+# re-checked by arc2.l4_serving) stays on the RTX build.
+SUPPORTED_GPUS = {"rtx pro 6000": "12.0", "b200": "10.0", "b300": "10.0"}
+_CUDA_ARCH = None
+
+
+def cuda_arch():
+    """TORCH_CUDA_ARCH_LIST for the first GPU: 12.0 (RTX PRO 6000, SM120) or 10.0 (B200, B300: the SM100 build)."""
+    global _CUDA_ARCH
+    if _CUDA_ARCH is None:
+        name = subprocess.run(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"], capture_output=True,
+                              text=True, check=True, timeout=30).stdout.strip().lower()
+        arch = [a for k, a in SUPPORTED_GPUS.items() if k in name]
+        _CUDA_ARCH = arch[0] if len(arch) == 1 else "12.0"
+    return _CUDA_ARCH
 MIN_EXPLICIT_KV_CACHE_MEMORY_BYTES = 64 * 1024**2
 VLLM_TUNING_FIELDS = {
     "schema_version",
@@ -1208,7 +1225,7 @@ def validate_jit_toolchain(
     compile_command = [
         str(nvcc),
         "-std=c++17",
-        "-arch=sm_120",
+        f"-arch=sm_{cuda_arch().replace('.', '')}",
         "-Xcompiler",
         "-fPIC",
         "-ccbin",
@@ -1436,7 +1453,7 @@ def runtime_environment(
             "TRANSFORMERS_OFFLINE": "1",
             "PYTHONDONTWRITEBYTECODE": "1",
             "PYTHONHASHSEED": "0",
-            "TORCH_CUDA_ARCH_LIST": "12.0",
+            "TORCH_CUDA_ARCH_LIST": cuda_arch(),
             "TOKENIZERS_PARALLELISM": "false",
             "OMP_NUM_THREADS": str(resolved_tuning["omp_num_threads"]),
             "MKL_NUM_THREADS": str(resolved_tuning["omp_num_threads"]),
@@ -1471,7 +1488,7 @@ def runtime_environment(
             "allocator_effective": "expandable_segments:False",
             "allocator_alias_removed": True,
             "cuda_compatibility": "0",
-            "torch_cuda_arch_list": "12.0",
+            "torch_cuda_arch_list": cuda_arch(),
             "python": sys.version,
             "glibc": glibc_raw,
             "site_packages": str(site),
@@ -1584,7 +1601,7 @@ print(json.dumps({
         raise RuntimeError(f"Conflicting allocator alias reached torch import: {import_info}")
     if import_info.get("cuda_compatibility") != "0":
         raise RuntimeError(f"CUDA compatibility mode was not disabled before import: {import_info}")
-    if import_info.get("torch_cuda_arch_list") != "12.0":
+    if import_info.get("torch_cuda_arch_list") != cuda_arch():
         raise RuntimeError(f"Wrong CUDA architecture list reached torch import: {import_info}")
     if import_info.get("vllm") != VLLM_VERSION:
         raise RuntimeError(f"Wrong vLLM version: {import_info}")
@@ -1638,7 +1655,7 @@ print(json.dumps({
         "allocator_effective": "expandable_segments:False",
         "allocator_alias_removed": True,
         "cuda_compatibility": "0",
-        "torch_cuda_arch_list": "12.0",
+        "torch_cuda_arch_list": cuda_arch(),
         "site_packages": str(site),
         "cutlass_pth": str(cutlass_pth),
         "cutlass_pth_sha256": sha256_file(cutlass_pth),
@@ -1842,8 +1859,8 @@ def gpu_inventory() -> dict[str, Any]:
         timeout=30,
     )
     rows = [line.strip() for line in query.stdout.splitlines() if line.strip()]
-    if len(rows) != 1 or "rtx pro 6000" not in rows[0].lower():
-        raise RuntimeError(f"Expected one RTX PRO 6000, found: {rows}")
+    if len(rows) != 1 or not any(k in rows[0].lower() for k in SUPPORTED_GPUS):
+        raise RuntimeError(f"Expected one RTX PRO 6000, B200 or B300, found: {rows}")
     meminfo = _meminfo()
     available = int(meminfo.get("MemAvailable", 0))
     if available < MIN_HOST_AVAILABLE_BYTES:
@@ -2937,7 +2954,7 @@ def persist_analyzer_environment(env: dict[str, str]) -> dict[str, str]:
         "VLLM_NO_USAGE_STATS": "1",
         "VLLM_ENABLE_CUDA_COMPATIBILITY": "0",
         "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:False",
-        "TORCH_CUDA_ARCH_LIST": "12.0",
+        "TORCH_CUDA_ARCH_LIST": cuda_arch(),
         "VLLM_RADIXARK_QWEN38_NVFP4_PLE_FP8": "1",
         "VLLM_RADIXARK_QWEN38_NVFP4_CONFIG_SHA256": MODEL_CONFIG_SHA256,
     }

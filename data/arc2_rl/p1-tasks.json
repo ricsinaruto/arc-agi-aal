@@ -1,0 +1,13 @@
+{
+ "tasks": [
+  "c240:221dfab4",
+  "c240:28a6681f",
+  "c240:6e4f6532",
+  "c240:a395ee82",
+  "arc2-train:1d61978c",
+  "arc2-train:5ad8a7c0",
+  "arc2-train:a6953f00",
+  "arc2-train:df978a02"
+ ],
+ "note": "P1 positive control (19 Oct): 4 c240 bucket-A tasks at 1/2 in the RTX base screens + 4 pool-v2 tasks at 3-5 of 8 (long-v3 BF16 screen), seed 20261019"
+}

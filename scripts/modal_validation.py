@@ -21,7 +21,55 @@ if KIND not in {"arena", "sglang", "vllm"}:
 TEST = os.environ.get("ARC_VALIDATION_TEST", "smoke")
 
 
+HX4_TRANCHE_USD = 200.0  # harness arm, 7 October tranche (run ids hx4-)
+
+
+def hx4_study():
+    bundle = (Path(os.environ.get("ARC_VALIDATION_BUNDLE", "")).resolve() if modal.is_local()
+              else Path("/opt/arc-validation"))
+    return json.loads((bundle / "configs/comparison.json").read_text())
+
+
+ARC2_FLASH_EFFORTS = ("xhigh", "medium", "low")  # Flash's chat template raises on any other reasoning_effort
+
+
+def arc2_efforts(study):
+    """Every reasoning effort an arc2 study can send: the study's, its settings' and each arm's (effort,
+    confirm_effort, hard_effort, late_effort and the open_schedule's)."""
+    found = {study.get("reasoning_effort")}
+    blocks = [(study.get("arc2") or {}).get("settings") or {}]
+    blocks += [arm for trial in study.get("trials") or [] for arm in trial.get("arms") or []]
+    for block in blocks:
+        found |= {block.get(k) for k in ("effort", "confirm_effort", "hard_effort", "late_effort")}
+        found |= {row[0] for row in block.get("open_schedule") or []}
+    return sorted(e for e in found if e is not None)
+
+
+def validate_arc2_efforts(study):
+    """C4 effort guard (20 Oct; the 13 Oct effhigh and 17 Oct hard-effort runs sent "high" and got 400s): a Flash
+    study may only send the efforts its chat template takes. Studies serving another model are left to the
+    trial's start check (arc2.trial asks the served template for every effort before play)."""
+    if any(not str(d).split("/")[-1].startswith("arc-expert") for d in study.get("model_datasets") or []):
+        return
+    bad = [e for e in arc2_efforts(study) if e not in ARC2_FLASH_EFFORTS]
+    if bad:
+        raise ValueError(f"arc2 effort guard: {bad} not in Flash's chat template efforts {list(ARC2_FLASH_EFFORTS)}")
+
+
 def validation_timeout(kind, test):
+    if kind == "arena" and test in ("hx4-level", "hx4-quality"):
+        # Stuck-level bench (harness arm, 7 October): the bundle's notebook_seconds (setup + bench wall) + 300 s.
+        # hx4-quality: a copy of a throughput-arm quality-protocol bundle (quality_eval version 2, DEV rep4) with
+        # harness flags changed; same rule as that arm's quality-fixed-replicated (notebook + 300 s, 8 CPUs).
+        return min(14400, int(hx4_study()["notebook_seconds"]) + 300)
+    if kind == "arena" and test == "arc2-run":
+        # ARC-AGI-2 arm (9 October): the bundle's notebook_seconds (setup + the arc2 trials' walls) + 300 s. The
+        # 240-task evaluation to the 550 tok/s mark is 23.76M tokens: up to 14,100 s of play after 3,900 s of setup.
+        # The cap is the study's arc2.timeout_cap_seconds (arc2 runs never get time limits, the stop is
+        # the 20M mark; the VM deadline follows this timeout), else 25,200 s (18 Oct: ~5.5 h unpruned run).
+        study = hx4_study()
+        cap = min(86400, int((study.get("arc2") or {}).get("timeout_cap_seconds") or 25200))
+        return min(cap, int(study["notebook_seconds"]) + 300)
     choices = {
         ("vllm", "duck-transfer-mxfp8"): 2100,
         ("arena", "smoke"): 1680,
@@ -265,8 +313,12 @@ def arena_arguments(test):
         return []  # both agents, each receives the full independent 1800 seconds
     if test in ("evolve", "evolve-rehearsal"):
         return ["--evolve"]
-    if test == "level-bench":
+    if test in ("level-bench", "hx4-level"):
         return ["--trial", "level-bench"]
+    if test == "hx4-quality":
+        return ["--trial", "duck-transfer"]
+    if test == "arc2-run":
+        return []  # the training-sample trial, then the evaluation trial (skipped unless the first completed)
     raise ValueError(f"Unsupported arena test: {test}")
 
 
@@ -274,7 +326,7 @@ TIMEOUT = validation_timeout(KIND, TEST)
 # Container CPU ceiling (cores). 8 everywhere, 16 for the oversubscribed follow-ups (29 September): 38 / 24 concurrent
 # Duck streams on 110 sandboxes beside the vLLM API server and engine, against 23-25 in every earlier run; no host CPU
 # telemetry exists to show 8 is enough, and the ceiling adds to a 2 h bound.
-CPU_CEILING = 16 if TEST in ("hero-v2-int4-streams", "hero-v2-128k-streams", "hero-v2-blocks") else 8
+CPU_CEILING = 16 if TEST in ("hero-v2-int4-streams", "hero-v2-128k-streams", "hero-v2-blocks", "hx4-level") else 8
 if TEST in ("hero-v2-samples-plans", "campaign-9h"):
     CPU_CEILING = 16  # run B's ceiling: 24 focus streams (+ their sibling requests) on 110 sandboxes
 # Manual graceful stop (arena.early_stop): the runs-volume request and the local file the trial checks.
@@ -320,17 +372,24 @@ def reserve(run_id, kind, seconds, *, test="smoke"):
         cpu = globals().get("CPU_CEILING", 8)  # the tests exec reserve() alone
         rate = 0.000842 + cpu * 0.0000131 + 192 * 0.00000222
         bound = (seconds + 60) * rate * 1.15
-        from arc_infra.runops.records import row_cost
-        committed = data["infrastructure_reserve_usd"] + sum(row_cost(r)[0] for r in data["runs"])
+        committed = data["infrastructure_reserve_usd"] + sum(r["charged_bound_usd"] for r in data["runs"])
         if committed + bound > data["cap_usd"]:
             raise RuntimeError(f"Spend cap: ${committed:.2f} + ${bound:.2f} required")
         if any(r["run_id"] == run_id for r in data["runs"]):
             raise ValueError("Run already reserved; inspect saved call instead of relaunching")
+        if test in ("hx4-level", "hx4-quality"):
+            if not run_id.startswith(("hx4-", "hx5-", "hx6-", "hx7-")):
+                raise ValueError("hx4 runs use hx4- run ids")
+            spent = sum(r["charged_bound_usd"] for r in data["runs"] if r["run_id"].startswith(("hx4-", "hx5-", "hx6-", "hx7-")))
+            if spent + bound > HX4_TRANCHE_USD:
+                raise RuntimeError(f"hx4 tranche: ${spent:.2f} + ${bound:.2f} exceeds ${HX4_TRANCHE_USD:.0f}")
         data["runs"].append({
             "run_id": run_id, "state": "reserved", "kind": kind,
             "charged_bound_usd": bound, "max_seconds": seconds,
             "gpu": "RTX-PRO-6000", "cpu_ceiling": cpu, "memory_ceiling_gib": 192,
             "authorization": (
+                "harness arm restart (hx4), 1 RTX PRO 6000 at a time, <= of new reservations"
+                if test in ("hx4-level", "hx4-quality") else
                 "up to four research GPUs, pilot <= one hour including setup, "
                 if test == "research-model" else
                 "seven nine-hour Modal benchmarks plus user-requested additional nine-hour arms, cumulative cap"
@@ -504,6 +563,8 @@ def benchmark(run_id: str):
                        "--working", "/tmp/arena", "--output", str(output / "arena"),
                        "--games-dir", "/assets/games", "--max-seconds", str(TIMEOUT - 60),
                        *arena_arguments(TEST)]
+            if TEST == "arc2-run":  # C4 effort guard: refuse efforts Flash's chat template rejects
+                validate_arc2_efforts(json.loads((source / "configs/comparison.json").read_text()))
             if TEST in {"full-duck-transfer", "cache-duck-transfer"}:
                 study = json.loads((source / "configs/comparison.json").read_text())
                 if len(set(study["games"])) != 25 or study["wall_seconds"] != 900:
@@ -845,6 +906,24 @@ def benchmark(run_id: str):
                 if (study['trials'] != [{'name': 'level-bench', 'kind': 'level-bench'}] or not study.get('level_bench')
                         or not (source / study['level_bench']['start_points']).is_file()):
                     raise ValueError('The level-bench test requires the level-bench study and its start points')
+            if TEST == 'hx4-quality':
+                study = json.loads((source / 'configs/comparison.json').read_text())
+                quality = study.get('quality_eval') or {}
+                if ([(t['name'], t['kind']) for t in study['trials']] != [('duck-transfer', 'duck-transfer')]
+                        or not run_id.startswith(('hx4-', 'hx5-', 'hx6-', 'hx7-')) or quality.get('version') != 2
+                        or quality.get('split') != 'dev10'
+                        or (study.get('competition') or {}).get('preview_seconds') != study.get('wall_seconds')
+                        or study.get('notebook_seconds', 10 ** 6) > 12900):
+                    raise ValueError('hx4-quality needs a DEV quality-protocol bundle (quality_eval version 2, one '
+                                     'Duck trial, notebook <= 12,900 s) and an hx4- run id')
+            if TEST == 'hx4-level':
+                study = json.loads((source / 'configs/comparison.json').read_text())
+                bench = study.get('level_bench') or {}
+                if ([(t['name'], t['kind']) for t in study['trials']] != [('level-bench', 'level-bench')]
+                        or not run_id.startswith(('hx4-', 'hx5-', 'hx6-', 'hx7-')) or not (source / bench.get('start_points', '-')).is_file()
+                        or bench.get('concurrency', 10 ** 6) > study['active_limit']):
+                    raise ValueError('hx4-level needs a build_hx4.py bundle (level-bench trial, start points, '
+                                     'no more workers than KV-gate streams) and an hx4- run id')
             if TEST == 'bench-ab':
                 study = json.loads((source / 'configs/comparison.json').read_text())
                 if not study.get('serving_ab') or {t['kind'] for t in study['trials']} != {'serving-bench'}:
@@ -1222,6 +1301,8 @@ def main(run_id: str = "", probe_only: bool = False):
               }.get(TEST, "docs/validation-20260922")
     if TEST in ("campaign-9h", "research-model", "decode-sweep", "spec-sweep"):
         folder = "docs/validation-20260930"
+    if TEST in ("hx4-level", "hx4-quality"):
+        folder = "docs/validation-20261007"
     if TEST in ("competition-preview", "competition-preview-1h", "competition-preview-4h", "competition-preview-8h"):
         folder = "docs/validation-20261001"
     record = ROOT / folder / f"modal-{run_id}.json"

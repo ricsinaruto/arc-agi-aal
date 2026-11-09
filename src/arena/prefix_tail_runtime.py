@@ -76,6 +76,14 @@ SPEC_ACCEPT = False
 # 11 of 57 post-cap replies (accept-v2, t37fix, t37dev v1/v2, b2-cachefix) that resumed from such an entry looped
 # ("ductduct...") to the cap again, against 0 of 146 without it; the next request recomputes from the boundary.
 SPEC_SKIP_LENGTH = True
+# tail_keepalive (7 October; prefix_cache_patch writes True): a finished request whose game has not come back after
+# KEEPALIVE_AFTER seconds (a long python call) gets its cached blocks moved to the newest end of the free queue, again
+# every KEEPALIVE_EVERY seconds, until the game resumes from the entry, the entry is gone or KEEPALIVE_UNTIL seconds
+# have passed (the python limit is 30 s). Nothing is pinned: reference counts and the free count do not change.
+# Seen without it: the last 3 of 34 attention blocks of an idle game evicted during a 30 s python timeout
+# (tp-streams-dev10-s44-cot-diag-v1), 7 full recomputes after tools >= 10 s in 3.5 h (s44-cot-long).
+KEEPALIVE = False
+KEEPALIVE_AFTER, KEEPALIVE_EVERY, KEEPALIVE_UNTIL = 5.0, 5.0, 45.0
 
 
 def finished_by_length(request):
@@ -84,10 +92,11 @@ def finished_by_length(request):
 
 
 class Entry:
-    __slots__ = ("length", "tokens", "extra", "keys")
+    __slots__ = ("length", "tokens", "extra", "keys", "alive")
 
     def __init__(self, length, tokens, extra, keys):
         self.length, self.tokens, self.extra, self.keys = length, tokens, extra, keys
+        self.alive = None  # tail_keepalive: [finish time, next refresh, boundary hashes, refreshes] while waiting
 
 
 class TailIndex:
@@ -141,6 +150,8 @@ class TailIndex:
         self.freed = []  # the newest entry's blocks, placed by after_free
         self.superseded = []  # its request's kept boundary states (PLACEMENT "swap")
         self.pending = {}  # ring group id -> {request id: the entry's ring block, between lookup and allocation}
+        self.waiting = []  # tail_keepalive: entries whose game has not come back yet
+        self.clock = time.monotonic
         for gid in self.ring:
             self._wrap_ring(managers[gid])
         print("ARC_TAIL_INDEX " + json.dumps({"attention": self.attention, "mamba": self.mamba, "ring": self.ring,
@@ -159,6 +170,8 @@ class TailIndex:
         """Called by ``KVCacheManager.free`` before the request's blocks return to the pool."""
         if self.disabled is not None or not request.is_finished():
             return
+        if KEEPALIVE:
+            self.keepalive()
         if COLLAPSE_LOG:
             self.record_finish(request)
         B = self.block
@@ -262,6 +275,10 @@ class TailIndex:
                     self.superseded.append(kept)
         bucket = self.entries.setdefault(parent, [])
         bucket.insert(0, Entry(L, tokens, extra, keys))
+        if KEEPALIVE:
+            now, scale = self.clock(), B // self.hash_block
+            bucket[0].alive = [now, now + KEEPALIVE_AFTER, [request.block_hashes[(i + 1) * scale - 1] for i in range(k)], 0]
+            self.waiting.append(bucket[0])
         if COLLAPSE_LOG:
             self.__dict__.setdefault("_born", {})[id(bucket[0])] = time.monotonic()
         del bucket[MAX_PER_PARENT:]
@@ -323,11 +340,77 @@ class TailIndex:
             full[gid] = blocks
         return full
 
+    # --------------------------------------------------------------------------------------- keep-alive
+    def keepalive(self):
+        """Refresh the cached blocks of every waiting entry that is due (called at request starts and finishes)."""
+        if not self.waiting:
+            return
+        now, waiting = self.clock(), []
+        for entry in self.waiting:
+            alive = entry.alive
+            if alive is None:  # the game came back
+                continue
+            if now - alive[0] > KEEPALIVE_UNTIL:
+                entry.alive = None
+                self.stats["keepalive_expired"] += 1
+            elif now < alive[1]:
+                waiting.append(entry)
+            else:
+                moved = self._refresh(entry, alive[2]) if self.valid(entry) else None
+                if moved is None:  # the entry or one of its attention blocks is already gone: nothing to keep
+                    entry.alive = None
+                    self.stats["keepalive_lost"] += 1
+                    continue
+                self.stats["keepalive_games"] += not alive[3]
+                self.stats["keepalive_pings"] += 1
+                self.stats["keepalive_blocks"] += moved
+                alive[1], alive[3] = now + KEEPALIVE_EVERY, alive[3] + 1
+                waiting.append(entry)
+        self.waiting = waiting
+
+    def _refresh(self, entry, hashes):
+        """Move the game's unreferenced cached blocks to the newest end of the free queue, in eviction order: the
+        attention blocks from the last boundary back to the first, the kept boundary state, the entry's own blocks.
+        Older recurrent states stay where the demotion put them (the entry supersedes them). None when an attention
+        block of the prefix is no longer cached (the entry cannot serve any more)."""
+        mapping = self.pool.cached_block_hash_to_block
+        blocks, seen = [], set()
+
+        def add(block):
+            if block is not None and not block.is_null and block.ref_cnt == 0 and block.block_id not in seen:
+                seen.add(block.block_id)
+                blocks.append(block)
+
+        for gid in self.attention:
+            for prefix in reversed(hashes):
+                block = mapping.get_one_block(make_block_hash_with_group_id(prefix, gid))
+                if block is None:
+                    return None
+                add(block)
+        if PLACEMENT == "back" and hashes:
+            for gid in self.mamba:
+                add(mapping.get_one_block(make_block_hash_with_group_id(hashes[-1], gid)))
+        for key, block in entry.keys.values():
+            if mapping.contain(key, block.block_id):
+                add(block)
+        queue = self.pool.free_block_queue
+        for block in blocks:
+            queue.remove(block)
+        queue.append_n(blocks)
+        return len(blocks)
+
     def lookup(self, request, computed_blocks, hit, max_length):
+        if KEEPALIVE:
+            self.keepalive()
+        blocks, length = self._lookup(request, computed_blocks, hit, max_length)
+        # After the entries were tried (7 October: reported before, 15 of 25 "collapses" were then served by an entry).
+        if COLLAPSE_LOG and self.block and length <= 2 * self.block and max_length >= 8 * self.block:
+            self.collapse_report(request, hit, max_length)
+        return blocks, length
+
+    def _lookup(self, request, computed_blocks, hit, max_length):
         for gid in self.ring:
             self.pending[gid].pop(request.request_id, None)
-        if COLLAPSE_LOG and self.block and hit <= 2 * self.block and max_length >= 8 * self.block:
-            self.collapse_report(request, hit, max_length)
         if self.disabled is not None or not self.entries:
             return computed_blocks, hit
         B = self.block
@@ -367,6 +450,9 @@ class TailIndex:
                     self.pending[gid][request.request_id] = entry.keys[gid][1]
                 self.stats["hits"] += 1
                 self.stats["hit_tokens_above_pinned"] += L - hit
+                if entry.alive is not None:
+                    self.stats["keepalive_returned"] += bool(entry.alive[3])
+                    entry.alive = None
                 return tuple(result), L
         return computed_blocks, hit
 
@@ -387,6 +473,16 @@ class TailIndex:
                 keys.add(request.block_hashes[tokens // unit - 1])
         record = {"time": time.monotonic(), "computed": request.num_computed_tokens, "tokens": request.num_tokens,
                   "groups": groups, "table_len": len(managers[self.mamba[0]].req_to_blocks.get(rid) or [])}
+        # The reply as generated, keyed by the prompt's last block boundary (the prompt is re-sent unchanged), so a
+        # collapse can say where the re-sent reply first differs from the generated token ids.
+        prompt = getattr(request, "num_prompt_tokens", None)
+        if prompt is not None and prompt >= B and (prompt // B) * B // unit - 1 < len(request.block_hashes):
+            by_prompt = self.__dict__.setdefault("_finish_by_prompt", {})
+            by_prompt[request.block_hashes[(prompt // B) * B // unit - 1]] = {
+                "time": record["time"], "prompt": prompt, "generated": list(request.all_token_ids[prompt:prompt + 20000]),
+                "prompt_tail": list(request.all_token_ids[max(0, prompt - 32):prompt])}
+            while len(by_prompt) > 512:
+                by_prompt.pop(next(iter(by_prompt)))
         last = request.num_computed_tokens // B
         if last and last * B // unit - 1 < len(request.block_hashes):
             keys.add(request.block_hashes[last * B // unit - 1])
@@ -418,6 +514,34 @@ class TailIndex:
                     "computed": record["computed"], "tokens": record["tokens"], "table_len": record["table_len"],
                     "groups": groups}
         return None
+
+    def resend_report(self, request, max_length):
+        """Where this prompt first differs from the newest finished reply whose prompt it extends (token ids)."""
+        by_prompt = self.__dict__.get("_finish_by_prompt", {})
+        B, unit = self.block, self.hash_block
+        ids = request.all_token_ids
+        for j in range(max_length // B, 0, -1):
+            index = j * B // unit - 1
+            record = by_prompt.get(request.block_hashes[index]) if index < len(request.block_hashes) else None
+            if record is None or record["prompt"] > len(ids):
+                continue
+            prompt, generated = record["prompt"], record["generated"]
+            resent = list(ids[prompt:prompt + len(generated)])
+            diff = next((i for i in range(min(len(generated), len(resent))) if generated[i] != resent[i]), None)
+            out = {"boundary": j, "age_seconds": round(time.monotonic() - record["time"], 2), "prev_prompt": prompt,
+                   "generated": len(generated), "resent_compared": len(resent), "first_diff": diff,
+                   "prompt_tail_same": list(ids[max(0, prompt - 32):prompt]) == record["prompt_tail"]}
+            if diff is not None:
+                out["generated_ids"] = generated[max(0, diff - 6):diff + 8]
+                out["resent_ids"] = resent[max(0, diff - 6):diff + 8]
+            return out
+        return None
+
+    def _safe_resend(self, request, max_length):
+        try:
+            return self.resend_report(request, max_length)
+        except Exception as exc:  # diagnostics never break a lookup
+            return {"error": f"{type(exc).__name__}: {str(exc)[:120]}"}
 
     def invalid_report(self, request, entry):
         """ARC_TAIL_INVALID (diagnostics): which of a matching entry's blocks lost their key, and the entry's age."""
@@ -460,7 +584,7 @@ class TailIndex:
             "request": request.request_id, "prompt": request.num_prompt_tokens, "hit": hit,
             "max_length": max_length, "boundaries": len(bounds), "groups": groups,
             "free_blocks": self.pool.get_num_free_blocks(), "tail_entries_at_last_boundary": len(entries or ()),
-            "finish": self.finish_report(request, max_length)},
+            "finish": self.finish_report(request, max_length), "resend": self._safe_resend(request, max_length)},
             sort_keys=True), flush=True)
 
     # --------------------------------------------------------------------------------------- ring copy
