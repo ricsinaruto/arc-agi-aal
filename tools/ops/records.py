@@ -14,25 +14,18 @@ also when called from an arm worktree.
   records.py queue RUN --set what="..." [--set next="..."]   edit the run's queue row
   records.py ledger RUN --set app_id=ap-... [--set k=json ...]   patch the run's open ledger row
   records.py cpu-app APP_ID                              register a CPU-only Modal app
-  records.py cpu-app-drop APP_ID                         remove a CPU-app-only registration (mistyped id)
-  records.py cpu-autoreg                                 register live CPU-only Modal apps that have no row
   records.py gate --arm A --platform P --gpu G [--gpu-count N] --bound USD    dry check, exit 1 on refusal
   records.py result RUN --metric score300k=13.7 [--metric tok_s=1534] [--bundle ID] [--vs RUN] [--verdict "..."]
                                                          one read of the run, kept in its record (at each read)
   records.py results [--arm A] [--since 6h|2026-10-24|EPOCH] [--metric M] [--prefix P] [--json]   query the reads
-  records.py attach RUN LOG                              after `modal run --detach ... > LOG`: the app id in LOG goes
-                                                         into the record (queue + ledger); exit 1 loudly without one
-  records.py out RUN                                     the current attempt's output folder name (<run> or
-                                                         <run>-attempt<N>): knobs, exporters and watchers use it
   records.py show RUN | sync | build | billing (Modal's bill to date -> docs/budget.json, for the gate)
-  records.py snapshot                                    ended records -> docs/runs-settled/ (local); budget.json commit, pull, push
+  records.py snapshot                                    ended records -> docs/runs-settled/ (git), commit, pull, push
   records.py pull                                        `git pull` + push of the main checkout
   records.py push RUN...                                 no-op (records are untracked since 24 Oct)
 Records and the views (docs/spend.json, docs/modal-queue.json) are machine-local and untracked; edit only through here.
 """
 import argparse
 import json
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -44,9 +37,7 @@ from arc_infra.runops import records as R  # noqa: E402
 def kv(items):
     out = {}
     for item in items or []:
-        k, eq, v = item.partition("=")
-        if not eq or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.-]*", k):
-            raise SystemExit(f"--set {item[:80]!r}: key=value (value as JSON or text), one field per --set")
+        k, _, v = item.partition("=")
         try:
             out[k] = json.loads(v)
         except ValueError:
@@ -76,9 +67,9 @@ def pull():
 
 
 def snapshot():
-    """Daily: ended records -> docs/runs-settled/ (local, untracked); docs/budget.json committed and pushed."""
+    """Daily: ended records -> docs/runs-settled/ plus docs/budget.json, committed and pushed."""
     n = R.snapshot()
-    files = ["docs/budget.json"]
+    files = ["docs/runs-settled", "docs/budget.json"]
     _git("add", "--", *files, check=True)
     if _git("diff", "--cached", "--quiet", "--", *files).returncode == 0:
         return print(f"snapshot: nothing new ({n} written)")
@@ -135,19 +126,12 @@ def main():
     r.add_argument("--auth", required=True)
     r.add_argument("--what", required=True)
     r.add_argument("--kind")
-    r.add_argument("--volume", help='"run": the run gets its own Modal v2 volume arc-run-<run>; default the shared arc-prolong-runs')
     r.add_argument("--set", action="append")
     s = sub.add_parser("settle")
     s.add_argument("run")
     s.add_argument("state")
     s.add_argument("--cause", required=True)
     s.add_argument("--set", action="append")
-    sa = sub.add_parser("settle-attempt", help="close or correct an earlier attempt's ledger row")
-    sa.add_argument("run")
-    sa.add_argument("n", type=int)
-    sa.add_argument("state")
-    sa.add_argument("--cause", required=True)
-    sa.add_argument("--set", action="append")
     rq2 = sub.add_parser("require")
     rq2.add_argument("run")
     rn = sub.add_parser("running")
@@ -159,9 +143,6 @@ def main():
     lg = sub.add_parser("ledger")
     lg.add_argument("run")
     lg.add_argument("--set", action="append", required=True)
-    sub.add_parser("cpu-autoreg")
-    cd = sub.add_parser("cpu-app-drop")
-    cd.add_argument("app_id")
     c = sub.add_parser("cpu-app")
     c.add_argument("app_id")
     rs = sub.add_parser("result")
@@ -179,41 +160,17 @@ def main():
     rq.add_argument("--json", action="store_true")
     sh = sub.add_parser("show")
     sh.add_argument("run")
-    ou = sub.add_parser("out")
-    ou.add_argument("run")
-    at = sub.add_parser("attach")
-    at.add_argument("run")
-    at.add_argument("log")
     pu = sub.add_parser("push")
     pu.add_argument("runs", nargs="+")
-    vo = sub.add_parser("volume", help="the run's Modal volume (its record's, else arc-prolong-runs)")
-    vo.add_argument("run")
-    rt = sub.add_parser("retire", help="tools/ops/retire.py: archive + delete a run's own volume (by hand, on the "
-                                       "explicit approval; never scheduled)")
-    rt.add_argument("run")
-    rt.add_argument("--archive", action="store_true")
-    rt.add_argument("--delete", action="store_true")
-    ra = sub.add_parser("rename-arm", help="rewrite every record's arm OLD -> NEW (records, ledger and queue rows)")
-    ra.add_argument("old")
-    ra.add_argument("new")
-    ra.add_argument("--dry", action="store_true")
     for name in ("sync", "build", "migrate", "billing", "pull", "unclassified", "snapshot"):
         sub.add_parser(name)
     a = ap.parse_args()
     try:
-        if a.cmd == "out":
-            print(R.out_id(a.run))
-        elif a.cmd == "attach":
-            app = R.attach(a.run, Path(a.log).read_text(errors="replace") if Path(a.log).exists() else "")
-            if not app:
-                print(f"APP_ID NOT RECORDED {a.run}: no ap-... id in {a.log}", file=sys.stderr)
-                sys.exit(1)
-            print(f"record {a.run}: app_id {app}")
-        elif a.cmd == "reserve":
+        if a.cmd == "reserve":
             R.reserve(a.run, arm=a.arm, platform=a.platform, gpu=a.gpu, gpu_count=a.gpu_count, bound_usd=a.bound,
                       max_seconds=a.max_seconds, authorization=a.auth, what=a.what, kind=a.kind,
-                      long_run_24h=a.long_run_24h, allowance_exempt=a.allowance_exempt, volume=a.volume, **kv(a.set))
-            print(f"reserved {a.run} (${a.bound:.2f}) on volume {R.volume_of(a.run)}")
+                      long_run_24h=a.long_run_24h, allowance_exempt=a.allowance_exempt, **kv(a.set))
+            print(f"reserved {a.run} (${a.bound:.2f})")
         elif a.cmd == "gate":
             for w in R.gate(a.arm, a.gpu, a.gpu_count, a.bound, platform=a.platform, long_run_24h=a.long_run_24h,
                             allowance_exempt=a.allowance_exempt):
@@ -221,8 +178,6 @@ def main():
             print("gate OK")
         elif a.cmd == "settle":
             R.settle(a.run, a.state, end_cause=a.cause, **kv(a.set))
-        elif a.cmd == "settle-attempt":
-            R.settle_attempt(a.run, a.n, a.state, end_cause=a.cause, **kv(a.set))
         elif a.cmd == "require":
             R.require_reservation(a.run)
             print(f"{a.run}: reserved, launch may go")
@@ -236,12 +191,6 @@ def main():
             R.set_queue(a.run, **kv(a.set))
         elif a.cmd == "ledger":
             R.set_ledger(a.run, **kv(a.set))
-        elif a.cmd == "cpu-app-drop":
-            R.drop_cpu_app(a.app_id)
-            print(f"{a.app_id}: dropped")
-        elif a.cmd == "cpu-autoreg":
-            for aid, name in R.autoregister_cpu_apps():
-                print(f"registered {aid} as {name}")
         elif a.cmd == "cpu-app":
             R.register_cpu_app(a.app_id)
         elif a.cmd == "result":
@@ -258,12 +207,6 @@ def main():
             print(json.dumps(R.get(a.run), indent=1))
         elif a.cmd == "push":
             push(a.runs)
-        elif a.cmd == "retire":
-            sys.path.insert(0, str(Path(__file__).resolve().parent))
-            import retire
-            retire.main([a.run] + (["--archive"] if a.archive else []) + (["--delete"] if a.delete else []))
-        elif a.cmd == "volume":
-            print(R.volume_of(a.run))
         elif a.cmd == "pull":
             pull()
         elif a.cmd == "snapshot":
@@ -277,9 +220,6 @@ def main():
             usd = R.modal_billed(modal_bin=str(R.ROOT / ".venv/bin/modal"))
             R.set_modal_billed(usd)
             print(f"modal billed since 2026-09-01: ${usd:,.2f}")
-        elif a.cmd == "rename-arm":
-            runs = R.rename_arm(a.old, a.new, dry=a.dry)
-            print(f"{'would rename' if a.dry else 'renamed'} {a.old} -> {a.new} in {len(runs)} records")
         elif a.cmd == "migrate":
             rules = json.loads((R.ROOT / "docs/html/arm-state.json").read_text()).get("run_arms", {})
             print(f"migrated {R.migrate(arm_rules=rules)} records")

@@ -1,6 +1,5 @@
 """Render MODAL_STATUS.html (the "What is running" dashboard) from the queue rows and live feeds; called by mon.py."""
 import datetime, html, re
-import paths
 
 CSS = """
 :root{--bg:#f6f7f9;--card:#fff;--ink:#1c2330;--mut:#667085;--line:#e4e7ec;--bar:#e9edf3;--fill:#4f7cff}
@@ -9,7 +8,7 @@ CSS = """
 main{max-width:1180px;margin:0 auto;padding:28px 20px 60px}
 h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:34px 0 10px}.sub{color:var(--mut);font-size:13px;margin-bottom:22px}
 .sum{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}.pill{background:var(--card);color:var(--ink);border:1px solid var(--arm,var(--line));border-radius:999px;padding:4px 12px;font:inherit;font-size:13px;cursor:pointer}.pill.on{background:var(--arm,var(--ink));color:var(--card);border-color:var(--arm,var(--ink))}.pill.on b{color:inherit}.card.hide{display:none}.sep{width:1px;background:var(--line);margin:0 6px}
-.card{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--arm);border-radius:10px;padding:16px 18px;margin-bottom:12px;display:grid;grid-template-columns:230px 1fr 315px;gap:20px}
+.card{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--arm);border-radius:10px;padding:16px 18px;margin-bottom:12px;display:grid;grid-template-columns:230px 1fr 210px;gap:20px}
 @media (max-width:860px){.card{grid-template-columns:1fr}}
 .arm{display:inline-block;background:var(--arm);color:#fff;border-radius:5px;padding:1px 8px;font-size:12px;font-weight:600;letter-spacing:.02em}
 .id{font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--mut);margin-top:8px;word-break:break-all}.gpu{font-size:13px;margin-top:6px}
@@ -17,7 +16,6 @@ h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:34px 0 10px}.sub{color
 .v{font-size:20px;font-weight:650;font-variant-numeric:tabular-nums}.v small{font-size:12px;font-weight:400;color:var(--mut)}
 .bar{height:6px;background:var(--bar);border-radius:3px;margin:8px 0 12px;overflow:hidden}.bar i{display:block;height:100%;background:var(--fill)}
 .m{font-size:13px;color:var(--mut);font-variant-numeric:tabular-nums}.m b{color:var(--ink);font-weight:600}
-.g{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums;margin-top:6px}.g th{color:var(--mut);font-weight:400;font-size:11px;text-transform:uppercase;letter-spacing:.04em;text-align:right;padding:0 0 2px 10px}.g td{text-align:right;padding:1px 0 1px 10px;font-weight:600}.g td:first-child,.g th:first-child{text-align:left;color:var(--mut);font-weight:400;padding-left:0}.g small{color:var(--mut);font-weight:400;font-size:11px}
 ul{padding-left:20px;margin:0}li{margin-bottom:8px}
 """
 JS = """
@@ -31,7 +29,7 @@ pills.forEach(p=>p.onclick=()=>{const s=sel[p.dataset.k],v=p.dataset.v;if(!v)s.c
 const h=location.hash.slice(1).split('|'),ok=(k,v)=>pills.some(p=>p.dataset.k===k&&p.dataset.v===v);
 ['arm','site'].forEach((k,i)=>(h[i]||'').split(',').map(decodeURIComponent).forEach(v=>{if(v&&ok(k,v))sel[k].add(v)}));show();
 """
-ARM = {"long run": "#d9480f", "harness": "#2f9e44", "sft": "#7048e8", "throughput": "#1c7ed6", "arc3sub": "#1c7ed6", "rl": "#c2255c", "rsi": "#0ca678", "prime": "#7048e8", "arc2": "#e8590c", "envs": "#5c940d"}
+ARM = {"long run": "#d9480f", "harness": "#2f9e44", "sft": "#7048e8", "throughput": "#1c7ed6", "rl": "#c2255c", "rsi": "#0ca678", "prime": "#7048e8", "arc2": "#e8590c", "envs": "#5c940d"}
 OWN_LABEL = {"rsi", "prime", "arc2"}  # arms that keep their own label whatever the run length
 is_long = lambda run: "-24h-" in run or "c100-300k" in run  # noqa: E731
 
@@ -65,7 +63,7 @@ def sft_bits(r):
             m.append(f"<div class='m' style='margin-top:8px'>selection NLL at start <b>{s0:.3f}</b>" + (f" · quick check <b>{r['light']:+.3f}</b>" if r.get("light") is not None else "") + "</div>")
     m.append(f"<div class='m'>unit <b>{r['step']}</b> of {r['steps']} · pass {r['pass']} of {r['passes']} · about <b>{r['eta_h']:.1f} h</b> left</div>")
     if r.get("stopped"): m.append(f"<div class='m'><b>stopped: {html.escape(str(r['stopped']))}</b></div>")
-    if r.get("utc"): m.append(f"<div class='m'>read {paths.local(str(r['utc'])):%H:%M} {paths.tz()}</div>")
+    if r.get("utc"): m.append(f"<div class='m'>read {html.escape(str(r['utc'])[11:16])} UTC</div>")
     return m
 
 def rl_bits(r):
@@ -111,13 +109,13 @@ def summary(e, r, kind=None):
     bar share (None: no bar), score (or the reason there is none), tok/s (or the reason), other lines."""
     ago, total, state = e["_ago"], e["_total"], e.get("_state")
     c = {"pct": None, "score": None, "score_why": None, "tps": None, "tps_why": None, "lines": [], "state": state}
-    hm = lambda t: paths.local(t).strftime("%H:%M")
+    hm = lambda t: datetime.datetime.fromtimestamp(t, datetime.timezone.utc).strftime("%H:%M")
     if ago < 0:
         c.update(head=f"queued · starts in about {-ago:.1f} h · {total:.1f} h planned", state="queued", score_why="not started", tps_why="not started"); return c
     if state == "starting":
-        c.update(head=f"starting: machine requested {hm(e['_since'])} {paths.tz()} · {total:.1f} h planned", score_why="not started", tps_why="not started"); return c
+        c.update(head=f"starting: machine requested {hm(e['_since'])} UTC · {total:.1f} h planned", score_why="not started", tps_why="not started"); return c
     if state == "waiting":
-        c.update(head=f"waiting for a GPU since {hm(e['_since'])} {paths.tz()} · {total:.1f} h planned", score_why="not playing: no container", tps_why="not running: no container")
+        c.update(head=f"waiting for a GPU since {hm(e['_since'])} UTC · {total:.1f} h planned", score_why="not playing: no container", tps_why="not running: no container")
     elif state == "running":
         c["head"] = f"{ago:.1f} h of {total:.1f} h planned" if ago <= total else f"past planned end: {ago:.1f} h running, {total:.1f} h planned"
         if ago <= total: c["pct"] = max(0, min(100, 100 * ago / total)) if total else 0
@@ -127,12 +125,6 @@ def summary(e, r, kind=None):
     if r.get("sft"):
         c["lines"] = sft_bits(r); c["score"] = f"{r['loss']:.3f} <small>training loss</small>" if r.get("loss") is not None else None
         c["score_why"] = c["tps_why"] = "training job: no score or tok/s feed"; return c
-    if r.get("scoring"):  # teacher scoring (mon.score_row): no score; tok/s summed over its cards
-        c["score_why"] = "teacher scoring job: no score"
-        c["lines"].append(f"<div class='m'><b>{r['tokM']:.1f}M</b> tokens scored on {r['cards']} card(s) · last row {r['age_s'] / 60:.0f} min ago</div>")
-        if r.get("last30"): c["tps"] = f"<b>{r['last30']:,.0f}</b> tok/s, last 30 min" + (f" · <b>{r['mean']:,.0f}</b> since start" if r.get("mean") else "")
-        else: c["tps_why"] = "no scored example in the last 30 min"
-        return c
     if r.get("rl"):
         c["lines"] = rl_bits(r); c["score_why"] = c["tps_why"] = "training job: no score or tok/s feed"; return c
     if r.get("rl1"):  # RL step 1 probe / loop (tools/ops/rl1_feed.py)
@@ -152,17 +144,13 @@ def summary(e, r, kind=None):
         if r["games_per_h"]: c["tps"] = f"<b>{r['games_per_h']:.1f}</b> games per loop GPU-h"
         else: c["tps_why"] = "loop run: games per loop GPU-h after the first quarter hour"
         return c
-    if r.get("arc2"):  # ARC-AGI-2 roster trial (mon.arc2_row): the arc3 card layout, score = % of test outputs right
-        if r.get("pct") is not None:
-            c["score"] = f"{r['pct']:.1f}% <small>score</small>"
-            if r.get("tokM"): c["lines"].append(f"<div class='m'><b>{r['tokM']:.1f}M</b> tokens · <b>{r['pct'] / r['tokM']:.2f}</b> pts/Mtok</div>")
-        else: c["score_why"] = "no score yet"
-        if "cap" not in r:  # ended trial read from its synced progress file: no serving metrics
-            if r.get("tps"): c["tps"] = f"<b>{r['tps']:,.0f}</b> tok/s over the run"
-            return c
-        if r.get("kv") is None and (r.get("gate_res") or (None,))[0] is not None and r["gate_res"][1]:
-            r = dict(r, kv=r["gate_res"][0] / r["gate_res"][1])  # no engine read in the feed: the KV gate's reserved share
-    elif r.get("bench"):
+    if r.get("arc2"):  # ARC-AGI-2 roster trial (mon.arc2_row): read once its progress file syncs
+        if r.get("right") is not None: c["score"] = f"{r['right']} of {r['of']} <small>test outputs right ({r['pct']:.1f}%) at {r['tokM']:.2f}M tokens</small>"
+        else: c["score_why"] = "progress file has no score"
+        if r.get("tps"): c["tps"] = f"<b>{r['tps']:,.0f}</b> tok/s over the run"
+        else: c["tps_why"] = "progress file has no tok/s"
+        return c
+    if r.get("bench"):
         a = r["arms"][0] if r.get("arms") else None
         if r.get("scored") and a and a.get("score") is not None:
             c["score"] = f"{a['score']:.1f} <small>mean game score{'' if a['name'] == 'treatment' else ', ' + html.escape(a['name'])}</small>"
@@ -176,7 +164,7 @@ def summary(e, r, kind=None):
     elif r.get("min") is not None or r.get("tokM") is not None:
         if r.get("score") is not None:
             c["score"] = f"{r['score']:.2f}% <small>score</small>"
-            if r.get("tokM"): c["lines"].append(f"<div class='m'><b>{r['tokM']:.1f}M</b> tokens · <b>{r['score'] / r['tokM']:.2f}</b> pts/Mtok</div>")
+            if r.get("tokM"): c["lines"].append(f"<div class='m'><b>{r['tokM']:.1f}M</b> tokens · <b>{r['score'] / r['tokM']:.2f}</b> points/Mtok</div>")
         else:
             c["score_why"] = f"no score yet (phase {r.get('phase') or '?'})" if not r.get("tokM") else "no scorecard read yet"
             if r.get("tokM"): c["lines"].append(f"<div class='m'><b>{r['tokM']:.1f}M</b> tokens</div>")
@@ -185,37 +173,30 @@ def summary(e, r, kind=None):
                "setting up: no progress record yet" if state == "running" and ago < 0.75 else "no live feed found")
         c["score_why"] = why; c["tps_why"] = c["tps_why"] or why
     if state == "waiting": return c
+    if r.get("kv") is not None or r.get("hit") is not None:
+        kv = f"cache use <b>{100 * r['kv']:.0f}%</b>" if r.get("kv") is not None else ""; hit = f"prefix hits <b>{r['hit']:.0f}%</b>" if r.get("hit") is not None else ""
+        c["lines"].append("<div class='m'>" + " · ".join(x for x in (kv, hit) if x) + "</div>")
+    if "cap" in r:  # always show the stream cap and the 30-min mean of running streams on serving runs
+        run30 = f"<b>{r['run30']:.1f}</b>" if r.get("run30") is not None else "n/a"
+        c["lines"].append(f"<div class='m'>streams: cap <b>{r.get('cap') or '?'}</b> · {run30} running, 30-min mean</div>")
     if state == "starting":
-        c.update(head=f"starting: machine requested {hm(e['_since'])} {paths.tz()} · {total:.1f} h planned", score_why="not started", tps_why="not started"); return c
+        c.update(head=f"starting: machine requested {hm(e['_since'])} UTC · {total:.1f} h planned", score_why="not started", tps_why="not started"); return c
     if state == "waiting": return c
-    # serving metrics as one small table, last 30 min next to the run so far (tok/s, cache use, prefix
-    # hits, and the stream cap with the 30-min mean of running streams)
-    pct = lambda v: f"{v:.0f}%"  # noqa: E731
-    grid = []
-    if r.get("last30") or r.get("mean") or r.get("tokM"):
-        grid.append(("tok/s", f"{r['last30']:,.0f}" if r.get("last30") else "–", f"{r['mean']:,.0f}" + (f" <small>from {hm(r['mean_since'])}</small>" if r.get("mean_since") else "") if r.get("mean") else "–"))
+    speed = r.get("last30") or r.get("mean")
+    if speed: c["tps"] = f"<b>{speed:,.0f}</b> tok/s" + (", last 30 min" if r.get("last30") else " since start") + (f" · <b>{r['mean']:,.0f}</b> since start" if r.get("last30") and r.get("mean") else "")
     elif not c["tps_why"]: c["tps_why"] = f"not started (phase {r.get('phase')})" if r.get("phase") else "no tokens generated yet"
-    for key, name, scale in (("kv", "cache use", 100), ("hit", "prefix hits", 1)):
-        if r.get(key) is None: continue
-        since = r.get(key + "_since")
-        run = pct(scale * r[key + "_all"]) + (f" <small>from {hm(since)}</small>" if since else "") if r.get(key + "_all") is not None else "–"
-        grid.append((name, pct(scale * r[key]), run))
-    if "cap" in r:
-        grid.append(("running / cap", f"{r['run30']:.1f} / {r.get('cap') or '?'}" if r.get("run30") is not None else f"– / {r.get('cap') or '?'}", ""))
     play = r.get("play_min") if r.get("play_min") is not None else r.get("min")
-    if grid:
-        c["grid"] = grid
-        c["grid_head"] = f"after 0:30 · {play / 60:.1f} h" if play is not None and not r.get("bench") else "after 0:30"  # since-start means skip the first 30 min
+    if play is not None and not r.get("bench"): c["lines"].append(f"<div class='m'>after {play / 60:.1f} h of play</div>")
     return c
 
 def page(live, nxt, rows, now, ended=(), failures=()):
     """live: queue entries with _ago/_total hours and _card; rows: run -> monitor row; ended: runs dropped in the last hour."""
     out = ["<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>",
            "<meta http-equiv='refresh' content='60'><title>What is running</title><style>" + CSS + "</style></head><body><main>",
-           "<h1>What is running</h1>"] + ([f"<div style='color:#e03131;font-size:13px;margin-bottom:6px'>Dashboard check: {len(failures)} card(s) incomplete: " + html.escape("; ".join(failures))[:600] + "</div>"] if failures else []) + [f"<div class='sub'>Updated {paths.local(now):%Y-%m-%d %H:%M} {paths.tz()} · regenerated every 2 minutes · most recently started first, queued runs last · <a href='docs/html/training-live.html'>Training runs: live metrics</a></div>"]
+           "<h1>What is running</h1>"] + ([f"<div style='color:#e03131;font-size:13px;margin-bottom:6px'>Dashboard check: {len(failures)} card(s) incomplete: " + html.escape("; ".join(failures))[:600] + "</div>"] if failures else []) + [f"<div class='sub'>Updated {now:%Y-%m-%d %H:%M} UTC · regenerated every 5 minutes · most recently started first, queued runs last · <a href='docs/html/training-live.html'>Training runs: live metrics</a></div>"]
     live = [e for e in live if "cpu" not in str(e.get("gpu", "")).lower()]
     live = [dict(e, arm="long run") if is_long(e["run"]) and e["arm"] not in OWN_LABEL else e for e in live]  # label rule: 24 h runs and c100 300K runs; every other run keeps its arm
-    live = [dict(e, arm="arc3sub" if e["run"].startswith("b2-") else "harness") if e["arm"] == "long run" and not is_long(e["run"]) else e for e in live]  # a "long run" queue row on another run is a mislabel
+    live = [dict(e, arm="throughput" if e["run"].startswith("b2-") else "harness") if e["arm"] == "long run" and not is_long(e["run"]) else e for e in live]  # a "long run" queue row on another run is a mislabel
     arms, sites = {}, {}
     for e in live:
         e["_site"] = "nebius" if e.get("platform") == "nebius" else "modal"
@@ -236,18 +217,15 @@ def page(live, nxt, rows, now, ended=(), failures=()):
         if c["score"]: m.append(f"<div class='v'>{c['score']}</div>")
         elif c["score_why"]: m.append(f"<div class='m'>{html.escape(c['score_why'])}</div>")
         m += c["lines"]
-        if c.get("grid"):
-            m.append(f"<table class='g'><tr><th></th><th>30 min</th><th>{html.escape(c['grid_head'])}</th></tr>"
-                     + "".join(f"<tr><td>{a}</td><td>{b}</td><td>{d}</td></tr>" for a, b, d in c["grid"]) + "</table>")
         if c["tps"]: m.append(f"<div class='m'>{c['tps']}</div>")
         elif c["tps_why"] and (c["score"] or c["tps_why"] != c["score_why"]): m.append(f"<div class='m'>{html.escape(c['tps_why'])}</div>")
         bar = f"<div class='bar'><i style='width:{c['pct']:.0f}%'></i></div>" if c["pct"] is not None else "<div style='height:8px'></div>"
         out.append(f"<section class='card' data-arm='{html.escape(e['arm'])}' data-site='{e['_site']}' style='--arm:{ARM.get(e['arm'], '#667085')}'><div><span class='arm'>{html.escape(e['arm'])}</span>"
-                   f"<div class='id'>{html.escape(e['run'])}</div><div class='gpu'>{where} · {html.escape(e.get('gpu') or 'CPU')}</div></div>"
+                   f"<div class='id'>{html.escape(e['run'])}</div><div class='gpu'>{where} · {html.escape(e.get('gpu', '?'))}</div></div>"
                    f"<div class='what'>{html.escape(e['what'])}</div>"
                    f"<div><div class='k'>{html.escape(c['head'])}</div>{bar}{''.join(m)}</div></section>")
     if ended:
-        out.append("<h2>Ended in the last hour</h2><ul>" + "".join(f"<li><b>{html.escape(x['run'])}</b> ({html.escape(x.get('arm') or '')}) at {paths.local(x['t']):%H:%M} {paths.tz()}"
+        out.append("<h2>Ended in the last hour</h2><ul>" + "".join(f"<li><b>{html.escape(x['run'])}</b> ({html.escape(x.get('arm') or '')}) at {datetime.datetime.fromtimestamp(x['t'], datetime.timezone.utc):%H:%M} UTC"
                    + (f": {html.escape(x['final'])}" if x.get("final") else ": final score not read") + "</li>" for x in ended) + "</ul>")
-    out.append("<h2>Next</h2><!--NEXT:start--><ul>" + "".join(f"<li>{html.escape(x)}</li>" for x in nxt) + "</ul><!--NEXT:end--></main><script>" + JS + "</script></body></html>")
+    out.append("<h2>Next</h2><ul>" + "".join(f"<li>{html.escape(x)}</li>" for x in nxt) + "</ul></main><script>" + JS + "</script></body></html>")
     return "\n".join(out)

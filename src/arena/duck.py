@@ -136,6 +136,10 @@ class ArenaDuckMixin:
     lrule_detector = None
     lrule_pending = None
     lrule_stats = None
+    # arena.checkpoint (preemptible runs): the trial's Checkpointer, and the note the first python result carries
+    # when a resumed game's interpreter could not be rebuilt. None on every run without checkpointing.
+    checkpoints = None
+    ckpt_reset_note = None
 
     def attach(self, game, *, window, cap, notes=None, memory=None, escalation=None, snapshot=None, harness=None,
                procedure=None, explorer=None, critical_errors=False, harness_v2=None, adaptive_thinking=None,
@@ -1363,6 +1367,8 @@ class ArenaDuckMixin:
         return self.sandbox.run(*args, **kwargs)
 
     async def before_first_turn(self):
+        if self.checkpoints is not None and self.checkpoints.resuming:
+            return  # a resumed game: the checkpoint holds what the start probes found
         if self.harness_v2 is not None:
             await asyncio.to_thread(self.harness_v2.level_start, self.obs.board, self.sandbox.color_chars,
                                     level=max(1, self.obs.levels + 1))
@@ -1406,6 +1412,8 @@ class ArenaDuckMixin:
         """Run on the event loop between analyzer turns (the worker is idle): a level cleared in
         the last turn, by the model or by a previous probe, gets its probe before the next user
         turn is built. The level is marked first, so a probe never runs twice for one level."""
+        if self.checkpoints is not None and self.checkpoints.resuming:
+            return  # nothing touches a replayed environment before the checkpoint is restored
         while self.level_probe_due():
             level = self.obs.levels
             self.level_probed.add(level)
@@ -1522,6 +1530,14 @@ class ArenaDuckMixin:
     # --- requests -------------------------------------------------------------------------
 
     async def request_completion(self, payload):
+        if self.checkpoints is None:
+            return await self._request_completion(payload)
+        response = await self._request_completion(payload)
+        if self.request_purpose is None and payload.get("tools"):
+            await self.checkpoints.hold()  # a gameplay reply waits while a checkpoint is cut
+        return response
+
+    async def _request_completion(self, payload):
         purpose = self.request_purpose or ("summary" if not payload.get("tools") else "gameplay")
         # fixed-2x-commit: vLLM priority of the admitted request (focus/opening 0, lane 1); other studies
         # send no priority field.
@@ -1593,6 +1609,8 @@ class ArenaDuckMixin:
             # A tool call cut off by the completion cap (hero-v2 k095: "python requires a non-empty `code` string").
             result = self.with_note(result, fixes_module.CAP_TOOL_NOTE.format(cap=self.cap))
             self.fix_stats["cap_tool_notes"] += 1
+        if self.ckpt_reset_note is not None:
+            result, self.ckpt_reset_note = self.with_note(result, self.ckpt_reset_note), None
         if self.loop_on("yield_tokens"):
             self.loop_tool_calls += 1
             analyzer = self._analyzer
@@ -1722,6 +1740,11 @@ class ArenaDuckMixin:
         return int(estimate * ESTIMATE_HEADROOM + max(0, round(self.count_residual)))
 
     async def chat(self, messages, tools):
+        if self.checkpoints is not None:
+            return await self.checkpoints.chat(self, messages, tools)
+        return await self._arena_chat(messages, tools)
+
+    async def _arena_chat(self, messages, tools):
         if self.explorer is None:
             return await self._chat(messages, tools)
         # The agent never touches its environment during a model request, so the explorer may act on it

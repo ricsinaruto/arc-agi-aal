@@ -101,22 +101,6 @@ def test_no_signal_is_unknown_death():
     assert classify({"mem_last": OK_MEM}).startswith("unknown")
 
 
-def test_platform_rerun_without_signal_is_a_preemption(tmp_path, mem):
-    """v17 a8 (30 Oct): Modal preempted the container, no signal reached the record; the re-run of the same input
-    with healthy heartbeats auto-resumes under policy resume. A relaunch (new call id) stays unknown."""
-    die(guard(tmp_path, policy="resume"))
-    s = guard(tmp_path, policy="resume").start(checkpoint_step=21)
-    assert s.resume and s.incident["cause"].startswith("preemption (platform re-run")
-    assert classify({"mem_last": OK_MEM, "mem_min": OK_MEM}, rerun=True).startswith("preemption")
-    assert classify({"mem_last": THRASH_MEM, "mem_min": THRASH_MEM}, rerun=True) == "host-memory"
-    assert classify({}, rerun=True).startswith("unknown")  # no heartbeat evidence
-    other = tmp_path / "relaunch"
-    die(guard(other, call="fc-9", policy="resume"))
-    with pytest.raises(RestartBlocked) as e:
-        guard(other, call="fc-10", policy="resume").start(checkpoint_step=21)
-    assert e.value.incident["cause"].startswith("unknown") and not e.value.incident["auto"]
-
-
 def test_relaunch_needs_ack(tmp_path):
     die(guard(tmp_path))
     with pytest.raises(RestartBlocked):

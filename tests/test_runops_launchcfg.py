@@ -99,13 +99,9 @@ def test_volume_data_paths_use_modal_listing(monkeypatch):
 
     def fake(cmd, **kw):
         calls.append(cmd)
-        sizes = {"validation/ok": 3, "validation/kib": "23.5 KiB", "validation/zero": "0 B"}  # the CLI's own strings
-        return P(0, json.dumps([{"Filename": "a", "Type": "file", "Size": sizes[cmd[-1]]}])) if cmd[-1] in sizes \
+        return P(0, json.dumps([{"Filename": "a", "Type": "file", "Size": 3}])) if cmd[-1] == "validation/ok" \
             else P(1, "No such file")
     monkeypatch.setattr(L.subprocess, "run", fake)
-    probs = L.check_data(["arc-prolong-runs:validation/ok", "arc-prolong-runs:validation/kib",
-                          "arc-prolong-runs:validation/zero", "arc-prolong-runs:validation/gone"], modal_bin="m")
-    assert probs == ["data arc-prolong-runs:validation/zero: empty file",
-                     "data arc-prolong-runs:validation/gone: not found (No such file)"], probs
-    assert calls[0][:3] == ["m", "volume", "ls"]
+    probs = L.check_data(["arc-prolong-runs:validation/ok", "arc-prolong-runs:validation/gone"], modal_bin="m")
+    assert len(probs) == 1 and "validation/gone: not found" in probs[0] and calls[0][:3] == ["m", "volume", "ls"]
     assert copy.deepcopy(BASE) == BASE

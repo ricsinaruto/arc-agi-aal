@@ -3,6 +3,7 @@
 import argparse
 import asyncio
 import json
+import os
 import signal
 import time
 import traceback
@@ -77,6 +78,10 @@ def main(argv=None):
     wall = study["smoke"]["wall_seconds"] if args.smoke else study["wall_seconds"]
     if (study.get("early_stop") or {}).get("always") and not args.smoke:
         wall = min(wall, study["early_stop"]["at_seconds"])  # an unconditional run stop plays at most at_seconds
+    if os.environ.get("ARC_CHECKPOINT_RESUME") == "1":  # a resumed trial needs only the rest of its wall
+        from .checkpoint import played_seconds
+
+        wall = max(0.0, wall - played_seconds(folder))
     try:
         # The level bench sizes its own wall from what is left (arena.level_bench.LevelBench.wall_seconds).
         if (not competition

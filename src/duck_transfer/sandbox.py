@@ -646,6 +646,8 @@ class StatefulSandbox:
         self.hx_state = None
         # Diagnostics only; native model LRU caches retain their exact behavior.
         self.cache_telemetry_seconds = 60
+        # arena.checkpoint.SandboxRecorder (what the live child was sent, for a resumed run); None: nothing recorded.
+        self.recorder = None
 
     def configure_fixes(self, bootstrap, *, interrupt, grace=3.0):
         """Switch to a fixes bootstrap (``stateful_bootstrap(..., fixes=...)``) before the first call."""
@@ -700,6 +702,8 @@ class StatefulSandbox:
         threading.Thread(target=read_stderr, daemon=True).start()
         self.process, self.lines = process, lines
         self.synced = 0
+        if self.recorder is not None:
+            self.recorder.spawned()
 
     def _delta(self, state):
         """State with only the history entries the child has not received yet."""
@@ -715,6 +719,8 @@ class StatefulSandbox:
     def _discard(self, reason):
         process, self.process, self.lines = self.process, None, None
         self.synced = 0
+        if self.recorder is not None:
+            self.recorder.spawned()
         if process is not None:
             _kill(process)
             try:
@@ -729,6 +735,8 @@ class StatefulSandbox:
             self._event("duck_python_reset", reason=reason, restarts=self.restarts)
 
     def _send(self, payload):
+        if self.recorder is not None:
+            self.recorder.note_sent(payload)
         self.process.stdin.write(json.dumps(payload, ensure_ascii=False) + "\n")
         self.process.stdin.flush()
 
@@ -770,6 +778,8 @@ class StatefulSandbox:
                         interrupted_at = time.monotonic()
                         deadline = interrupted_at + self.interrupt_grace
                         self._interrupt()
+                        if self.recorder is not None:
+                            self.recorder.note_interrupt(timeout_seconds)
                         self._event("duck_python_interrupt", timeout=timeout_seconds)
                         continue
                     self._discard("timeout")
@@ -801,6 +811,8 @@ class StatefulSandbox:
                         "action_results": list(results),
                     }
                 kind = str(message.get("type", "")).strip()
+                if self.recorder is not None:
+                    self.recorder.note_received(message)
                 if kind == "animation":
                     # arena dfr_harness: a lazy animation view asked for the last animated action's frames/timeline.
                     self._send(self._animation_reply(message, refuse=interrupted_at is not None))
@@ -818,14 +830,6 @@ class StatefulSandbox:
                     raw = reply.get("action_result") or {}
                     if isinstance(raw, dict):
                         results.append(dict(raw))
-                    if (self.interrupt_on_timeout and interrupted_at is None and time.monotonic() >= deadline
-                            and self.process is not None and self.process.poll() is None):
-                        # The timeout passed inside this action: signal before the reply, so the interrupt lands while
-                        # the child's ``action`` is disarmed and raises right after it (not after a racing next action).
-                        interrupted_at = time.monotonic()
-                        deadline = interrupted_at + self.interrupt_grace
-                        self._interrupt()
-                        self._event("duck_python_interrupt", timeout=timeout_seconds)
                     self._send(
                         {
                             "type": "action_result",
@@ -925,6 +929,8 @@ class StatefulSandbox:
                 except json.JSONDecodeError:
                     self._discard("invalid_response")
                     return None
+                if self.recorder is not None:
+                    self.recorder.note_received(message)
                 if message.get("type") == "animation" and self.inventory_answers_animation:
                     self._send(self._animation_reply(message))
                     continue

@@ -55,7 +55,9 @@ def collect_evidence(working, output):
     working, output = Path(working), Path(output)
     output.mkdir(parents=True, exist_ok=True)
     if (working / "trials").is_dir():
-        shutil.copytree(working / "trials", output / "trials", dirs_exist_ok=True)
+        # A preemptible run's checkpoints (arena.checkpoint) are working state, not evidence.
+        shutil.copytree(working / "trials", output / "trials", dirs_exist_ok=True,
+                        ignore=shutil.ignore_patterns("checkpoint"))
     if (working / "setup.json").is_file():
         shutil.copyfile(working / "setup.json", output / "setup.json")
     if (working / "serving").is_dir():

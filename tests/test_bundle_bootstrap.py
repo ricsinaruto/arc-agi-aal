@@ -58,6 +58,7 @@ def test_collect_evidence_persists_only_evidence(tmp_path):
         "trials/C/lp85/evidence.sqlite",
         "trials/C/report.json",
         "trials/comparison.json",
+        "trials/C/checkpoint/gen-000001/state.pkl.z",
         "setup.json",
     ]:
         path = working / name
@@ -74,3 +75,26 @@ def test_collect_evidence_persists_only_evidence(tmp_path):
         "setup.json",
     }
     bootstrap.collect_evidence(tmp_path / "never", output)  # safe before the working tree exists
+
+
+def test_a_relaunched_run_sorts_each_trial_folder_into_done_resume_or_fresh(tmp_path):
+    import ast
+    import json
+
+    source = (Path(__file__).resolve().parents[1] / "scripts/arena/bootstrap.py").read_text()
+    function = next(n for n in ast.parse(source).body if getattr(n, "name", "") == "resumed_trial")
+    scope = {"json": json}
+    exec(compile(ast.Module([function], []), "bootstrap.py", "exec"), scope)  # the script itself cannot be imported
+    resumed_trial = scope["resumed_trial"]
+    done, live, cut = tmp_path / "done", tmp_path / "live", tmp_path / "cut"
+    for folder in (done, live / "checkpoint/gen-000004", live / "checkpoint/gen-000005", cut):
+        folder.mkdir(parents=True)
+    (done / "execution.json").write_text(json.dumps({"status": "complete"}))
+    (live / "checkpoint/gen-000004/manifest.json").write_text(json.dumps({"elapsed_seconds": 1800.5}))
+    (live / "checkpoint/gen-000005/manifest.json").write_text('{"elapsed_seconds": 24')  # torn in the upload
+    (cut / "progress.jsonl").write_text("{}")
+    assert resumed_trial(done, 2) == ("done", "complete")
+    assert resumed_trial(live, 2) == ("resume", 1800.5)  # the wall it has played is not asked for again
+    assert resumed_trial(cut, 2) == ("fresh", None) and not cut.exists()
+    assert (tmp_path / "cut.lost-before-attempt-2/progress.jsonl").is_file()
+    assert resumed_trial(tmp_path / "never", 2) == ("fresh", None)

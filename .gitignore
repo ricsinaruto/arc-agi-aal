@@ -65,46 +65,19 @@ papers/
 externals/
 
 # run records (infra stage 4): tracked, their lock and temp files not
-# run records and their views: machine-local, written only by tools/ops/records.py (24 Oct); settled copies in docs/runs-settled/ (local only)
+# run records and their views: machine-local, written only by tools/ops/records.py (24 Oct); settled copies in docs/runs-settled/
 docs/runs/
 docs/spend.json
 docs/modal-queue.json
-docs/modal-billed.json
-docs/.modal-billed.json.*
-docs/modal-billed.json.lock
-docs/runs-settled/
+docs/runs-settled/.*
 
 # generated every dash pass / written by launchers: on disk in the main checkout, not in git
 docs/html/index.html
 docs/html/training-live.html
 docs/html/*-status.html
-docs/validation/**/*.json
-docs/validation/**/*.jsonl
+docs/validation-*/**/*.json
+docs/validation-*/**/*.jsonl
 docs/*.lock
-
-# harvested logs of other arms: kept locally, not in git
-runlogs/other/
-
-# Owner notes and external material: local only, never in git
-/resources/
-/papers/
-/working notes.md
-/targets.md
-/notes.md
-/ideas.md
-/prompt.md
-/arc2_log.md
-/arc3_log.md
-/docs/ideas.md
-/docs/harness-ideas.md
-/docs/throughput-ideas.md
-/docs/paper-notes.md
-/docs/post-train-envs.md
-/docs/rl-feedback.md
-/notes/
-/.playwright-mcp/
-/docs/spend.json
-/docs/modal-queue.json
 
 # Local-only notes: kept in the working tree, never committed.
 /branch-docs/

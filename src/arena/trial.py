@@ -31,8 +31,6 @@ from .live_progress import settings as live_settings
 from .report import game_row, trial_report
 from .scheduler import GameRecord, Scheduler
 
-TICK_SECONDS = 1.0  # the scheduler tick (the audit allows a switch 1.1 s after its trigger); tests shorten it
-
 KINDS = ("duck-transfer", "duck-public")
 READY_TIMEOUT = 600
 
@@ -93,6 +91,10 @@ class Trial:
         from .heap import FREEZE_SECONDS, HeapKeeper
 
         self.heap = HeapKeeper(study.get("heap_freeze_seconds", FREEZE_SECONDS))
+        # Preemptible runs (arena.checkpoint): None unless the runner's environment asks for checkpoints.
+        from .checkpoint import from_env
+
+        self.checkpoint = from_env(study, self.kind, self.output, log=self.gate_log)
 
     def gate_log(self, entry):
         clock = getattr(self, "wall", None)
@@ -326,6 +328,8 @@ class Trial:
         missing = [g for g in self.games_list if g not in available]
         if missing:
             raise ValueError(f"Games not in the arcade: {missing}")
+        if self.checkpoint is not None:
+            arc = self.checkpoint.arcade(arc)  # environment calls are recorded; a resumed trial replays them
         card = arc.open_scorecard(tags=["arena", self.trial["name"]])
         monitor_type = GpuMonitor
         if study.get("backend") == "sglang":
@@ -380,9 +384,13 @@ class Trial:
                                    "finished_reason": game.finished_reason})
 
         tasks = [asyncio.create_task(run_worker(w, g)) for w, g in zip(workers, games, strict=True)]
+        resuming = self.checkpoint is not None and self.checkpoint.resuming
+        if self.checkpoint is not None:
+            self.checkpoint.bind({"wall": wall, "games": games, "scheduler": scheduler, "gate": gate, "agents": workers,
+                                  "heap": self.heap, "early_stop": self.early_stop}, card=card, tasks=tasks)
         # Barrier: every environment exists before the clocks release.
         try:
-            async with asyncio.timeout(READY_TIMEOUT):
+            async with asyncio.timeout(READY_TIMEOUT + (3600 if resuming else 0)):  # a resumed game replays its actions
                 await asyncio.gather(*(g.ready.wait() for g in games))
         except TimeoutError as exc:
             unready = [g.game_id for g in games if not g.ready.is_set()]
@@ -395,11 +403,17 @@ class Trial:
             # Worker initialization counts against the whole notebook budget.
             # Recompute at the release barrier so setup cannot extend gameplay.
             wall.seconds = min(wall.seconds, max(0, self.gameplay_deadline_epoch - time.time()))
-        wall.release()
-        for game in games:
-            game.clock.release()
-        monitor.start = wall.start
-        scheduler.start_all()
+        if resuming:
+            # The checkpoint's clocks, scheduler, gate and games replace the fresh ones; play continues from its cut.
+            await self.checkpoint.resume(deadline_epoch=self.gameplay_deadline_epoch)
+            self.checkpoint.rewind(self.output / "progress.jsonl")
+            monitor.start = wall.start
+        else:
+            wall.release()
+            for game in games:
+                game.clock.release()
+            monitor.start = wall.start
+            scheduler.start_all()
         sampling = asyncio.create_task(monitor.run())
         ranker = ranking = None
         if study.get("llm_backlog"):
@@ -428,9 +442,11 @@ class Trial:
         try:
             while wall.remaining() > 0 and any(not t.done() for t in tasks):
                 await asyncio.wait([t for t in tasks if not t.done()],
-                                   timeout=min(TICK_SECONDS, max(0.05, wall.remaining())),
+                                   timeout=min(1.0, max(0.05, wall.remaining())),
                                    return_when=asyncio.FIRST_COMPLETED)
                 scheduler.tick()
+                if self.checkpoint is not None:
+                    self.checkpoint.tick()
                 if lane is not None:
                     gate.refresh()  # roles and focus guards may have changed
                 stop = self.early_stop.check(wall.elapsed())
@@ -513,6 +529,8 @@ class Trial:
         report.update(self.feature_totals([base for base in base_rows]))
         if getattr(self, "harness", None) is not None:
             report["rlm_harness"] = self.harness.summary()
+        if self.checkpoint is not None:
+            report["checkpoint"] = self.checkpoint.summary()  # a fresh attempt, or resumed from which checkpoint
         report["end_reason"] = self.end_reason or "error"
         report["wall"] = {"configured_seconds": self.wall_seconds, "ended_seconds": round(wall.seconds, 3)}
         if self.early_stop.cfg is not None or self.early_stop.reason is not None:
@@ -544,6 +562,8 @@ class Trial:
             progress["parked_depth"] = [g.game_id for g in scheduler.dw_waiting() if g.levels >= 1]
         if getattr(self, "live", None) is not None:
             progress["live"] = self.live.fields(wall.elapsed())
+        if getattr(self, "checkpoint", None) is not None:
+            progress["checkpoint"] = self.checkpoint.summary()
         workers = getattr(self, "duck_workers", None)
         if workers and (self.study.get("parallel_samples") or self.study.get("action_plans")
                         or self.study.get("drain_half") or self.study.get("loop_rule")):

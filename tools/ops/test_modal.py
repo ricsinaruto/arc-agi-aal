@@ -91,8 +91,7 @@ def main():
     ap.add_argument("--label")
     ap.add_argument("-n", type=int, default=8)
     ap.add_argument("pytest_args", nargs="*")
-    a, extra = ap.parse_known_args()  # pytest flags (-rA, -k ...) pass through
-    a.pytest_args += extra
+    a = ap.parse_args()
     label = a.label or (a.ref or pathlib.Path(a.tree or ".").resolve().name).replace("/", "-")
     data = bundle(a.tree, a.ref)
     print(f"bundle {len(data) / 1e6:.1f} MB; running pytest on Modal CPU ({label})", flush=True)
