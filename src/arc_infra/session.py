@@ -32,9 +32,9 @@ class Workspace:
         self.log = self.root / "log.jsonl"
         self._lock = threading.Lock()
         self._file = None
-        self._flushed = float("-inf")  # the first event always flushes (a fresh VM's monotonic clock starts near 0)
+        self._flushed = 0.0
         self._current = None
-        self._current_at = float("-inf")
+        self._current_at = 0.0
 
     def append(self, kind, **payload):
         line = json.dumps({"kind": kind, "time": time.time(), **payload}, ensure_ascii=False,

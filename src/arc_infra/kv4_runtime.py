@@ -226,6 +226,60 @@ def rht(x, inverse=False):
     return rht_reference(x, inverse)
 
 
+# Guard (10 October, ARC-AGI-2 on 4x L4; off unless ARC_KV4_GUARD=1, and then ``rht`` is called exactly as before).
+# With one KV head a rank the rotation gets as many vectors as the forward has rows. On the L4s the last row of a
+# forward with an odd row count sometimes came back non-finite on one rank (arc2-l4-attention-v1: 4 of 4 origins);
+# its stored value scale was then inf and every later token of the sequence NaN. The guard rotates whole tiles
+# (zero rows appended, dropped after) and sets a row that is still non-finite to zero.
+GUARD_ENV = "ARC_KV4_GUARD"
+ROTATION_TILE = 16
+GUARD_COUNT_MIN = 64  # count repaired rows in prefill-sized calls only (never inside a captured decode graph)
+
+
+def guard_enabled():
+    return os.environ.get(GUARD_ENV) == "1"
+
+
+def guarded_rht(x, inverse=False, transform=None):
+    """``rht`` of ``x`` as FP32 over whole tiles, with no non-finite row left (see above). ``_STATE["guard"]``:
+    calls, padded calls and, as a device tensor nobody reads on the hot path, the rows set to zero.
+
+    No tensor the plain call does not also make, but for one copy when FP32 input needs padding: the FP32 copy is
+    made padded, and the repair is in place. (The first version copied the input to pad it and built the result
+    with ``where``: about three more tensors of the forward's size per call, in sizes of their own; on the L4s at
+    0.87 a 490 MiB prefill buffer then found no room, arc2-l4-score-v4.)"""
+    transform = transform or rht
+    lead, d = x.shape[:-1], x.shape[-1]
+    count = x.numel() // d
+    pad = -count % ROTATION_TILE
+    if pad or x.dtype != torch.float32:
+        flat = torch.empty((count + pad, d), dtype=torch.float32, device=x.device)
+        flat[:count] = x.reshape(count, d)
+        if pad:
+            flat[count:] = 0
+    else:
+        flat = x.reshape(count, d)
+    out = transform(flat, inverse)[:count]
+    bad = ~torch.isfinite(out.sum(dim=-1, keepdim=True))  # one non-finite value makes the row's sum non-finite
+    out.masked_fill_(bad, 0.0)
+    if count >= GUARD_COUNT_MIN:
+        seen = _STATE.setdefault("guard", {"calls": 0, "padded": 0, "zeroed": None})
+        seen["calls"] += 1
+        seen["padded"] += bool(pad)
+        zeroed = bad.sum()
+        seen["zeroed"] = zeroed if seen["zeroed"] is None else seen["zeroed"] + zeroed
+    return out.reshape(*lead, d)
+
+
+def plain_rht(x, inverse=False):
+    return rht(x.float(), inverse)
+
+
+def _rotation():
+    """FP32 ``rht`` of a tensor of any float type: the plain call, or the guard."""
+    return guarded_rht if guard_enabled() else plain_rht
+
+
 # ============================================================================ write
 @triton.jit
 def _quant4(x_even, x_odd):
@@ -297,8 +351,9 @@ def write(key, value, k_codes, v_codes, k_scale, v_scale, slot_mapping, mode):
     key, value = key[:rows], value[:rows]
     if not rows:
         return
-    value = rht(value.float()).to(value.dtype).contiguous()
-    key = rht(key.float()).to(key.dtype).contiguous() if mode == "int4" else key
+    rotate = _rotation()
+    value = rotate(value).to(value.dtype).contiguous()
+    key = rotate(key).to(key.dtype).contiguous() if mode == "int4" else key
     if key.stride(-1) != 1 or k_codes.stride(-1) != 1 or v_codes.stride(-1) != 1:
         raise ValueError("ARC kv4 needs unit-stride head dims")
     _kv4_write_kernel[(rows, key.shape[1])](
@@ -605,12 +660,13 @@ def attend(query, k_codes, v_codes, k_scale, v_scale, logical_indices, block_tab
            profile=None):
     """Rotate the query (int4), attend, inverse-rotate the output into ``out`` (BF16)."""
     q = query
+    rotate = _rotation()
     if mode == "int4":
-        q = (rht(query.float()) / HEAD_DIM).to(torch.bfloat16)
+        q = (rotate(query) / HEAD_DIM).to(torch.bfloat16)
     rotated = torch.empty(query.shape, dtype=torch.float32, device=query.device)
     sparse_attention(q, k_codes, v_codes, k_scale, v_scale, logical_indices, block_table, token_to_req, rotated,
                      4 if mode == "int4" else 8, profile)
-    out.copy_(rht(rotated, inverse=True) / HEAD_DIM)
+    out.copy_(rotate(rotated, inverse=True) / HEAD_DIM)
     return out
 
 

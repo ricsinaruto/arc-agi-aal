@@ -29,7 +29,7 @@ RECORDS = "docs/validation-20260927"
 CANDIDATE = os.environ.get("ARC_CANDIDATE", "holo4-27b-nvfp4")
 CPU, MEMORY_GIB, TIMEOUT = 8.0, 16, 3600
 STORAGE_DAYS = 7  # kept for the smoke and the one-hour arena, then deleted unless the result is promising
-AUTHORIZATION = ("test Holo4-27B (Hcompany/Holo4-27B-NVFP4, CC BY-NC fine for testing) with the "
+AUTHORIZATION = os.environ.get("ARC_CANDIDATE_AUTHORIZATION") or ("test Holo4-27B (Hcompany/Holo4-27B-NVFP4, CC BY-NC fine for testing) with the "
                  "hero-v2 arena setup; CPU fetch of the pinned checkpoint into the assets volume (no GPU lock)")
 
 if modal.is_local():
@@ -84,8 +84,7 @@ def reserve(run_id, gib, extra):
         fcntl.flock(file, fcntl.LOCK_EX)
         data = json.load(file)
         bound, storage = bound_usd(data, gib)
-        from arc_infra.runops.records import row_cost
-        committed = data["infrastructure_reserve_usd"] + sum(row_cost(r)[0] for r in data["runs"])
+        committed = data["infrastructure_reserve_usd"] + sum(r["charged_bound_usd"] for r in data["runs"])
         if committed + bound > data["cap_usd"]:
             raise RuntimeError(f"Spend cap: ${committed:.2f} + ${bound:.2f} required")
         if any(r["run_id"] == run_id for r in data["runs"]):

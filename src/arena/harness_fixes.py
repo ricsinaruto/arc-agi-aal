@@ -47,10 +47,69 @@ list only, never switched on by ``true``, so every build made with ``true`` (run
 
 from duck_transfer.feedback import StuckTracker
 
+# --- prompt audit fixes (9 October; docs/harness-arm.md 5.7), each its own opt-in sub-fix -------------------------
+# solvable_line (item 2): one system line. death_turn_v2 (item 3): one text on a level's first death, one line on
+# later ones; a step-budget death is named as such (``death_text``). findings_keep (item 4): a GAME_OVER no longer
+# writes the carried "Recent findings" line (the model's own stays; the user turn's GAME_OVER line is the one-turn
+# notice). tool_call_followup (item 1) and stuck_streak (item 10): prepared, in no build yet.
+SOLVABLE_ANCHOR = "- Your job is to solve the entire game by clearing every level, not just the current screen.\n"
+SOLVABLE_LINE = (
+    "- Every level can be completed with the actions offered. If your analysis shows a level cannot be completed, "
+    "a rule in your model of the game is wrong: find and test it.\n"
+)
+TOOL_CALL_FOLLOWUP = (
+    "Your previous reply contained no tool call, so nothing was run. Reply with one `python` tool call."
+)
+DEATH_FIRST = (
+    "GAME_OVER at step {step} after {fatal}: the attempt on level {level} ended and the level was reset "
+    "automatically; the board below is its fresh start. Completed levels are kept and what you learned about this "
+    "level's mechanics still applies. The attempt lasted {actions} actions{edge}. Identify the cause before acting "
+    "again; there are two kinds. Step budget: a line of cells along a border that changes on most steps is a "
+    "step-budget bar, and when it runs out the attempt ends whatever the last action was. Look at it in the death "
+    "frame (`history[-2].frame`; `history[-3].frame` is the board before the last action): if it was used up, the "
+    "route was too long, not wrong, so work out how many actions one attempt allows and how fast the bar moves, "
+    "then finish in fewer or find what refills it. Fatal action: if the bar still had room, that action from that "
+    "position ends the attempt; keep the rest of what you know and change that step."
+)
+DEATH_LATER = (
+    "GAME_OVER at step {step} after {fatal}: death {count} on level {level}, which was reset to its start. Attempts "
+    "lasted {lengths} actions{verdict}."
+)
+DEATH_BUDGET = (": the same length with different actions, so this is a step budget of about {actions} actions per "
+                "attempt, not a fatal action; the solution has to fit in fewer, or the bar has to be refilled")
+DEATH_REPEAT = ": the same actions ended the same way; change the plan before its last step"
+DEATH_OPEN = "; identify the cause (step budget used up, or that action from that position) before repeating the plan"
+DEATH_IMAGE_LABEL = (
+    "Death frame image (the board at the moment the attempt ended, before the automatic reset): check the border "
+    "bar here."
+)
+
+
+def death_text(deaths, *, step, fatal, level):
+    """The death turn's one text (``death_turn_v2``). ``deaths``: this level's deaths, oldest first, each
+    ``{"actions", "edge", "sequence"}`` (actions of the attempt, how many of them changed a border-ring cell, a
+    digest of the attempt's actions)."""
+    last = deaths[-1]
+    if len(deaths) == 1:
+        edge = ""
+        if last["actions"] >= 4 and 2 * last["edge"] >= last["actions"]:
+            edge = f"; cells in the border ring changed on {last['edge']} of them"
+        return DEATH_FIRST.format(step=step, fatal=fatal, level=level, actions=last["actions"], edge=edge)
+    before = deaths[-2]
+    if before["sequence"] == last["sequence"]:
+        verdict = DEATH_REPEAT
+    elif abs(before["actions"] - last["actions"]) <= 1 and last["actions"] >= 4:
+        verdict = DEATH_BUDGET.format(actions=last["actions"])
+    else:
+        verdict = DEATH_OPEN
+    lengths = ", ".join(str(d["actions"]) for d in deaths[-4:])
+    return DEATH_LATER.format(step=step, fatal=fatal, level=level, count=len(deaths), lengths=lengths, verdict=verdict)
+
 FIXES = ("exact_trigger", "summary_guard", "inventory", "cap_followup", "stuck_notice", "sandbox",
          "timeout_interrupt", "prompt_text")
 # Named in a list only; ``true`` (every build so far) means ``FIXES``.
-OPTIONAL_FIXES = ("summary_headroom", "inventory_imports", "text_count")
+OPTIONAL_FIXES = ("summary_headroom", "inventory_imports", "text_count", "solvable_line", "death_turn_v2",
+                  "findings_keep", "tool_call_followup", "stuck_streak")
 KNOWN_FIXES = FIXES + OPTIONAL_FIXES
 
 # Thresholds (docs/validation-20260927/hero-v2-analysis/harness.md, "Fixes implemented"): on the 182 level segments
@@ -144,6 +203,8 @@ class ActiveStuckTracker(StuckTracker):
         """``"streak"``, ``"turns"`` or None."""
         if self.no_change >= self.no_change_limit and self.no_change >= self.streak_noticed + self.no_change_limit:
             return "streak"
+        if "stuck_streak" in self.rule["fixes"]:
+            return None  # stuck_streak: the turn counter alone is not a stuck signal
         if self.turns >= self.turn_limit and (self.last_notice is None or self.turns - self.last_notice >= self.interval):
             return "turns"
         return None

@@ -844,7 +844,8 @@ def test_collapse_report_follows_the_previous_finish_kept_state(runtime, monkeyp
     req = finished_request(pool, managers, tokens[:25], 21, kept=kept)
     tail.register(req)
     pool.evict(kept[3])  # one group's kept state is lost before the game's next request
-    new = Request("n", tokens, 0, finished=False)
+    resent = tokens[:18] + [9999] + tokens[19:]  # and the request-end entry does not match (reported after it is tried)
+    new = Request("n", resent, 0, finished=False)
     new.num_prompt_tokens = len(tokens)
     tail.lookup(new, ([], [], [], []), 8, 79)
     (line,) = [x for x in capsys.readouterr().out.splitlines() if x.startswith("ARC_TAIL_COLLAPSE ")]
@@ -852,6 +853,32 @@ def test_collapse_report_follows_the_previous_finish_kept_state(runtime, monkeyp
     assert finish["boundary"] == 2 and finish["computed"] == 21
     assert finish["groups"]["2"]["cached"] and finish["groups"]["2"]["same_hash"]
     assert not finish["groups"]["3"]["cached"] and not finish["groups"]["3"]["same_hash"]
+
+
+def test_collapse_report_says_where_the_resent_reply_differs(runtime, monkeypatch, capsys):
+    """The reply as generated is kept by its prompt's last boundary; a collapse names the first re-sent token id that
+    differs (a re-tokenized reply), with the ids around it."""
+    monkeypatch.setattr(runtime, "COLLAPSE_LOG", True)
+    tail, pool, managers = hero_like(runtime)
+    pool.get_num_free_blocks = lambda: 9
+    prompt = list(range(400, 420))  # 20 tokens: last boundary at 16
+    generated = [900, 901, 902, 903, 904, 905]
+    req = finished_request(pool, managers, prompt + generated, 25)
+    req.num_prompt_tokens = len(prompt)
+    tail.register(req)
+    resent = prompt + [900, 901, 950, 904, 905] + list(range(600, 660))  # two tokens merged into one
+    new = Request("n", resent, 0, finished=False)
+    new.num_prompt_tokens = len(resent)
+    tail.lookup(new, ([], [], [], []), 8, 79)
+    (line,) = [x for x in capsys.readouterr().out.splitlines() if x.startswith("ARC_TAIL_COLLAPSE ")]
+    resend = json.loads(line.split(" ", 1)[1])["resend"]
+    assert resend["prev_prompt"] == 20 and resend["first_diff"] == 2 and resend["prompt_tail_same"]
+    assert resend["generated_ids"] == generated and resend["resent_ids"][:4] == [900, 901, 950, 904]
+    same = Request("m", prompt + generated + list(range(600, 660)), 0, finished=False)
+    same.num_prompt_tokens = len(same.all_token_ids)
+    assert tail.lookup(same, ([], [], [], []), 8, 79)[1] == 25
+    # Served by the request-end entry: not a collapse (the report follows the entry lookup).
+    assert not [x for x in capsys.readouterr().out.splitlines() if x.startswith("ARC_TAIL_COLLAPSE ")]
 
 
 @pytest.mark.parametrize("accepted, slot", [(0, 3), (1, 4)])
@@ -942,3 +969,130 @@ def test_spec_length_finish_registers_no_entry(runtime, monkeypatch, n, computed
     before = tail.stats["skip_spec_length"]
     tail.register(req)
     assert tail.stats["skip_spec_length"] == before
+
+
+def idle_game(runtime, monkeypatch, placement="back"):
+    """A finished request (25 tokens, B = 8: three full attention blocks) freed into a queue that other games' cached
+    blocks then follow; the clock is the test's."""
+    monkeypatch.setattr(runtime, "KEEPALIVE", True)
+    monkeypatch.setattr(runtime, "PLACEMENT", placement)
+    tail, pool, managers = hero_like(runtime)
+    now = [100.0]
+    tail.clock = lambda: now[0]
+    kept = {2: Block(61), 3: Block(62)}
+    tokens = list(range(400, 480))
+    probe = Request("x", tokens, 0)
+    for gid, block in kept.items():
+        block.ref_cnt = 1
+        pool._insert_block_hash(probe.block_hashes[2] + gid.to_bytes(4, "big"), block)  # the state at 3 * B
+    req = finished_request(pool, managers, tokens[:29], 29, kept=kept)
+    tail.register(req)
+    for mgr in managers:
+        blocks = mgr.pop_blocks_for_free("r0")
+        if mgr.kv_cache_group_id in kept:
+            blocks = [kept[mgr.kv_cache_group_id]] + blocks
+        pool.free_blocks(reversed(blocks))
+    tail.after_free()
+    own = list(pool.free_block_queue.items)
+    others = [Block(700 + i) for i in range(6)]
+    for block in others:
+        block.block_hash = b"other"
+    pool.free_block_queue.append_n(others)  # churn: newer than the idle game's blocks
+    return tail, pool, now, own, others, tokens
+
+
+def test_keepalive_is_an_optional_tail_option():
+    tail = {"mamba_align_fix": True, "mamba_keep_state": True, "mamba_demote_superseded": True, "request_end_tail": True}
+    assert "tail_keepalive" not in patch.validate(tail)
+    assert patch.validate({**tail, "tail_keepalive": True})["tail_keepalive"] is True
+    with pytest.raises(ValueError):
+        patch.validate({**tail, "request_end_tail": False, "tail_keepalive": True})
+    helper = (ROOT / 'src/arena/prefix_tail_runtime.py').read_text()
+    assert helper.count('KEEPALIVE = False\n') == 1
+
+
+def test_keepalive_moves_an_idle_games_blocks_to_the_newest_end_after_five_seconds(runtime, monkeypatch):
+    tail, pool, now, own, others, _ = idle_game(runtime, monkeypatch)
+    queue = pool.free_block_queue.items
+    cached = [b for b in own if b.block_hash is not None]
+    before = list(queue)
+    now[0] += 4.9
+    tail.keepalive()
+    assert queue == before and not tail.stats["keepalive_pings"]  # a normal tool call: nothing moves
+    now[0] += 0.2
+    tail.keepalive()
+    assert tail.stats["keepalive_pings"] == 1 and tail.stats["keepalive_games"] == 1
+    assert tail.stats["keepalive_blocks"] == len(cached) == 3 + 2 + 4  # attention, kept states, the entry's blocks
+    # Every cached block of the game is now newer than the churn, in the same relative order; nothing is referenced
+    # and the free count is unchanged.
+    assert queue[-len(cached):] == [b for b in before if b in cached] and len(queue) == len(before)
+    assert set(queue[:len(before) - len(cached)]) == set(before) - set(cached)
+    assert all(b.ref_cnt == 0 for b in queue) and len(set(map(id, queue))) == len(queue)
+    order = list(queue)
+    now[0] += 4.0
+    tail.keepalive()
+    assert queue == order  # the next refresh is due 5 s after the last
+    now[0] += 1.5
+    pool.free_block_queue.append_n([Block(800)])
+    tail.keepalive()
+    assert tail.stats["keepalive_pings"] == 2 and tail.stats["keepalive_games"] == 1 and queue[-len(cached):] == order[-len(cached):]
+
+
+def test_keepalive_skips_blocks_in_use_and_rekeyed_blocks(runtime, monkeypatch):
+    tail, pool, now, own, others, _ = idle_game(runtime, monkeypatch)
+    queue = pool.free_block_queue.items
+    attention = [b for b in own if 10 <= b.block_id < 13]
+    shared, lost = attention[0], attention[1]
+    pool.touch([shared])  # a clone of the game is running on the shared first block
+    now[0] += 6
+    tail.keepalive()
+    assert shared.ref_cnt == 1 and shared not in queue and tail.stats["keepalive_blocks"] == 3 + 2 + 4 - 1
+    # An attention block of the prefix reused by another request: the entry cannot serve, nothing moves any more.
+    pool.evict(lost)
+    order = list(queue)
+    now[0] += 6
+    tail.keepalive()
+    assert queue == order and tail.stats["keepalive_lost"] == 1 and tail.stats["keepalive_pings"] == 1
+    assert not tail.waiting
+
+
+def test_keepalive_stops_on_return_on_a_lost_entry_and_at_the_deadline(runtime, monkeypatch):
+    tail, pool, now, own, others, tokens = idle_game(runtime, monkeypatch)
+    now[0] += 6
+    tail.keepalive()
+    new = Request("n", tokens, 0, finished=False)
+    blocks, length = tail.lookup(new, ([], [], [], []), 8, 79)  # the game comes back and resumes from the entry
+    assert length == 29 and tail.stats["keepalive_returned"] == 1 and tail.waiting[0].alive is None
+    now[0] += 30
+    tail.keepalive()
+    assert tail.stats["keepalive_pings"] == 1 and not tail.waiting
+
+    tail, pool, now, own, others, _ = idle_game(runtime, monkeypatch)
+    entry = tail.waiting[0]
+    pool.evict(next(block for _, block in entry.keys.values()))
+    now[0] += 6
+    tail.keepalive()
+    assert tail.stats["keepalive_lost"] == 1 and not tail.stats["keepalive_pings"] and not tail.waiting
+
+    tail, pool, now, own, others, _ = idle_game(runtime, monkeypatch)
+    for _ in range(12):
+        now[0] += 5.01
+        tail.keepalive()
+    assert tail.stats["keepalive_pings"] == 8 and tail.stats["keepalive_expired"] == 1 and not tail.waiting
+
+
+def test_keepalive_leaves_the_demoted_boundary_state_at_the_front_under_swap(runtime, monkeypatch):
+    tail, pool, now, own, others, _ = idle_game(runtime, monkeypatch, placement="swap")
+    queue = pool.free_block_queue.items
+    front = queue[:2]
+    assert {b.block_id for b in front} == {61, 62}
+    now[0] += 6
+    tail.keepalive()
+    assert queue[:2] == front and tail.stats["keepalive_blocks"] == 3 + 4
+
+
+def test_keepalive_off_registers_nothing(runtime, monkeypatch):
+    tail, pool, managers = hero_like(runtime)
+    tail.register(finished_request(pool, managers, list(range(400, 429)), 29))
+    assert not runtime.KEEPALIVE and not tail.waiting
+    assert next(iter(tail.entries.values()))[0].alive is None

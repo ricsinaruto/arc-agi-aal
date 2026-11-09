@@ -41,7 +41,6 @@ packages = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-markers = ["multirank: gloo multi-rank CPU test (runops.multirank)"]
 
 [tool.ruff]
 target-version = "py312"

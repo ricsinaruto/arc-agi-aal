@@ -4,6 +4,7 @@ import asyncio
 import csv
 import io
 import json
+import os
 import re
 import time
 from pathlib import Path
@@ -146,6 +147,71 @@ def parse_gpu_rows(output):
     return rows
 
 
+def cpu_snapshot(proc="/proc"):
+    """Host CPU accounting for a telemetry row (throughput arm, 7 October): cgroup usage and throttling, load, the
+    aggregate /proc/stat line, and cumulative CPU seconds by process role (vLLM engine core, worker, API server, every
+    other process summed) with the four busiest threads of each vLLM role. Counters: difference two rows."""
+    tick = os.sysconf("SC_CLK_TCK")
+    out = {"epoch": time.time(), "cpu_count": os.cpu_count()}
+    for path in ("/sys/fs/cgroup/cpu.stat", "/sys/fs/cgroup/cpu,cpuacct/cpu.stat", "/sys/fs/cgroup/cpu/cpu.stat"):
+        try:
+            lines = Path(path).read_text().splitlines()
+        except OSError:
+            continue
+        out["cgroup"] = {q[0]: int(q[1]) for q in (line.split() for line in lines) if len(q) == 2 and q[1].isdigit()}
+        break
+    for path, key in (("/sys/fs/cgroup/cpu.max", "cgroup_cpu_max"), (f"{proc}/loadavg", "loadavg")):
+        try:
+            out[key] = Path(path).read_text().strip()
+        except OSError:
+            pass
+    try:
+        first = Path(proc, "stat").read_text().splitlines()[0].split()
+        out["host_ticks"] = dict(zip(("user", "nice", "system", "idle", "iowait", "irq", "softirq", "steal"),
+                                     (int(v) for v in first[1:9])))
+    except (OSError, ValueError, IndexError):
+        pass
+
+    def seconds(path):
+        text = path.read_text()
+        fields = text[text.rindex(")") + 2:].split()  # after "pid (comm) "
+        return (int(fields[11]) + int(fields[12])) / tick
+
+    roles, counts, threads = {}, {}, {}
+    for entry in Path(proc).iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            cmdline = (entry / "cmdline").read_bytes().replace(b"\0", b" ").decode(errors="replace")
+            text = (entry / "comm").read_text().strip() + " " + cmdline
+            used = seconds(entry / "stat")
+            if "EngineCore" in text:
+                role = "engine_core"
+            elif "Worker" in text and "VLLM" in text:
+                role = "worker"
+            elif "vllm.entrypoints" in cmdline and " serve" in cmdline:
+                role = "api_server"
+            else:
+                role = "other"
+            if role != "other":
+                per = {}
+                for task in (entry / "task").iterdir():
+                    try:
+                        per[task.name] = seconds(task / "stat")
+                    except (OSError, ValueError, IndexError):
+                        pass
+                top = sorted(per.items(), key=lambda item: -item[1])[:4]
+                threads.setdefault(role, {}).update({f"{entry.name}/{tid}": round(v, 2) for tid, v in top})
+        except (OSError, ValueError, IndexError):
+            continue
+        roles[role] = roles.get(role, 0.0) + used
+        counts[role] = counts.get(role, 0) + 1
+    out["process_cpu_seconds"] = {role: round(v, 2) for role, v in roles.items()}
+    out["process_counts"] = counts
+    out["thread_cpu_seconds"] = threads
+    return out
+
+
 class GpuMonitor(Monitor):
     """The engine monitor plus GPU headroom samples from nvidia-smi."""
 
@@ -168,6 +234,10 @@ class GpuMonitor(Monitor):
             if process is not None and process.returncode is None:
                 process.kill()
                 await process.communicate()
+        try:
+            record["cpu"] = cpu_snapshot()
+        except Exception as exc:  # telemetry only: never a reason to lose the GPU row
+            record["cpu_error"] = f"{type(exc).__name__}: {exc}"
         record["sample_seconds"] = time.monotonic() - self.start - record["elapsed_seconds"]
         record["units"] = {"memory": "MiB", "utilization": "percent", "power": "watts"}
         with (self.output / "vllm-gpu-memory.jsonl").open("a") as file:

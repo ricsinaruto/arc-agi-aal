@@ -241,8 +241,7 @@ def reserve(run_id, seconds, *, ledger=LEDGER, test=TEST, profile_name=PROFILE_N
             raise RuntimeError('Four research GPUs reserved; reconcile before launching another')
         rate = GPU_RATE + CPU_CEILING * 0.0000131 + MEMORY_CEILING_GIB * 0.00000222
         bound = (seconds + 60) * rate * 1.15
-        from arc_infra.runops.records import row_cost
-        committed = data["infrastructure_reserve_usd"] + sum(row_cost(r)[0] for r in data["runs"])
+        committed = data["infrastructure_reserve_usd"] + sum(r["charged_bound_usd"] for r in data["runs"])
         if committed + bound > data["cap_usd"]:
             raise RuntimeError(f"Spend cap: ${committed:.2f} + ${bound:.2f} required")
         if any(r["run_id"] == run_id for r in data["runs"]):
