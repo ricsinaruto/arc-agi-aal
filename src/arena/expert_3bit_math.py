@@ -21,6 +21,9 @@ BLOCK = 16
 FORMATS = {
     "int3": (-4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0),
     "fp3": (-4.0, -2.0, -1.0, 0.0, 1.0, 2.0, 4.0),
+    # Two-bit screen (7 October): -2..1, a subset of int3, so an int2 expert is served by the int3 path unchanged
+    # (same bytes; only its values are 2-bit). A 2-bit layout would need its own repack and kernel.
+    "int2": (-2.0, -1.0, 0.0, 1.0),
 }
 # Bits per weight in the fast (repacked) layout: 3 code bits + one E4M3 scale per group (+ the per-expert float32).
 def bits_per_weight(group):
@@ -49,13 +52,19 @@ def scale2_of(weight, fmt):
     return weight.float().abs().amax(dim=(-2, -1)) * (1.0 / (lmax * FP8_MAX))
 
 
-def group_scales(weight, scale_2, fmt, group, multipliers=(1.0,)):
+def group_scales(weight, scale_2, fmt, group, multipliers=(1.0,), *, column_weights=None, search_signs=False):
     """Signed E4M3 group scales [E, N, K/group] (as float32 values, already E4M3-rounded) of [E, N, K] weights.
 
     The sign makes the group's largest-magnitude weight map to the grid's most negative level; each group takes the
-    candidate (amax rule divided by a multiplier) with the smallest squared rounding error."""
+    candidate (amax rule divided by a multiplier) with the smallest squared rounding error.
+    ``search_signs`` tests both orientations of an asymmetric grid at each candidate scale."""
     import torch
 
+    if column_weights is not None:
+        if column_weights.shape != (weight.shape[0], weight.shape[2]):
+            raise ValueError("column_weights must have shape [experts, inputs]")
+        if not torch.isfinite(column_weights).all() or (column_weights < 0).any():
+            raise ValueError("column_weights must be finite and nonnegative")
     levels = levels_tensor(fmt, weight.device)
     lmax = -float(levels[0])
     e, n, k = weight.shape
@@ -68,16 +77,20 @@ def group_scales(weight, scale_2, fmt, group, multipliers=(1.0,)):
     best, best_err = None, None
     for m in multipliers:
         mag = (amax / (lmax * m) / s2).clamp(max=FP8_MAX).to(torch.float8_e4m3fn).float()
-        sc = mag * sign
-        div = torch.where(mag == 0, torch.ones_like(mag), sc) * s2
-        q = nearest(g / div.unsqueeze(-1), levels) * div.unsqueeze(-1)
-        err = (q - g).pow(2).sum(-1)
-        if best is None:
-            best, best_err = sc, err
-        else:
-            take = err < best_err
-            best = torch.where(take, sc, best)
-            best_err = torch.minimum(err, best_err)
+        for direction in ((1.0, -1.0) if search_signs else (1.0,)):
+            sc = mag * sign * direction
+            div = torch.where(mag == 0, torch.ones_like(mag), sc) * s2
+            q = nearest(g / div.unsqueeze(-1), levels) * div.unsqueeze(-1)
+            residual = (q - g).pow(2)
+            if column_weights is not None:
+                residual *= column_weights.float().reshape(e, 1, k // group, group)
+            err = residual.sum(-1)
+            if best is None:
+                best, best_err = sc, err
+            else:
+                take = err < best_err
+                best = torch.where(take, sc, best)
+                best_err = torch.minimum(err, best_err)
     return best
 
 
@@ -154,3 +167,49 @@ def to_nvfp4(dequant, scales, scale_2, group):
         raise ValueError(f"3-bit values are not exact in the NVFP4 container ({bad:.2e} differ)")
     block = mag.repeat_interleave(group // BLOCK, dim=-1).to(torch.float8_e4m3fn)
     return pack_fp4(codes), block
+
+
+def signround(weight, hessian, scale_2, fmt, group, scales, *, iters=200, lr=None, scale_range=(0.7, 1.3)):
+    """AutoRound-style sign-gradient rounding onto the 3-bit grid (6 October, throughput arm): learn per-weight
+    rounding offsets V in [-0.5, 0.5] and a per-group scale multiplier, minimising the Hessian-weighted output error
+    tr(dW H dW^T) per expert with signed SGD (lr 1/iters, linear decay, straight-through rounding); the learned
+    scales are rounded to E4M3 at the end. ``hessian`` [E, K, K] (not damped), ``scales`` the RTN-search start.
+    Returns the dequantized float32 weights [E, N, K] and the final signed group scales."""
+    import torch
+
+    levels = levels_tensor(fmt, weight.device)
+    lo, hi = float(levels[0]), float(levels[-1])
+    w = weight.float()
+    e, n, k = w.shape
+    s2 = scale_2.float().reshape(e, 1, 1)
+    base = torch.where(scales == 0, torch.ones_like(scales), scales)
+    v = torch.zeros_like(w, requires_grad=True)
+    mult = torch.ones_like(base, requires_grad=True)
+    lr = 1.0 / iters if lr is None else lr
+    norm = torch.einsum("enk,ekl,enl->e", w, hessian, w).clamp(min=1e-30)
+
+    def deq(m, round_scales=False):
+        sc = base * m
+        if round_scales:
+            sign = torch.sign(sc)
+            sc = (sc.abs() / 1.0).clamp(max=FP8_MAX).to(torch.float8_e4m3fn).float() * sign
+        d = (sc * s2).repeat_interleave(group, dim=-1)
+        z = w / d + v
+        q = (torch.round(z) - z).detach() + z  # straight-through rounding
+        return q.clamp(lo, hi) * d, sc
+
+    for step in range(iters):
+        q, _ = deq(mult)
+        dw = q - w
+        loss = (torch.einsum("enk,ekl,enl->e", dw, hessian, dw) / norm).sum()
+        gv, gm = torch.autograd.grad(loss, (v, mult))
+        rate = lr * (1.0 - step / iters)
+        with torch.no_grad():
+            v -= rate * gv.sign()
+            v.clamp_(-0.5, 0.5)
+            mult -= rate * gm.sign()
+            mult.clamp_(*scale_range)
+    with torch.no_grad():
+        q, sc = deq(mult, round_scales=True)
+        sc = torch.where(scales == 0, torch.zeros_like(sc), sc)
+    return q.detach(), sc

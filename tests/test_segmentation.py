@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from arena.serving_core import segmentation
+from qwen_baselines import segmentation
 
 
 @pytest.fixture

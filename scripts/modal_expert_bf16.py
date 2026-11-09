@@ -29,8 +29,8 @@ BF16_REPO = "Qwen/Qwen3.8-Flash-Next"
 BF16_REVISION = "de4b8e4d43b917e7706784d8bb445c9af86a3540"
 TARGET = f"/assets/expert-bf16/{BF16_REVISION}"
 CPU, MEMORY_GIB, TIMEOUT = 8.0, 16, 3600
-STORAGE_DAYS = 1  # the shards are deleted after the job that needs them
-AUTHORIZATION = ("ARC-tuned routed-expert re-quantization (stage 1 microbenchmark <= "
+STORAGE_DAYS = int(os.environ.get("ARC_BF16_STORAGE_DAYS", "1"))  # the shards are deleted after the job that needs them
+AUTHORIZATION = os.environ.get("ARC_BF16_AUTHORIZATION") or ("ARC-tuned routed-expert re-quantization (stage 1 microbenchmark <= "
                  "stage 2 GPTQ <=); CPU download of BF16 expert shards (no GPU lock)")
 
 app = modal.App("arc-expert-bf16", include_source=False)
@@ -83,8 +83,7 @@ def reserve(run_id, gib, extra):
         fcntl.flock(file, fcntl.LOCK_EX)
         data = json.load(file)
         bound, storage = bound_usd(data, gib)
-        from arc_infra.runops.records import row_cost
-        committed = data["infrastructure_reserve_usd"] + sum(row_cost(r)[0] for r in data["runs"])
+        committed = data["infrastructure_reserve_usd"] + sum(r["charged_bound_usd"] for r in data["runs"])
         if committed + bound > data["cap_usd"]:
             raise RuntimeError(f"Spend cap: ${committed:.2f} + ${bound:.2f} required")
         if any(r["run_id"] == run_id for r in data["runs"]):
@@ -167,8 +166,12 @@ def fetch_main(run_id: str, layers: str):
     tree = json.loads(urllib.request.urlopen(f"{base}/tree/{BF16_REVISION}?recursive=1", timeout=60).read())
     index = json.loads(urllib.request.urlopen(
         f"https://huggingface.co/{BF16_REPO}/resolve/{BF16_REVISION}/model.safetensors.index.json", timeout=60).read())
-    wanted = [int(x) for x in layers.split(",") if x.strip()]
-    names = layer_files(index["weight_map"], wanted) + ["config.json", "model.safetensors.index.json"]
+    if layers == "all":  # throughput arm (6 Oct): the full BF16 model, the KL reference of the quantization matrix
+        wanted = "all"
+        names = sorted(row["path"] for row in tree if row.get("type") == "file")
+    else:
+        wanted = [int(x) for x in layers.split(",") if x.strip()]
+        names = layer_files(index["weight_map"], wanted) + ["config.json", "model.safetensors.index.json"]
     specs = file_specs(tree, names)
     gib = storage_gib(specs)
     bound = reserve(run_id, gib, {"layers": wanted, "files": len(specs)})

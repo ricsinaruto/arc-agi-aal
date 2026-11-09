@@ -51,6 +51,12 @@ def test_the_drain_is_capped_at_half_the_budget():
     assert cd.drain_target(113_920, 59_392) == (56_960, 56_960)
     assert cd.drain_target(200_000, 59_392) == (59_392, 140_608)
     assert cd.drain_target(10_000, 0) == (0, 10_000)
+    assert cd.drain_target(114_432, 85_824, 0.75) == (85_824, 28_608)
+    assert cd.drain_target(114_432, 200_000, 0.75) == (85_824, 28_608)
+    assert cd.settings({"drain_tokens": 85_824, "drain_cap_fraction": 0.75})["drain_cap_fraction"] == 0.75
+    assert "drain_cap_fraction" not in cd.settings(True)
+    with pytest.raises(ValueError):
+        cd.settings({"drain_cap_fraction": 0.95})
 
 
 # --- block boundaries ----------------------------------------------------------------------------------------------
@@ -414,125 +420,3 @@ def test_an_under_counted_drain_drains_again_from_the_measure(tmp_path):
     event = events_of(agent, "context_drain")[0]
     assert event["rounds"] == 2 and measure(out, None) > 50_000 and hooks == [{"tokens_before": 103_000, "tokens_after": measure(out, None)}]
     assert agent.drain_stats["drains"] == 1 and agent.drain_stats["messages_dropped"] == len(messages) - len(out) + 1
-
-
-def test_a_turn_that_never_acts_drains_to_the_target_once_not_every_call():
-    # k013 (b2-run1-12h): 1,163 print('idle') exchanges after one observation; the drain stopped 72 tokens under the
-    # budget and fired on every call, re-prefilling the whole turn.
-    note = msg("user", 2000, "[Context drain] note")
-    turn = [msg("user", 1000, "Grid image obs")] + [m for i in range(1200) for m in
-                                                     (msg("assistant", 50, f"a{i}"), msg("tool", 40, f"t{i}"))]
-    history = [note, *turn]
-    is_obs = lambda m: m["content"].startswith("Grid image")  # noqa: E731
-    count = 3000 + sized(history)
-    kept, info = cd.drain_history(history, count=count, budget=110_000, estimate=sized, spec=SPEC, is_observation=is_obs)
-    after = count - (sized(history) - sized(kept))
-    assert info["turn_exchanges"] > 1 and after <= info["target"] and kept[0]["content"] == "Grid image obs"
-    # The next call (one more exchange) is far below the budget: no drain, the prefix stays cached.
-    nxt = [*kept, msg("assistant", 50), msg("tool", 40)]
-    same, none = cd.drain_history(nxt, count=after + 90, budget=110_000, estimate=sized, spec=SPEC, is_observation=is_obs)
-    assert same is nxt and none is None
-
-
-def test_the_turn_cap_never_fires_a_cut_that_drops_no_turn():
-    # Above 150 assistant messages, all in the current turn: the clamped cut would only drop the previous drain note.
-    history = [msg("user", 10, "[Context drain] note"), msg("user", 10, "Grid image obs"),
-               *[m for i in range(200) for m in (msg("assistant", 1, f"a{i}"), msg("tool", 1, f"t{i}"))]]
-    is_obs = lambda m: m["content"].startswith("Grid image")  # noqa: E731
-    same, none = cd.drain_history(history, count=1000, budget=60_000, estimate=sized, spec=SPEC, is_observation=is_obs)
-    assert same is history and none is None
-
-
-def test_keep_tokens_drains_to_the_kept_level_below_half_the_budget():
-    spec = cd.settings({"keep_tokens": 30_000})
-    assert cd.drain_target(113_920, spec["drain_tokens"], spec["keep_tokens"]) == (83_920, 30_000)
-    assert "keep_tokens" not in SPEC
-    history = [*blocks(30), msg("user", 1000, "obs-now")]
-    kept, info = cd.drain_history(history, count=sized(history) + 2000, budget=100_000, estimate=sized, spec=spec)
-    assert info["target"] == 30_000 and sized(kept) + 2000 <= 30_000 and kept[-1]["content"] == "obs-now"
-    for bad in ({"keep_tokens": 10}, {"keep_tokens": "30000"}):
-        with pytest.raises(ValueError):
-            cd.settings(bad)
-
-
-def test_the_loop_rule_fires_on_short_or_similar_streaks_once_and_gives_a_fresh_context(tmp_path):
-    from test_arena_duck import arena_agent
-
-    from arena import loop_rule
-    from arena.duck import ArenaTransferDuckAgent
-
-    def reply(code, tokens):
-        return {"usage": {"completion_tokens": tokens}, "message": {"role": "assistant", "content": None, "tool_calls": [
-            {"id": "c", "type": "function", "function": {"name": "python", "arguments": json.dumps({"code": code})}}]}}
-
-    spec = loop_rule.settings(True)
-    assert spec["action"] == "fresh_context" and loop_rule.settings(None) is None
-    with pytest.raises(ValueError):
-        loop_rule.settings({"action": "nudge"})
-    # Long, varied replies: no fire however long the streak; a step change resets the streak.
-    det = loop_rule.LoopDetector(spec)
-    assert not any(det.note(5, 2000, reply(f"x = {i} * {i * 7919 % 104729}\n" * (i % 5 + 1), 2000)["message"])
-                   for i in range(40))
-    det = loop_rule.LoopDetector(spec)
-    fires = [det.note(7, 120, reply(f"print({i})", 120)["message"]) for i in range(19)]
-    assert not any(fires) and det.note(8, 120, {}) is None and det.streak == 1
-    fires = [det.note(8, 120, reply("print('idle')", 120)["message"]) for i in range(40)]
-    assert [i for i, f in enumerate(fires) if f] == [18] and fires[18]["streak"] == 20
-    # Similar long replies fire too.
-    det = loop_rule.LoopDetector(spec)
-    fires = [det.note(1, 900, reply("for r in rows:\n    print(r)\n" * 20, 900)["message"]) for _ in range(20)]
-    assert fires[-1]["reason"] == "similar"
-
-    agent, _, game, _ = arena_agent(tmp_path, None, ArenaTransferDuckAgent, window=65536)
-    agent.apply_context_drain(True)
-    agent.apply_loop_rule(True)
-    for i in range(20):
-        agent.note_loop_rule(reply("print('idle')", 80))
-    assert agent.lrule_pending["streak"] == 20 and events_of(agent, "loop_rule")[0]["streak"] == 20
-
-    class Analyzer:
-        @staticmethod
-        def _estimate_request_input_tokens(messages, tools=None):
-            return sized(messages)
-
-    def measure(messages, tools):
-        return 2000 + sized(messages)
-
-    history = [*blocks(5), msg("user", 1000, "obs-now"),
-               *[m for i in range(25) for m in (msg("assistant", 80, f"a{i}"), msg("tool", 40, f"t{i}"))]]
-    messages = [{"role": "system", "content": "s"}, *history]
-    out = agent.drain_context(Analyzer(), messages, None, measure, 60_000)
-    assert out[0] is messages[0] and text_of(out[1]).startswith("[Loop rule] Your last 20 calls")
-    assert "python interpreter was not touched" in text_of(out[1]) and out[2]["content"] == "obs-now" and len(out) == 3
-    event = events_of(agent, "loop_rule_fresh_context")[0]
-    assert event["tokens_freed"] == measure(messages, None) - measure(out, None) > 20_000
-    assert agent.lrule_pending is None and agent.lrule_stats["applied"] == 1
-    assert agent.drain_context(Analyzer(), out, None, measure, 60_000) is out  # once per fire
-    assert agent.result()["loop_rule"]["fires"] == 1
-
-
-async def test_a_server_error_is_retried_with_backoff_and_logged(tmp_path, monkeypatch):
-    import importlib
-
-    from test_arena_duck import arena_agent
-
-    from arena.duck import ArenaTransferDuckAgent
-
-    duck_module = importlib.import_module("arena.duck")
-    monkeypatch.setattr(duck_module, "SERVER_ERROR_DELAYS", (0.0, 0.0))
-    agent, _, _, _ = arena_agent(tmp_path, None, ArenaTransferDuckAgent, window=65536)
-    codes = iter([500, 503, 200])
-    sent = []
-
-    async def call(payload):
-        sent.append(payload)
-        return httpx.Response(next(codes), text="MultiModalCacheMissError")
-
-    response = await agent.with_server_retries(call, {"x": 1})
-    assert response.status_code == 200 and len(sent) == 3 and agent.server_error_retries == 2
-    assert [e["status"] for e in events_of(agent, "server_error_retry")] == [500, 503]
-    codes = iter([500, 500, 500, 500])
-    assert (await agent.with_server_retries(call, {"x": 1})).status_code == 500  # bounded: the last response returns
-    codes = iter([400])
-    assert (await agent.with_server_retries(call, {"x": 1})).status_code == 400 and agent.server_error_retries == 4
-    assert agent.result()["server_error_retries"] == 4

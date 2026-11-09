@@ -58,8 +58,9 @@ def reserve(run_id, seconds, *, gpu, memory_gib):
         data = json.load(file)
         rate = (0.000842 if gpu else 0) + 8 * 0.0000131 + memory_gib * 0.00000222
         bound = (seconds + 60) * rate * 1.15
-        from arc_infra.runops.records import row_cost
-        committed = data["infrastructure_reserve_usd"] + sum(row_cost(r)[0] for r in data["runs"])
+        committed = data["infrastructure_reserve_usd"] + sum(
+            r["charged_bound_usd"] for r in data["runs"]
+        )
         if committed + bound > data["cap_usd"]:
             raise RuntimeError(f"Spend cap: ${committed:.2f} committed + ${bound:.2f} required")
         if any(r["run_id"] == run_id for r in data["runs"]):

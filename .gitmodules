@@ -1,0 +1,12 @@
+[submodule "PRO-LONG"]
+	path = externals/PRO-LONG
+	url = https://github.com/alexisfox7/PRO-LONG.git
+[submodule "Retrodict"]
+	path = externals/Retrodict
+	url = https://github.com/ryanbbrown/Retrodict.git
+[submodule "externals/open-schema"]
+	path = externals/open-schema
+	url = https://github.com/brayan07/open-schema
+[submodule "externals/thinharness"]
+	path = externals/thinharness
+	url = https://github.com/ryanbbrown/thinharness

@@ -7,7 +7,6 @@ from pathlib import Path
 
 import httpx
 
-from arc_infra import KEEPALIVE_EXPIRY
 from arc_infra.arcade import make_arcade
 from arc_infra.config import Config as DuckConfig
 from arc_infra.fleet import SessionClient
@@ -28,12 +27,22 @@ from .early_stop import settings as early_stop_settings
 from .gate import BackgroundLane, GateSlot, KVGate
 from .live_progress import LiveProgress
 from .live_progress import settings as live_settings
+from .quality_eval import (
+    FixedWorkers,
+    GameBudget,
+    QualityHTTP,
+    SeededArcade,
+    checkpoint_summary,
+    reconcile_engine,
+    replica_summary,
+    validate_study,
+    worker_identity,
+)
 from .report import game_row, trial_report
 from .scheduler import GameRecord, Scheduler
 
-TICK_SECONDS = 1.0  # the scheduler tick (the audit allows a switch 1.1 s after its trigger); tests shorten it
-
-KINDS = ("duck-transfer", "duck-public")
+KINDS = ("duck-transfer", "duck-public", "pi", "retrodict", "ui-mate-native", "pi-rlm")
+PI_START_CONCURRENCY = 4
 READY_TIMEOUT = 600
 
 
@@ -71,18 +80,50 @@ def duck_config(study, source, *, window, cap, wall, base_url):
     return cfg
 
 
+def qwen_config(study, kind, *, window, cap, wall, base_url):
+    from qwen_baselines.config import Config
+    from retrodict_qwen.profile import R_DEFAULTS
+
+    settings = {
+        "base_url": base_url,
+        "context_window": int(study["server"]["max_model_len"]),
+        "output_tokens_cap": int(cap),
+        "compaction_tokens": int(window) - int(cap),
+        "gameplay_seconds": wall,
+        "temperature": float(study["temperature"]),
+        "reasoning_effort": study["reasoning_effort"],
+        "generation_slots": int(study["generation_slots"]),
+    }
+    if kind == "retrodict":
+        settings = {**R_DEFAULTS, **settings}
+    elif kind == "ui-mate-native":
+        settings.update(actions_per_turn=None, reject_no_change_repeats=False)
+    elif kind == "pi-rlm":
+        # A programmatic environment: macros run in one call (no per-response action cap) and
+        # observations carry no host-side object/transition summaries (no mechanics hints).
+        settings.update(actions_per_turn=None, object_view=False, transition_summary=False)
+    if study.get("served_model"):
+        settings["model"] = study["served_model"]
+    if study.get("model_revision"):
+        settings["model_revision"] = study["model_revision"]
+    return Config(**settings)
+
+
 class Trial:
-    def __init__(self, study, trial, *, source, games_dir, output, server_dir,
+    def __init__(self, study, trial, *, source, games_dir, output, server_dir, pi_dir=None, node="node",
                  analysis_python=None, base_url, smoke=False, log=print,
                  arcade=None, gameplay_deadline_epoch=None):
         self.study, self.trial = study, trial
+        self.quality = validate_study(study)
+        if self.quality and (smoke or trial["kind"] != "duck-transfer"):
+            raise ValueError("quality_eval needs the entire fixed roster and duck-transfer")
         self.kind = trial["kind"]
         if self.kind not in KINDS:
             raise ValueError(f"Unknown trial kind: {self.kind}")
         self.source, self.games_dir = Path(source), games_dir
         self.output = Path(output)
         self.output.mkdir(parents=True, exist_ok=True)
-        self.server_dir = server_dir
+        self.server_dir, self.pi_dir, self.node = server_dir, pi_dir, node
         self.analysis_python = analysis_python or "python3"
         self.base_url, self.smoke, self.log = base_url, smoke, log
         self.arcade = arcade
@@ -90,9 +131,6 @@ class Trial:
         self.cap = int(study["completion_cap"])
         self.games_list, self.wall_seconds = trial_settings(study, smoke=smoke)
         self.admission_log = (self.output / "admission.jsonl").open("a")
-        from .heap import FREEZE_SECONDS, HeapKeeper
-
-        self.heap = HeapKeeper(study.get("heap_freeze_seconds", FREEZE_SECONDS))
 
     def gate_log(self, entry):
         clock = getattr(self, "wall", None)
@@ -121,8 +159,8 @@ class Trial:
             choice = SlotCapacity.load(self.server_dir, study).choice()
             window = choice["window"]
         elif study.get("cache_admission") == "hybrid_blocks":
-            if self.kind != "duck-transfer":
-                raise ValueError("Block admission supports Duck-transfer only")
+            if self.kind not in ("duck-transfer", "pi", "ui-mate-native", "pi-rlm"):
+                raise ValueError("Block admission supports Duck-transfer, Pi, Pi RLM and native UI-Mate only")
             block_budget = BlockBudget.load(self.server_dir, float(study["kv_margin"]))
             window = int(study["windows"][0])  # preserve context/compaction policy
             if block_budget.cost(window) > block_budget.capacity:
@@ -173,6 +211,8 @@ class Trial:
             )
             window = choice["window"]
         phase2 = phase2_capacity(study, block_budget, window, len(self.games_list))
+        if self.quality and phase2["active_limit"] != len(self.games_list):
+            raise RuntimeError("quality_eval cannot reduce persistent workers to fit the cache")
         choice['phase2'] = phase2
         if study.get("blocks") is not None:
             # hero-v2-blocks: a block is the stream count, so the served fit must keep every stream (no fallback to
@@ -277,11 +317,7 @@ class Trial:
             raise ValueError("drain_half replaces the Duck agents' summary compaction (duck-transfer, duck-public)")
         if study.get("dfr_harness") and self.kind != "duck-transfer":
             raise ValueError("dfr_harness extends the corrected Duck agent (duck-transfer)")
-        if study.get("dfr_loop") and self.kind != "duck-transfer":
-            raise ValueError("dfr_loop extends the corrected Duck agent (duck-transfer)")
-        if study.get("hx_harness") and self.kind != "duck-transfer":
-            raise ValueError("hx_harness extends the corrected Duck agent (duck-transfer)")
-        scheduler = Scheduler(
+        scheduler = FixedWorkers(games, wall, log=self.gate_log, cfg=self.quality) if self.quality else Scheduler(
             games, wall, log=self.gate_log, active_limit=phase2['active_limit'],
             switch_games=int(study["opening_switch_level1_games"]),
             max_grant_seconds=study.get("max_level_grant_seconds"),
@@ -358,7 +394,10 @@ class Trial:
             self.log(json.dumps({"event": "compaction_preflight", "ok": self.compaction_preflight["ok"],
                                  "mode": self.compaction_preflight["mode"],
                                  "reason": self.compaction_preflight["reason"]}), flush=True)
-        workers, rows_fn, close = await self.duck_agents(games, gate, window, wall, card, arc)
+        if self.kind.startswith("duck"):
+            workers, rows_fn, close = await self.duck_agents(games, gate, window, wall, card, arc)
+        else:
+            workers, rows_fn, close = await self.qwen_agents(games, gate, window, wall, card, arc)
         async def run_worker(worker, game):
             try:
                 returned = await worker.run()
@@ -373,7 +412,8 @@ class Trial:
                 # focus slot. Preserve explicit outcomes (won, model_finished, ...).
                 if wall.remaining() > 0:
                     if game.finished_reason is None:
-                        game.note_finished("worker_returned")
+                        exhausted = self.quality and worker.quality_budget.remaining == 0
+                        game.note_finished("quality_token_budget" if exhausted else "worker_returned")
                     self.gate_log({"event": "worker_returned", "game": game.game_id,
                                    "reported_status": returned.get("status") if isinstance(returned, dict) else None,
                                    "reported_seconds": returned.get("seconds") if isinstance(returned, dict) else None,
@@ -428,7 +468,7 @@ class Trial:
         try:
             while wall.remaining() > 0 and any(not t.done() for t in tasks):
                 await asyncio.wait([t for t in tasks if not t.done()],
-                                   timeout=min(TICK_SECONDS, max(0.05, wall.remaining())),
+                                   timeout=min(1.0, max(0.05, wall.remaining())),
                                    return_when=asyncio.FIRST_COMPLETED)
                 scheduler.tick()
                 if lane is not None:
@@ -442,7 +482,6 @@ class Trial:
                     self.progress(wall, games, scheduler, gate)
                 if wall.elapsed() - last_progress >= 15:
                     last_progress = wall.elapsed()
-                    self.heap.tick(wall.elapsed())
                     self.progress(wall, games, scheduler, gate)
             if self.end_reason is None:
                 self.end_reason = "wall" if wall.remaining() <= 0 else "all_workers_done"
@@ -467,6 +506,10 @@ class Trial:
                 if not task.done():
                     task.cancel()
             outcomes = await asyncio.gather(*tasks, return_exceptions=True)
+            quality_reconciliation = None
+            if self.quality:
+                quality_reconciliation = await reconcile_engine(monitor, [w.quality_budget for w in workers])
+                self.gate_log({"event": "quality_reconciliation", **quality_reconciliation})
             try:
                 # C/R rows read SQLite evidence. Drain workers first so their final
                 # receipts are included, then snapshot metrics before closing archives.
@@ -513,6 +556,29 @@ class Trial:
         report.update(self.feature_totals([base for base in base_rows]))
         if getattr(self, "harness", None) is not None:
             report["rlm_harness"] = self.harness.summary()
+        if self.quality:
+            for worker in workers:
+                worker.quality_budget.score = lambda game_id=worker.game_id: scores[game_id]
+                worker.quality_budget.observe_score()
+            quality_games = {w.game_id: w.quality_budget.snapshot() for w in workers}
+            valid = (all(g["accounting_valid"] for g in quality_games.values())
+                     and quality_reconciliation["valid"])
+            complete = all(g.finished_reason in ("won", "quality_token_budget") for g in games)
+            accepted = sum(g["accepted_tokens"] for g in quality_games.values())
+            engine_tokens = report["engine"].get("accepted_generation_tokens")
+            report["quality_eval"] = {"settings": self.quality, "games": quality_games,
+                                      "accounting_valid": valid, "budget_complete": complete,
+                                      "accepted_tokens": accepted,
+                                      "engine_minus_receipts": None if engine_tokens is None else engine_tokens - accepted,
+                                      "reconciliation": quality_reconciliation,
+                                      "checkpoints": [{**row, "accounting_valid": valid,
+                                                       "complete": row["complete"] and valid}
+                                                      for row in checkpoint_summary(quality_games, self.quality)],
+                                      **replica_summary(quality_games, self.quality, valid)}
+            if not valid:
+                report["status"] = "error"
+            elif not complete and report["status"] == "complete":
+                report["status"] = "incomplete_quality_budget"
         report["end_reason"] = self.end_reason or "error"
         report["wall"] = {"configured_seconds": self.wall_seconds, "ended_seconds": round(wall.seconds, 3)}
         if self.early_stop.cfg is not None or self.early_stop.reason is not None:
@@ -532,8 +598,6 @@ class Trial:
             "finished": sum(g.state == "finished" for g in games),
             "gate": {k: gate.snapshot()[k] for k in ("reserved", "inflight", "waiting")},
         }
-        if getattr(self, "heap", None) is not None:
-            progress["heap"] = self.heap.summary()
         if getattr(scheduler, "deep", None) is not None:
             progress["deep"] = [g.game_id for g in scheduler.deep_games()]
             progress["deep_queue"] = [g.game_id for g in scheduler.promotion_queue()]
@@ -545,8 +609,11 @@ class Trial:
         if getattr(self, "live", None) is not None:
             progress["live"] = self.live.fields(wall.elapsed())
         workers = getattr(self, "duck_workers", None)
+        if self.quality and workers:
+            progress["quality_eval"] = {"settings": self.quality,
+                                       "games": {w.game_id: w.quality_budget.snapshot() for w in workers}}
         if workers and (self.study.get("parallel_samples") or self.study.get("action_plans")
-                        or self.study.get("drain_half") or self.study.get("loop_rule")):
+                        or self.study.get("drain_half")):
             rows = []
             for worker in workers:
                 row = {}
@@ -556,8 +623,6 @@ class Trial:
                     row["action_plans"] = worker.plan_summary()
                 if worker.drain is not None:
                     row["context_drain"] = dict(worker.drain_stats)
-                if worker.lrule is not None:
-                    row["loop_rule"] = dict(worker.lrule_stats)
                 rows.append(row)
             progress.update(self.feature_totals(rows))
         if getattr(scheduler, "rank", None) is not None:
@@ -597,14 +662,6 @@ class Trial:
             from .context_drain import aggregate as drain_aggregate
 
             totals["context_drain"] = drain_aggregate([r.get("context_drain") for r in rows])
-        if self.study.get("loop_rule"):
-            from .loop_rule import aggregate as loop_rule_aggregate
-
-            totals["loop_rule"] = loop_rule_aggregate([r.get("loop_rule") for r in rows])
-        if self.study.get("dfr_loop"):
-            from .dfr_loop import aggregate as loop_aggregate
-
-            totals["dfr_loop"] = loop_aggregate([r.get("dfr_loop") for r in rows])
         return totals
 
     def early_stop_rule(self, study, arc, card, games):
@@ -657,7 +714,7 @@ class Trial:
                 self.gate_log({"event": "duck_harness", **DuckHarness(self.harness_dir).summary()})
         shared = httpx.AsyncClient(
             base_url=cfg.base_url.rstrip("/") + "/",
-            limits=httpx.Limits(max_connections=256, max_keepalive_connections=128, keepalive_expiry=KEEPALIVE_EXPIRY),
+            limits=httpx.Limits(max_connections=256, max_keepalive_connections=128),
             trust_env=False,
         )
         requests = []
@@ -666,8 +723,10 @@ class Trial:
             entry = {"game_id": game.game_id, "replica": 0, "instance_id": f"r0-{game.game_id}"}
             slot = GateSlot(gate, game, cap=self.cap, window=window)
             client = SessionClient(cfg, shared, slot, entry, requests)
+            who = worker_identity(self.quality, self.study, game.game_id) if self.quality else None
             agent = cls(
-                game.game_id, arc, card, client, cfg, self.output / "games" / game.game_id,
+                game.game_id, SeededArcade(arc, who["seed"]) if self.quality else arc,
+                card, client, cfg, self.output / "games" / game.game_id,
                 self.analysis_python, time.monotonic() + self.wall_seconds + 3600,
             )
             agent.attach(game, window=window, cap=self.cap, notes=self.notes, memory=memory,
@@ -683,11 +742,23 @@ class Trial:
                          parallel_samples=self.study.get("parallel_samples") or None,
                          action_plans=bool(self.study.get("action_plans")),
                          context_drain=self.study.get("drain_half") or None,
-                         dfr_harness=self.study.get("dfr_harness") or None,
-                         dfr_loop=self.study.get("dfr_loop") or None,
-                         hx_harness=self.study.get("hx_harness") or None,
-                         loop_rule=self.study.get("loop_rule") or None)
+                         dfr_harness=self.study.get("dfr_harness") or None)
+            if self.quality:
+                def score(game_id=game.game_id):
+                    card_now = arc.peek_score(card) if hasattr(arc, "peek_score") else arc.get_scorecard(card)
+                    if card_now is None:
+                        return None
+                    return next((float(e.score) for e in card_now.environments if e.id == game_id), 0.0)
+
+                agent.quality_budget = GameBudget(self.quality, game, log=agent.workspace.append, score=score,
+                                                 identity=who)
+                client.client = QualityHTTP(client.client, agent.quality_budget,
+                                            lambda payload, a=agent: a.request_purpose or
+                                            ("gameplay" if payload.get("tools") else "summary"))
             agent.compaction_keep_observations = int(self.study.get("compaction_keep_observations", 1))
+            agent.compaction_keep_fraction = self.study.get("compaction_keep_fraction")
+            agent.compaction_summary_cap = self.study.get("compaction_summary_cap")
+            agent.compaction_full_prefix = bool(self.study.get("compaction_full_prefix"))
             agent.compaction_thinking = self.study.get("compaction_thinking", DEFAULT_COMPACTION_THINKING)
             if getattr(self, "compaction_preflight", None) is not None:
                 agent.compaction_thinking = self.compaction_preflight["mode"]  # "gameplay" if the preflight failed
@@ -702,6 +773,121 @@ class Trial:
             await shared.aclose()
 
         return agents, rows, close
+
+    async def qwen_agents(self, games, gate, window, wall, card, arc):
+        from qwen_baselines.evidence import Archive
+        from qwen_baselines.runner import metrics
+
+        from .pi import ArenaBridge, ArenaPiAgent, ArenaRequestLayer
+
+        cfg = qwen_config(self.study, self.kind, window=window, cap=self.cap, wall=self.wall_seconds, base_url=self.base_url)
+        self.config_dict = cfg.to_dict()
+        shared = httpx.AsyncClient(base_url=cfg.base_url.rstrip("/") + "/", timeout=None, trust_env=False)
+        layers, bridges, workers = [], [], []
+        self.harness = None
+        layer_class = ArenaRequestLayer
+        if self.kind == "pi-rlm":
+            from .pi_rlm import Harness, RlmRequestLayer, rlm_settings
+
+            layer_class = RlmRequestLayer
+            rlm = rlm_settings(self.study.get("rlm"))
+            self.harness = Harness(self.output / "harness", notes_cap_tokens=rlm["notes_cap_tokens"])
+            dropped = self.harness.trim_notes()  # a notebook carried from an earlier run in this folder
+            self.gate_log({"event": "rlm_harness", **self.harness.summary(), "carried_lines_dropped": dropped})
+            self.config_dict["rlm"] = rlm
+        for game in games:
+            slot = GateSlot(gate, game, cap=self.cap, window=window)
+            layer = layer_class(cfg, game, slot, client=shared,
+                                tokenizer_model_max_length=self.study.get('tokenizer_model_max_length'))
+            layers.append(layer)
+            env = await asyncio.to_thread(arc.make, game.game_id, seed=cfg.seed, scorecard_id=card, save_recording=False)
+            if env is None:
+                raise RuntimeError(f"Environment creation failed: {game.game_id}")
+            archive = Archive(self.output / "games" / game.game_id, export=self.kind in ("pi", "pi-rlm"))
+            bridge = ArenaBridge(
+                env, archive, game.clock, label=f"{self.trial['name']} {game.game_id}",
+                boundaries=self.kind in ("pi", "ui-mate-native", "pi-rlm"), objects=cfg.object_view or cfg.transition_summary,
+                actions_per_turn=cfg.actions_per_turn, reject_repeats=cfg.reject_no_change_repeats,
+                game=game,
+            )
+            await bridge.initialize()
+            bridges.append(bridge)
+        await layers[0].preflight()
+        if self.kind in ("pi", "pi-rlm"):
+            starting = asyncio.Semaphore(PI_START_CONCURRENCY)
+
+            async def start(agent):
+                async with starting:
+                    await agent.start()
+
+            for game, bridge, layer in zip(games, bridges, layers, strict=True):
+                if self.kind == "pi-rlm":
+                    from .pi_rlm import ArenaRlmAgent
+
+                    workers.append(ArenaRlmAgent(bridge, layer, pi_dir=self.pi_dir, node=self.node, game=game,
+                                                 harness=self.harness, settings=self.study.get("rlm")))
+                else:
+                    workers.append(ArenaPiAgent(bridge, layer, pi_dir=self.pi_dir, node=self.node, game=game))
+            await asyncio.gather(*(start(w) for w in workers))
+        elif self.kind == "ui-mate-native":
+            from ui_mate_actor.agent import NativeAgent
+
+            for game, bridge, layer in zip(games, bridges, layers, strict=True):
+                workers.append(NativeAgent(bridge, layer, game=game, window=window))
+            # Verify the serving tokenizer accepts the native five-screenshot envelope
+            # before gameplay. This is not an inference/GPU-memory admission proof.
+            observation = workers[0].observation([])
+            image = next(b for b in observation["content"] if b["type"] == "image_url")
+            await layers[0].count(layers[0].payload([
+                workers[0].system, {"role": "user", "content": [image] * 5},
+            ]))
+        else:
+            from .retrodict import ArenaRetrodictGame
+
+            for game, bridge, layer in zip(games, bridges, layers, strict=True):
+                workers.append(ArenaRetrodictGame(bridge, layer, cfg, game=game, window=window))
+        for game in games:
+            game.ready.set()
+
+        def rows():
+            out = []
+            for game, bridge, worker, layer in zip(games, bridges, workers, layers, strict=True):
+                meta = bridge.archive.metadata()
+                m = metrics(bridge.archive)
+                out.append({
+                    "game_id": game.game_id,
+                    "status": ("won" if meta["status"] == "WIN" else
+                               "model_finished" if self.kind == "ui-mate-native" and
+                               (game.finished_reason or "").startswith("model_finished_") else "time_limit"),
+                    "error": game.error,
+                    "levels": meta["levels_completed"],
+                    "total_levels": meta["win_levels"],
+                    "actions": bridge.actions,
+                    "model_calls": m["model_requests"],
+                    "completed_replies": m["model_responses"],
+                    "prompt_tokens": m["input_tokens"],
+                    "completion_tokens": m["tokens"],
+                    "tokenizer_retries": layer.tokenizer_retries,
+                    "compaction_requests": m["compaction_requests"],
+                    "compaction_inference_seconds": m["compaction_seconds"],
+                    "seconds": round(game.clock.active_seconds(), 3),
+                    **({"native_actor_metrics": dict(worker.metrics), "repair_requests": m["repairs"]}
+                       if self.kind == "ui-mate-native" else {}),
+                    **({"rlm": worker.rlm_row()} if self.kind == "pi-rlm" else {}),
+                })
+            return out
+
+        async def close():
+            for worker in workers:
+                try:
+                    await worker.close()
+                except Exception as exc:  # noqa: BLE001 - closing is best effort
+                    self.log(f"[arena] close {worker.__class__.__name__}: {exc}")
+            for bridge in bridges:
+                bridge.archive.close()
+            await shared.aclose()
+
+        return workers, rows, close
 
 
 async def run_trial(study, trial, **kwargs):

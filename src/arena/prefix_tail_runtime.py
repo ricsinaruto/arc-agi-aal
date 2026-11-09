@@ -72,15 +72,6 @@ SPEC_TAIL = False
 # tail_spec_acceptance: a finish without an in-flight step registers at its computed length, at the state slot of its
 # last verify step's acceptance a (the scheduler's request._arc_last_accepted): slot (L - a) // B + a.
 SPEC_ACCEPT = False
-# v7 (5 October): under MTP-k a finish by length (the completion cap) registers no entry. With tail_spec_acceptance,
-# 11 of 57 post-cap replies (accept-v2, t37fix, t37dev v1/v2, b2-cachefix) that resumed from such an entry looped
-# ("ductduct...") to the cap again, against 0 of 146 without it; the next request recomputes from the boundary.
-SPEC_SKIP_LENGTH = True
-
-
-def finished_by_length(request):
-    status = getattr(request, "status", None)
-    return getattr(status, "name", status) == "FINISHED_LENGTH_CAPPED"
 
 
 class Entry:
@@ -166,10 +157,12 @@ class TailIndex:
         computed = L
         column = None
         extra_token = None
+        if self.spec and getattr(getattr(request, "status", None), "name", "") == "FINISHED_LENGTH_CAPPED":
+            # A length-capped finish under MTP-k registers a corrupt tail (the next tail-served request looped to its
+            # cap: 11 loops in 57 post-cap replies with tail_spec_acceptance, 0 in 146 without).
+            self.stats["skip_spec_length"] += 1
+            return
         if self.spec:
-            if SPEC_SKIP_LENGTH and finished_by_length(request):
-                self.stats["skip_spec_length"] += 1
-                return
             # MTP-k: the entry ends at the state the running column holds with no acceptance bias (SPEC_TAIL).
             accepted = getattr(request, "_arc_last_accepted", None) if SPEC_ACCEPT else None
             if computed == request.num_tokens + self.spec:
@@ -187,12 +180,10 @@ class TailIndex:
                 L = request.num_tokens + 1
                 column = (computed - 1) // B
                 self.stats["spec_dropped_bonus"] += 1
-            elif (accepted == 0 and request.num_output_tokens > 1 and computed == request.num_tokens - 1):
-                # The last verify step rejected its draft: the running slot holds the state after the bonus token.
-                # accepted > 0 is not registered: the temporal state sits in slot `accepted`, but the GDN and PLE
-                # conv states live only in the running slot (read at offset `accepted`), so slot `accepted` carries
-                # another sequence's conv window (6 October, eqv review); `_arc_last_accepted` is also stale after a
-                # step without drafts.
+            elif (accepted is not None and 0 <= accepted <= self.spec and request.num_output_tokens > 1
+                  and computed in (request.num_tokens - 1, request.num_tokens)):
+                # computed == num_tokens: the stop token was an accepted draft (the bonus after it was dropped).
+                # The last step's state after its accepted tokens: slot `accepted` of the step's state slots.
                 column = (computed - accepted) // B + accepted
                 self.stats["spec_accepted"] += 1
             else:

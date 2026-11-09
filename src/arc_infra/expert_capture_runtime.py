@@ -188,6 +188,7 @@ def _summary(state):
             "layers": None if state.layers is None else sorted(state.layers), "calls": state.calls,
             "skipped_graph": state.skipped_graph, "layers_seen": sorted(state.layers_seen),
             "rows": {str(k): v for k, v in sorted(state.written.items())}, "bytes": state.bytes,
+            "processed_tokens": {str(k): v for k, v in sorted(state.counter.items())},
             "stopped": state.stopped, "dropped_rows": state.dropped_rows, "queued_bytes": state.queued_bytes,
             "write_seconds": round(state.write_seconds, 1), "write_errors": state.write_errors[:5],
             "seconds": None if state.started is None else round(time.time() - state.started, 1)}

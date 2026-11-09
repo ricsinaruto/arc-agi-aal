@@ -10,11 +10,6 @@ import numpy as np
 
 from arc_infra.config import Config
 from arc_infra.perception import Observation
-from arc_infra.session import Workspace
-
-# Tests read game logs mid-run: flush every event (the fleet flushes every 2 s).
-Workspace.FLUSH_SECONDS = 0
-Workspace.CURRENT_SECONDS = 0
 
 ROOT = Path(__file__).resolve().parents[1]
 

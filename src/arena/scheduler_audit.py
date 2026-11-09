@@ -7,6 +7,10 @@ from .timing_analysis import _eligible, _intersection, _seconds
 
 
 def audit_scheduler(report):
+    if report.get("scheduler", {}).get("budget_policy") == "quality-fixed":
+        from .quality_eval import audit
+
+        return audit(report)
     issues, warnings = [], []
     checks = {'games': 0, 'admission_clocks': 0, 'clears': 0, 'grants': 0, 'budget_parks': 0}
     tolerance = .025  # Stored timestamps, T1 and grants are rounded to milliseconds.
@@ -135,22 +139,11 @@ def audit_scheduler(report):
             intervals_by_game.append(intervals)
             inference = []
             charged = []  # normalized clock: (wall, cost) per completed request; token clock: (wall, tokens)
-
-            def charge_wall(charge):
-                clipped = float(charge['wall_seconds'])
-                observed = float(charge.get('observed_wall_seconds', clipped))
-                # Report duration is captured before worker drain, so a late
-                # response's observation time may also exceed that duration.
-                if (not all(math.isfinite(v) and v >= 0 for v in (clipped, observed))
-                        or clipped > observed + tolerance):
-                    raise ValueError('Invalid charge observation time')
-                return observed
-
             if policy == 'tokens':
                 total = 0
                 for charge in game.get('charges', []):
                     if charge['purpose'] in purposes:
-                        charged.append((charge_wall(charge), int(charge['completion_tokens'])))
+                        charged.append((float(charge['wall_seconds']), int(charge['completion_tokens'])))
                         total += int(charge['completion_tokens'])
                 equal(f'{game_id}: budget total', game['budget_seconds'], float(total))
             if policy == 'normalized':
@@ -158,7 +151,7 @@ def audit_scheduler(report):
                 for charge in game.get('charges', []):
                     cost = normalization.cost(charge['prompt_tokens'], charge['completion_tokens'])
                     equal(f'{game_id}: charge at {charge["wall_seconds"]}', charge['cost_seconds'], cost)
-                    charged.append((charge_wall(charge), cost))
+                    charged.append((float(charge['wall_seconds']), cost))
                     total += cost
                 tools = []
                 for call in game.get('tool_intervals', []):

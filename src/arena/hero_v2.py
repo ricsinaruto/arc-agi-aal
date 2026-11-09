@@ -178,7 +178,9 @@ WINDOW_STEP = 1024  # the served cost table's row
 WINDOW_MAX = 261120
 BUDGET_POLICIES = ("fixed-2x", "rank", "blocks", "priority")
 FIT_FALLBACK_MIN = 14  # the hero's own 14 focus games
-PRUNE_LEVELS = {"prune-t37": "fixed-2x-mtp0-wide-kv8-hero-prune-t37",
+PRUNE_LEVELS = {**{f"prune-t{n}": f"fixed-2x-mtp0-wide-kv8-hero-prune-t{n}" for n in (12, 25, 37, 50)},
+                "prune-t37-all": "fixed-2x-mtp0-wide-kv8-hero-prune-t37-all",  # v7 refit: ranked on all 25 families
+                "prune-t37-bal": "fixed-2x-mtp0-wide-kv8-hero-prune-t37-bal",  # balanced refit: 380K tokens per family
                 "prune50-layer": "fixed-2x-mtp0-wide-kv8-hero-prune50-layer", "prune37-layer": "fixed-2x-mtp0-wide-kv8-hero-prune37-layer", "prune25-layer": "fixed-2x-mtp0-wide-kv8-hero-prune25-layer", "prune12": "fixed-2x-mtp0-wide-kv8-hero-prune12", "prune25": "fixed-2x-mtp0-wide-kv8-hero-prune25"}
 LIVE_PROGRESS = {"interval_seconds": 60, "score_seconds": 300}
 STALL_DUMP_SECONDS = 90
@@ -222,9 +224,8 @@ DEFAULT_COMPONENTS = {
 # Opt-in harness features (30 September): absent from ``requested`` / ``components`` unless requested and on.
 OPTIONAL_COMPONENTS = {"parallel_samples": None, "action_plans": False, "completion_cap": None, "level_token_allowance": None,
                        "mtp_tokens": None, "expert_int3": None, "priority": None, "drain_half": None,
-                       "dfr_harness": None, "dfr_loop": None, "mtp_prefix_cache": None, "wide_tiles": None,
-                       "indexer_fp8": None, "hx_harness": None, "tail_keep_boundary": None, "keep_reply_states": None,
-                       "tail_spec_acceptance": None}
+                       "dfr_harness": None, "mtp_prefix_cache": None, "wide_tiles": None, "indexer_fp8": None,
+                       "tail_keep_boundary": None, "keep_reply_states": None, "tail_spec_acceptance": None}
 # 3-bit routed experts (30 September; docs/validation-20260930/expert-3bit.md): the group sizes with a built overlay.
 EXPERT_INT3_GROUPS = (16,)
 # MTP-1 serving (30 September; spec-decode.md section 5, the arena-spec-sweep-p25-mtp1-v3 pilot on the prune25 pool): the
@@ -325,15 +326,12 @@ def status():
                                                   "compaction (arena.context_drain)"},
         "dfr_harness": {"available": True, "note": "ported dfranzen harness features in the corrected Duck agent "
                                                    "(arena.dfr_harness)"},
-        "dfr_loop": {"available": True, "note": "v5: dfranzen's token yield, no world model, action feedback and the "
-                                                "drain system line (arena.dfr_loop)"},
         "mtp_prefix_cache": {"available": True, "note": "prefix cache v2 under MTP-k: spec-aware keep/demote and no "
                                                         "EAGLE last-unit drop (arena.prefix_cache_patch spec_decode)"},
         "wide_tiles": {"available": True, "note": "wide decode tiles, mid-M buckets 40-72 + the prune12 router "
                                                   "(arc_infra.dense_wide_runtime)"},
         "indexer_fp8": {"available": True, "note": "float8 QSA indexer compressed keys "
                                                    "(arc_infra.serving_kernels_patch indexer_fp8)"},
-        "hx_harness": {"available": True, "note": "harness-arm components (arena.hx_harness, 3 October)"},
         "tail_spec_acceptance": {"available": True, "note": "request_end_tail under MTP-k also for finishes without an "
                                                             "in-flight step (arena.prefix_cache_patch)"},
         "keep_reply_states": {"available": True, "note": "hold the Mamba states decode crossings supersede until the "
@@ -381,14 +379,6 @@ def normalize(components=None):
             del result["drain_half"]  # off: not recorded (earlier builds stay byte-for-byte)
         else:
             result["drain_half"] = spec
-    if "hx_harness" in result:
-        from .hx_harness import settings as hx_settings
-
-        block = hx_settings(result["hx_harness"])
-        if block is None:
-            del result["hx_harness"]  # off: not recorded (earlier builds stay byte-for-byte)
-        else:
-            result["hx_harness"] = block
     if "dfr_harness" in result:
         from .dfr_harness import settings as dfr_settings
 
@@ -397,14 +387,6 @@ def normalize(components=None):
             del result["dfr_harness"]  # off: not recorded (earlier builds stay byte-for-byte)
         else:
             result["dfr_harness"] = block
-    if "dfr_loop" in result:
-        from .dfr_loop import settings as loop_settings
-
-        block = loop_settings(result["dfr_loop"])
-        if block is None:
-            del result["dfr_loop"]  # off: not recorded (earlier builds stay byte-for-byte)
-        else:
-            result["dfr_loop"] = block
     if "mtp_tokens" in result:
         depth = result["mtp_tokens"]
         if depth in (None, 0):
@@ -765,8 +747,8 @@ def compose(hero, components=None, *, served_blocks=None):
             tiles = {**tiles, "mid_wide_buckets": WIDE_TILES_MTP2["mid_wide_buckets"]}  # > 36 MTP-1 streams: to 96 rows
         spec = _prune_spec(selected["expert_prune"]) if selected.get("expert_prune") else None
         if spec is None or spec["fraction"] != 0.125:
-            # Match the router output, including the unpruned 512-expert model.
-            kept = 512 - int(512 * spec["fraction"]) if spec else 512
+            # The (pruned) router's [kept, hidden] shape (uniform masks; prune12's 448 is the default).
+            kept = 512 - int(512 * spec["fraction"]) if spec is not None else 512
             tiles = {**tiles, "mid_wide_shapes": [[kept, 2560]]}
         wide = validate_dense({**before_dense, **tiles})
         changed["server.dense_kernels"] = {"before": before_dense, "after": wide}
@@ -786,10 +768,9 @@ def compose(hero, components=None, *, served_blocks=None):
         note("expert_prune", False, {})
 
     if selected["gptq_arc"] and int3:
-        from arena.variants import EXPERT_OVERLAY_INT3, EXPERT_OVERLAY_INT3_PRUNED
+        from arena.variants import EXPERT_OVERLAY_INT3
 
-        # A mask with its own calibrated (and possibly stripped, omits_pruned) overlay uses it.
-        overlay = dict(EXPERT_OVERLAY_INT3_PRUNED.get((level, int3)) or EXPERT_OVERLAY_INT3[int3])
+        overlay = dict(EXPERT_OVERLAY_INT3[int3])
         server["expert_overlay"] = overlay
         changed["server.expert_overlay"] = {"before": None, "after": dict(overlay)}
         note("gptq_arc", True, {"dataset": overlay["dataset"], "platform": "modal-only",
@@ -823,9 +804,12 @@ def compose(hero, components=None, *, served_blocks=None):
             patches["request_end_tail"] = True
         if selected.get("mtp_prefix_cache"):
             patches["spec_decode"] = True
-        for key in ("tail_keep_boundary", "keep_reply_states", "tail_spec_acceptance"):
-            if selected.get(key):
-                patches[key] = True
+        if selected.get("tail_keep_boundary"):
+            patches["tail_keep_boundary"] = True
+        if selected.get("keep_reply_states"):
+            patches["keep_reply_states"] = True
+        if selected.get("tail_spec_acceptance"):
+            patches["tail_spec_acceptance"] = True
         result["cache_experiment"]["prefix_cache"] = patches
         changed["cache_experiment.prefix_cache"] = {"before": None, "after": dict(patches)}
         note("prefix_cache", True, dict(HERO_PREFIX_CACHE))
@@ -1002,13 +986,6 @@ def compose(hero, components=None, *, served_blocks=None):
         changed["action_plans"] = {"before": None, "after": True}
         note("action_plans", True, {"helper": "run_plan (duck_transfer.sandbox.with_plans)",
                                     "prompt": "arena.action_plans.PROMPT"})
-    if selected.get("hx_harness"):
-        from .hx_harness import describe as hx_describe
-
-        block = copy.deepcopy(selected["hx_harness"])
-        result["hx_harness"] = block  # arena.trial passes it to every Duck agent
-        changed["hx_harness"] = {"before": None, "after": copy.deepcopy(block)}
-        note("hx_harness", True, hx_describe(block))
     if selected.get("dfr_harness"):
         from .dfr_harness import describe as dfr_describe
 
@@ -1016,13 +993,6 @@ def compose(hero, components=None, *, served_blocks=None):
         result["dfr_harness"] = block  # arena.trial passes it to every Duck agent
         changed["dfr_harness"] = {"before": None, "after": copy.deepcopy(block)}
         note("dfr_harness", True, dfr_describe(block))
-    if selected.get("dfr_loop"):
-        from .dfr_loop import describe as loop_describe
-
-        block = copy.deepcopy(selected["dfr_loop"])
-        result["dfr_loop"] = block  # arena.trial passes it to every Duck agent
-        changed["dfr_loop"] = {"before": None, "after": copy.deepcopy(block)}
-        note("dfr_loop", True, loop_describe(block))
 
     policy = selected["budget_policy"]
     if policy == "blocks":

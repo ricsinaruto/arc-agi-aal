@@ -371,6 +371,9 @@ async def run_expert_usage(study, trial, *, source, output, base_url, deadline_e
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     usage, heldout = load_inputs(source)
+    fractions = (study.get("expert_usage") or {}).get("fractions")
+    if fractions:  # phase 5 (4 October): the study's mask levels instead of the defaults
+        SETTINGS["fractions"] = [float(f) for f in fractions]
     probe = Probe(base_url, study.get("served_model", MODEL), transport=transport)
     result = {"trial": trial["name"], "settings": dict(SETTINGS), "server": study["server"],
               "inputs": study.get("expert_usage", {}).get("inputs"), "passes": {}, "errors": [], "skipped": []}
@@ -404,10 +407,42 @@ async def run_expert_usage(study, trial, *, source, output, base_url, deadline_e
             usage_nll["assistant_sum"] += float(-actual[mask].sum())
             usage_nll["assistant_count"] += int(mask.sum())
 
-        timing = await run_pass(probe, usage, concurrency=SETTINGS["usage_concurrency"],
-                                prompt_logprobs=SETTINGS["usage_prompt_logprobs"], keep=keep_usage)
-        await probe.rpc(op="record", on=False)
-        dump = await probe.rpc(op="dump")
+        options = study.get("expert_usage") or {}
+        if options.get("per_family"):
+            # Balanced refit: one pass per family with a dump each, so every family's routing is
+            # kept separately; the usage statistics are their sum (equal tokens per family by construction).
+            families = sorted({r["family"] for r in usage})
+            result["usage_per_family"] = {}
+            total, timing = None, {"seconds": 0.0, "tokens": 0, "failed": [], "concurrency":
+                                   SETTINGS["usage_concurrency"]}
+            for fam in families:
+                await probe.rpc(op="reset")
+                await probe.rpc(op="record", on=True)
+                part = await run_pass(probe, [r for r in usage if r["family"] == fam],
+                                      concurrency=SETTINGS["usage_concurrency"],
+                                      prompt_logprobs=SETTINGS["usage_prompt_logprobs"], keep=keep_usage)
+                await probe.rpc(op="record", on=False)
+                fam_dump = await probe.rpc(op="dump")
+                result["usage_per_family"][fam] = {k: fam_dump[k] for k in ("count", "weight", "tokens")}
+                timing["seconds"] += part["seconds"]
+                timing["tokens"] += part["tokens"]
+                timing["failed"] += part["failed"]
+                if total is None:
+                    total = {k: np.asarray(fam_dump[k], dtype=np.float64) for k in ("count", "weight", "prob",
+                                                                                      "tokens")}
+                    total["dump_layers"] = fam_dump["dump_layers"]
+                else:
+                    for k in ("count", "weight", "prob", "tokens"):
+                        total[k] += np.asarray(fam_dump[k], dtype=np.float64)
+                event("usage_family", family=fam, seconds=part["seconds"], tokens=part["tokens"])
+                save()
+            timing["tokens_per_second"] = round(timing["tokens"] / max(timing["seconds"], 1e-9))
+            dump = {k: (v.tolist() if hasattr(v, "tolist") else v) for k, v in total.items()}
+        else:
+            timing = await run_pass(probe, usage, concurrency=SETTINGS["usage_concurrency"],
+                                    prompt_logprobs=SETTINGS["usage_prompt_logprobs"], keep=keep_usage)
+            await probe.rpc(op="record", on=False)
+            dump = await probe.rpc(op="dump")
         result["usage"] = {"timing": timing, "nll": usage_nll,
                            **{k: dump[k] for k in ("dump_layers", "count", "weight", "prob", "tokens")}}
         event("usage", **{k: v for k, v in timing.items() if k != "failed"}, failed=len(timing["failed"]))
@@ -446,13 +481,18 @@ async def run_expert_usage(study, trial, *, source, output, base_url, deadline_e
         # 3-4. repeat (noise) and masks, compared with the reference.
         plan = [("repeat", None, SETTINGS["repeat_concurrency"])] + [
             (f"mask-{f}", f, SETTINGS["mask_concurrency"]) for f in SETTINGS["fractions"]]
+        # Existing masks screened on the same held-out set (6 October: dev t37 vs t37-all vs the balanced refit).
+        extra = {name: json.loads((Path(source) / rel).read_text())["pruned"]
+                 for name, rel in (options.get("extra_masks") or {}).items()}
+        plan += [(f"extra-{name}", name, SETTINGS["mask_concurrency"]) for name in extra]
         for name, fraction, concurrency in plan:
             if time.time() + 1.25 * pass_seconds + 45 > deadline_epoch:
                 result["skipped"].append(name)
                 event("skipped", pass_name=name, remaining=round(deadline_epoch - time.time()))
                 continue
-            await probe.rpc(op="mask", pruned=pruned[str(fraction)] if fraction is not None else {},
-                            label=name if fraction is not None else None)
+            chosen = (extra[fraction] if name.startswith("extra-") else pruned[str(fraction)]
+                      if fraction is not None else {})
+            await probe.rpc(op="mask", pruned=chosen, label=name if fraction is not None else None)
             timing, summary, per_sequence = await compare_pass(probe, heldout, reference, concurrency, top)
             result["passes"][name] = {"fraction": fraction, "timing": timing, "summary": summary,
                                       "per_sequence": per_sequence}

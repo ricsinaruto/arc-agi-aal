@@ -87,7 +87,7 @@ def run(args):
             command = [sys.executable, "-u", "-m", "arena.run", "--source", str(bundle),
                        "--study", str(study_path), "--output", str(working / "trials"),
                        "--trial", trial["name"], "--server-dir", str(serving),
-                       "--games-dir", games,
+                       "--games-dir", games, "--pi-dir", args.pi_dir, "--node", args.node,
                        "--analysis-python", sys.executable, "--base-url", profile.base_url,
                        "--notebook-start-epoch", str(args.started_epoch),
                        "--notebook-seconds", str(args.max_seconds)]
@@ -110,7 +110,7 @@ def run(args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    for name in ("bundle", "working", "input-root"):
+    for name in ("bundle", "working", "pi-dir", "node", "input-root"):
         parser.add_argument("--" + name, required=True)
     parser.add_argument("--games-dir")
     parser.add_argument("--trial", action="append")

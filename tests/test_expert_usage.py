@@ -190,3 +190,31 @@ async def test_server_check_records_a_started_server(tmp_path):
                                    log=lambda *a, **k: None)
     assert result["status"] == "complete" and result["probe"] == {"layers": 2, "calls": 4}
     assert result["decode"]["text"] == " Paris." and result["prefill"]["positions"] == 600
+
+
+async def test_per_family_usage_sums_and_extra_masks_run(tmp_path, monkeypatch):
+    async def idle(*args, **kwargs):
+        return {}
+
+    monkeypatch.setattr(eu, "isolate_trial", idle)
+    rng = random.Random(2)
+    folder = tmp_path / "src" / eu.INPUTS
+    folder.mkdir(parents=True)
+    for name, count, length in (("usage.json", 6, 200), ("heldout.json", 3, 300)):
+        rows = [{"index": i, "family": "ab12" if i % 2 else "cd34",
+                 "ids": [rng.randrange(30) for _ in range(length)], "assistant_spans": [[5, 150]]}
+                for i in range(count)]
+        (folder / name).write_text(json.dumps(rows))
+    (tmp_path / "src/m.json").write_text(json.dumps({"pruned": {str(layer): [1, 2, 3] for layer in range(4)}}))
+    study = {"server": {}, "served_model": "m", "expert_usage": {"per_family": True, "extra_masks": {"dev": "m.json"}}}
+    result = await eu.run_expert_usage(study, {"name": "expert-usage"}, source=tmp_path / "src",
+                                       output=tmp_path / "out", base_url="http://x/v1",
+                                       deadline_epoch=time.time() + 600, transport=_mock_server(),
+                                       log=lambda *a, **k: None)
+    assert result["status"] == "complete", result["errors"]
+    per = result["usage_per_family"]
+    assert set(per) == {"ab12", "cd34"}
+    total = np.asarray(per["ab12"]["count"]) + np.asarray(per["cd34"]["count"])
+    assert np.allclose(total, np.asarray(result["usage"]["count"]))
+    assert result["usage"]["tokens"][0] == 6 * 200
+    assert "extra-dev" in result["passes"] and result["passes"]["extra-dev"]["summary"]["all"]["mean_kl"] > 0

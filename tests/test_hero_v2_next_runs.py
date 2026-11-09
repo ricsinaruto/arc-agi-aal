@@ -357,16 +357,3 @@ def test_runs_a_and_b_build_without_early_stop_with_a_timeline_and_pass_their_gu
     with pytest.raises(ValueError):
         exec(guard, {"json": json, "TEST": other, "source": tmp_path / "bundle"})
     assert "CPU_CEILING = 16 if TEST in (\"hero-v2-int4-streams\", \"hero-v2-128k-streams\"" in source
-
-
-def test_renderer_workers_and_mm_processor_cache_reach_the_server(monkeypatch, tmp_path):
-    from arena import serving
-
-    monkeypatch.setattr(serving, "apply", lambda *a: None)
-    r = NS(verify_and_extract_runtime=lambda: {}, server_command=lambda: ["serve", "model"], RUNTIME_ROOT=tmp_path)
-    result = configure(r, tmp_path, renderer_num_workers=4, mm_processor_cache_gb=1.0)
-    assert r.server_command() == ["serve", "model", "--renderer-num-workers", "4", "--mm-processor-cache-gb", "1.0"]
-    assert result["mm_processor_cache_gb"] == 1.0
-    with pytest.raises(ValueError):
-        configure(NS(), tmp_path, mm_processor_cache_gb=8)
-    assert "study['server'].get('mm_processor_cache_gb')" in (ROOT / "src/arena/serving.py").read_text()

@@ -34,8 +34,12 @@ from arc_infra.serving import MODEL
 WIDTH = 4 * 2560  # hc_count x hidden_size: the MTP input rows
 STOP_PROGRAM = ("from arc_infra.serving import load_recipe; import sys; "
                 "load_recipe(sys.argv[1],sys.argv[2]).stop_owned_server()")
+# splits: dump order (evaluation splits first, so a dump budget only shortens training); draft_splits: splits whose
+# every sequence also dumps the served draft's step-1 rows (7 October); model_dir: the trainer's checkpoint (the base
+# checkpoint when the server runs an expert-overlay copy: the MTP tensors, embedding and head are the same).
 DEFAULTS = {"dump_dir": "/tmp/arc-draft-dump", "dump_seconds": 900, "min_free_gib": 12,
-            "verify_sequences": 2, "trainer": {}}
+            "verify_sequences": 2, "trainer": {}, "splits": ["eval", "train"], "draft_splits": [], "model_dir": None,
+            "post_dump_seconds": 900}
 
 
 def event(name, **fields):
@@ -102,7 +106,7 @@ def dump_split(client, base_url, split, data_dir, dump, settings, deadline, reco
             break
         for stale in dump.glob("current.*"):
             stale.unlink()
-        verify = split == "eval" and i < settings["verify_sequences"]
+        verify = split in settings["draft_splits"] or (split == "eval" and i < settings["verify_sequences"])
         started = time.monotonic()
         try:
             for _ in range(20):  # a cached prefix (the shared system prompt) would skip its rows
@@ -190,22 +194,25 @@ def run_draft_head(study, trial, *, source, output, server_dir, base_url, deadli
     dump.mkdir(parents=True, exist_ok=True)
     started = time.time()
     record = {"kind": "draft-head", "status": "running", "settings": settings, "dumped": {}, "tokens": {},
-              "stopped": {}, "errors": []}
+              "stopped": {}, "errors": [], "disk_free_gib": round(shutil.disk_usage(dump).free / 2**30, 1)}
     path = Path(output) / "draft-head.json"
 
     def save():
         path.write_text(json.dumps(record, indent=1))
 
     try:
-        dump_deadline = min(started + settings["dump_seconds"], deadline_epoch - 900)
+        dump_deadline = min(started + settings["dump_seconds"], deadline_epoch - settings["post_dump_seconds"])
         with httpx.Client(timeout=900, trust_env=False) as client:
-            for split in ("eval", "train"):
+            for split in settings["splits"]:
+                if not (data_dir / f"{split}.npz").is_file():
+                    continue
                 index = dump_split(client, base_url, split, data_dir, dump, settings, dump_deadline, record)
                 record[f"{split}_failures"] = [v.get("error") for v in index.values() if not v["ok"]][:5]
                 save()
         record["dump_seconds"] = round(time.time() - started, 1)
         rate = sum(record["tokens"].values()) / max(1.0, record["dump_seconds"])
         record["dump_tokens_per_second"] = round(rate, 1)
+        record["disk_free_gib_after_dump"] = round(shutil.disk_usage(dump).free / 2**30, 1)
         event("dumped", seconds=record["dump_seconds"], dumped=record["dumped"], tokens=record["tokens"],
               tokens_per_second=record["dump_tokens_per_second"], stopped=record["stopped"])
         save()
@@ -222,11 +229,14 @@ def run_draft_head(study, trial, *, source, output, server_dir, base_url, deadli
         event("server_stopped", **{k: v for k, v in record["server_stop"].items() if k != "tail"})
         save()
         trainer_out = Path(output) / "trainer"
-        command = [sys.executable, "-u", "-m", "arena.draft_head_train", "--model-dir", model_dir(server_dir),
+        command = [sys.executable, "-u", "-m", "arena.draft_head_train", "--model-dir",
+                   settings["model_dir"] or model_dir(server_dir),
                    "--data-dir", str(data_dir), "--dump-dir", str(dump), "--out", str(trainer_out),
                    "--deadline-epoch", str(deadline_epoch - 60)]
         for key, value in settings["trainer"].items():
             flag = "--" + key.replace("_", "-")
+            if key in ("draft_vocab", "init_overlay") and value and not os.path.isabs(str(value)):
+                value = str(Path(source) / value)
             if value is True:
                 command.append(flag)
             elif isinstance(value, list):
@@ -249,9 +259,9 @@ def run_draft_head(study, trial, *, source, output, server_dir, base_url, deadli
         report = trainer_out / "draft-head-train.json"
         if report.is_file():
             data = json.loads(report.read_text())
-            record["result"] = {k: data.get(k) for k in ("verify_vllm", "eval_before", "eval_after", "selected_step",
-                                                         "train_steps_done", "seconds_per_step", "export",
-                                                         "eval_before_fp8_dumps", "eval_before_subset",
+            record["result"] = {k: data.get(k) for k in ("served_step1", "eval_before", "eval_after", "selected_step",
+                                                         "train_steps_done", "seconds_per_step", "export", "evals",
+                                                         "curve", "stopped", "init_overlay", "oom_skips",
                                                          "load_seconds", "sequences")}
         record["status"] = "complete" if code == 0 else "complete_with_errors"
         if code:

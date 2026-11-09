@@ -26,6 +26,7 @@ def main():
     bundle = args.bundle.resolve()
     sys.path.insert(0, str(bundle))
     from bootstrap import install_agent_environment, verify
+    from bootstrap_arena import stage_pi
 
     started = time.monotonic()
     identity = verify(bundle)
@@ -35,9 +36,10 @@ def main():
                'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1', 'PIP_NO_INDEX': '1',
                'MPLBACKEND': 'Agg', 'PYTHONDONTWRITEBYTECODE': '1'}
         python = install_agent_environment(bundle, work / 'agent-venv', env)
+        pi, node = stage_pi(bundle, work)
         program = """import json,sys,numpy,scipy,arc_agi,arena.candidate_serving
 from pathlib import Path
-from arena.trial import duck_config
+from arena.trial import duck_config,qwen_config
 s=json.load(open(sys.argv[1]))
 if s.get('competition'):
     from arena.competition import open_arcade, ScorecardOwner
@@ -87,19 +89,38 @@ if s.get('action_plans'):
         plan=json.loads(out['stdout'])
         assert not out['error'] and plan['executed']==2 and steps[0]==2, out
     print('Action plans: run_plan executed 2 actions in both sandbox loops offline')
+native=any(t['kind']=='ui-mate-native' for t in s['trials'])
 for window in s['windows']:
     common=dict(window=window,cap=s['completion_cap'],wall=s['wall_seconds'],base_url='http://localhost/v1')
+    c=qwen_config(s,'ui-mate-native' if native else 'pi',**common)
     d=duck_config(s,Path(sys.argv[1]).parent.parent,**common)
-    assert d.max_model_len==window and d.max_output_tokens==s['completion_cap']
-    print('Configured context validated:',window,'output:',s['completion_cap'],'native:',s['server']['max_model_len'])
-print(d.model,d.reasoning_effort)
+    assert c.compaction_tokens+c.output_tokens_cap==d.max_model_len==window
+    assert c.output_tokens_cap==d.max_output_tokens==s['completion_cap']
+    assert c.context_window==s['server']['max_model_len']
+    print('Configured context validated:',window,'output:',s['completion_cap'],'native:',c.context_window)
+if native:
+    from ui_mate_actor.agent import NativeAgent
+    from ui_mate_actor.interface import system_prompt
+    from ui_mate_actor.preflight import check, ProbeEnvironment
+    assert 'computer_use' in system_prompt(1800)
+    assert callable(check) and ProbeEnvironment().observation_space.frame[0].shape == (64,64)
+print(c.model,c.reasoning_effort,'native actor import OK' if native else '')
 """
         probe = subprocess.run([python, '-c', program, str(bundle / 'configs/comparison.json'),
                                 str(args.games_dir) if args.games_dir else ''],
                                env=env, capture_output=True, text=True, check=True, timeout=300)
+        js = subprocess.run([str(node), '--input-type=module', '-e',
+            "const m=await import('@earendil-works/pi-coding-agent'); "
+            "if(typeof m.createAgentSession!=='function')throw Error('missing SDK'); "
+            "const {configureHttpDispatcher}=await import(new URL('core/http-dispatcher.js',"
+            "import.meta.resolve('@earendil-works/pi-coding-agent'))); "
+            "configureHttpDispatcher(0); "
+            "console.log(process.version,process.arch,'Pi SDK and HTTP dispatcher import OK');"],
+            cwd=pi, env={**env, 'PATH': str(node.parent) + ':' + os.environ['PATH']},
+            capture_output=True, text=True, check=True, timeout=120)
         result = {'status': 'passed', 'kind': 'Linux x86_64 offline bundle check, no GPU',
                   'source_commit': identity['git_commit'], 'verified_files': len(identity['files']),
-                  'imports': probe.stdout.strip(),
+                  'imports': probe.stdout.strip(), 'node_pi': js.stdout.strip(),
                   'seconds': time.monotonic() - started}
     print(json.dumps(result))
 

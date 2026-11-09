@@ -13,7 +13,6 @@ from pathlib import Path
 
 import httpx
 
-from . import KEEPALIVE_EXPIRY
 from .arcade import make_arcade, source_provenance
 from .model import ModelClient
 
@@ -53,14 +52,6 @@ class SessionHTTP:
         self.tokenizer_retries = 0
         self.generation_retries = 0
 
-    async def _post(self, url, **kwargs):
-        response = await self.shared.post(url, **kwargs)
-        if response.is_closed and response.is_stream_consumed:
-            # HTTPX's bound stream references its Response. Break that cycle after the non-streaming read:
-            # gc.freeze can otherwise retain completed requests and their large bodies for the whole run.
-            response.stream = httpx.ByteStream(response.content)
-        return response
-
     async def post(self, url, **kwargs):
         extra = kwargs.pop("record_extra", None)
         if str(url).rstrip("/").endswith("chat/completions"):
@@ -82,7 +73,7 @@ class SessionHTTP:
             self.requests.append(record)
             try:
                 try:
-                    response = await self._post(url, **kwargs)
+                    response = await self.shared.post(url, **kwargs)
                 except (httpx.ReadError, httpx.ConnectError, httpx.RemoteProtocolError) as exc:
                     # One replay (24 September): a transport failure on a generation request
                     # used to end the game for the whole trial (lp85 at 5 s, effort-low v1).
@@ -93,7 +84,7 @@ class SessionHTTP:
                     record["transport_retry"] = type(exc).__name__
                     self.generation_retries += 1
                     await asyncio.sleep(1.0)
-                    response = await self._post(url, **{**kwargs, "timeout": remaining - 1.0})
+                    response = await self.shared.post(url, **{**kwargs, "timeout": remaining - 1.0})
                 record["status"] = response.status_code
                 if not response.is_success:
                     record["response_error"] = response.text[:4000]
@@ -116,13 +107,13 @@ class SessionHTTP:
                 if remaining <= 0:
                     raise TimeoutError("Gameplay deadline reached during tokenizer recovery")
                 try:
-                    return await self._post(url, **{**kwargs, "timeout": remaining})
+                    return await self.shared.post(url, **{**kwargs, "timeout": remaining})
                 except (httpx.ReadError, httpx.ConnectError, httpx.RemoteProtocolError):
                     if attempt == 2:
                         raise
                     self.tokenizer_retries += 1
                     await asyncio.sleep(min(0.1 * (attempt + 1), max(0, end - time.monotonic())))
-        return await self._post(url, **kwargs)
+        return await self.shared.post(url, **kwargs)
 
 
 class SessionClient(ModelClient):
@@ -196,7 +187,7 @@ async def run_replicas(
     slots = asyncio.Semaphore(config.parallel_games)
     shared = httpx.AsyncClient(
         base_url=config.base_url.rstrip("/") + "/",
-        limits=httpx.Limits(max_connections=256, max_keepalive_connections=128, keepalive_expiry=KEEPALIVE_EXPIRY),
+        limits=httpx.Limits(max_connections=256, max_keepalive_connections=128),
         trust_env=False,
     )
     await monitor.sample()

@@ -31,6 +31,8 @@ def main(argv=None):
     parser.add_argument("--trial", required=True)
     parser.add_argument("--server-dir", required=True)
     parser.add_argument("--games-dir")
+    parser.add_argument("--pi-dir")
+    parser.add_argument("--node", default="node")
     parser.add_argument("--analysis-python")
     parser.add_argument("--base-url", default="http://127.0.0.1:1234/v1")
     parser.add_argument("--notebook-start-epoch", required=True, type=float)
@@ -142,6 +144,9 @@ def main(argv=None):
             # server and on each pruned server (arena.expert_usage.run_prune_check).
             from .expert_usage import run_prune_check
 
+            if trial.get("role") == "swkv":
+                # Sliding-window cache measurement (8 October; arena.swkv_kl): same trial envelope, other passes.
+                from .swkv_kl import run_swkv_kl as run_prune_check
             report = asyncio.run(run_prune_check(study, trial, source=args.source, output=folder,
                                                  server_dir=args.server_dir, base_url=args.base_url,
                                                  deadline_epoch=min(hard_end - 150, time.time() + float(
@@ -195,7 +200,7 @@ def main(argv=None):
             report = asyncio.run(
                 run_trial(
                     resolved, trial, source=args.source, games_dir=games_dir, output=folder,
-                    server_dir=args.server_dir,
+                    server_dir=args.server_dir, pi_dir=args.pi_dir, node=args.node,
                     analysis_python=args.analysis_python, base_url=args.base_url, smoke=args.smoke,
                     **extra,
                 )

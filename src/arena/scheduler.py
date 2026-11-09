@@ -314,7 +314,6 @@ class Scheduler:
                  priority=None):
         self.games = list(games)
         self.global_clock = global_clock
-        self._closed = False
         # The budget unit follows the games' clocks: completion tokens on the token clock, seconds otherwise.
         clocks = {getattr(g.clock, "budget_clock", None) for g in self.games}
         self.token_clock = "tokens" in clocks
@@ -776,8 +775,6 @@ class Scheduler:
 
     def start_all(self):
         """Opening: every game active with no budget."""
-        if self._closed:
-            return
         if self.deep is not None:
             # No opening phase: the exploration slots run from the release; the deep slot fills at the first clear.
             self.phase = "steady"
@@ -888,8 +885,6 @@ class Scheduler:
 
     def tick(self):
         """Apply the rules once; safe to call every second and after level or finish events."""
-        if self._closed:
-            return
         for game in self.games:
             if game.state != "finished" and game.finished_reason is not None:
                 self.finish(game, game.finished_reason)
@@ -1393,7 +1388,7 @@ class Scheduler:
         """``GameRecord.note_compaction`` / ``note_context_drain``: the game's cached prefix is gone. Priority: hand the
         slot over (re-score the game, re-queue it, and give the slot to the best waiting game, maybe itself). Every
         other policy ignores it."""
-        if self._closed or self.priority_cfg is None:
+        if self.priority_cfg is None:
             return
         from .priority import EVICTIONS
 
@@ -2078,8 +2073,6 @@ class Scheduler:
 
     def on_level(self, game):
         """A level was reached: a fresh budget for the new level if the game is active."""
-        if self._closed:
-            return
         if self.level_token_allowance is not None:
             game.retired = False  # only actual progress lifts a retirement
         if self.blocks is not None:
@@ -2138,10 +2131,6 @@ class Scheduler:
             self._record(game, "grant", "level_reached", game.clock.budget)
 
     def wall_end(self):
-        if self._closed:
-            return
-        # Worker cleanup can still deliver a context-eviction callback on the event loop.
-        self._closed = True
         for game in self.games:
             if game.state != "finished":
                 game.clock.pause()

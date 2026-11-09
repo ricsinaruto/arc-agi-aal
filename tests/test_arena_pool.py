@@ -33,8 +33,7 @@ def test_normalized_clock_charges_tokens_and_tool_time_not_latency():
         now.advance(4)
     assert clock.inference_seconds() == 300 and clock.budget_seconds() == pytest.approx(17.5)
     assert clock.normalized_seconds() == clock.budget_seconds()
-    assert clock.charges == [dict(wall_seconds=300.0, observed_wall_seconds=300.0,
-                                  purpose='gameplay', prompt_tokens=50000,
+    assert clock.charges == [dict(wall_seconds=300.0, purpose='gameplay', prompt_tokens=50000,
                                   completion_tokens=1000, cost_seconds=13.5)]
     clock.grant(20)
     clock.charge(0, 500, 'compaction')  # 1 + 5

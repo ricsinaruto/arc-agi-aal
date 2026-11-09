@@ -15,7 +15,7 @@ torch = pytest.importorskip("torch")
 from arena import draft_head_train as dht  # noqa: E402
 from arena import weights_overlay as wo  # noqa: E402
 
-HID, HC, HEADS, KV, HD, IH, ID, E, INTER, V = 32, 4, 4, 2, 16, 4, 8, 16, 8, 64
+HID, HC, HEADS, KV, HD, IH, ID, E, INTER, V = 32, 4, 4, 2, 16, 4, 8, 16, 16, 64
 
 
 def tiny_tensors(gen):
@@ -159,6 +159,77 @@ def test_tiny_end_to_end(tmp_path):
             "files": {r["path"]: {"bytes": r["size"], "sha256": r["sha256"]} for r in inventory["files"]}}
     record = wo.materialise(ckpt, out / "overlay", tmp_path / "patched", base_inventory=base)
     assert record["tensors"] == len(manifest["tensors"])
+
+
+def test_fake_nvfp4_is_blockwise_and_idempotent():
+    gen = torch.Generator().manual_seed(1)
+    w = torch.randn(3, 4, 32, generator=gen).to(torch.bfloat16)
+    q = dht.fake_nvfp4(w)
+    assert q.shape == w.shape and q.dtype == w.dtype
+    assert float((q.float() - w.float()).norm() / w.float().norm()) < 0.2
+    # at most 15 distinct values per 16-wide block (E2M1 magnitudes x sign), and a second pass changes nothing
+    assert max(len(set(block.tolist())) for block in q.float().reshape(-1, 16)) <= 15
+    assert float((dht.fake_nvfp4(q).float() - q.float()).abs().max()) < 1e-3 * float(q.float().abs().max())
+
+
+def test_splits_vocab_served_rows_checkpoints_and_init_overlay(tmp_path):
+    gen = torch.Generator().manual_seed(0)
+    tensors = tiny_tensors(gen)
+    ckpt, data, dump, out = tmp_path / "ckpt", tmp_path / "data", tmp_path / "dump", tmp_path / "out"
+    write_checkpoint(ckpt, tensors)
+    data.mkdir()
+    write_split(data, dump, "train", [48, 60, 37], gen)
+    write_split(data, dump, "val", [40, 44], gen)
+    write_split(data, dump, "eval", [52, 44, 39], gen)
+    vocab = tmp_path / "vocab.json"
+    vocab.write_text(json.dumps({"ids": list(range(0, V, 2))}))
+    # "Served" step-1 rows of eval sequence 0: the re-implementation's own rows with NVFP4 experts, shuffled, with
+    # a later duplicate of one position (the first row of a position is the one compared).
+    model = build_model(tensors)
+    model.use_experts("nvfp4")
+    split = dht.Split(data, dump, "eval")
+    tokens, loss, h = split.sequence(0, HC * HID, torch.device("cpu"))
+    anchors = dht.anchors_for(loss, 3)
+    with torch.no_grad():
+        rows = model(h, tokens, anchors, 1, grad_ckpt=False)[0].to(torch.bfloat16)
+    order = torch.randperm(len(anchors), generator=gen)
+    pos = torch.cat([anchors[order], anchors[:1]]).numpy().astype(np.int32)
+    rows = torch.cat([rows[order], torch.zeros_like(rows[:1])])
+    pos.tofile(dump / "eval" / "00000.draft.pos")
+    rows.view(torch.int16).numpy().tofile(dump / "eval" / "00000.draft.bin")
+    common = ["--model-dir", str(ckpt), "--data-dir", str(data), "--dump-dir", str(dump), "--device", "cpu",
+              "--experts", "nvfp4", "--alt-experts", "bf16", "--draft-vocab", str(vocab), "--select-split", "val",
+              "--report-splits", "eval", "val", "--draft-splits", "eval", "--eval-subset", "2"]
+    dht.main([*common, "--out", str(out), "--train-steps", "4", "--eval-every", "2", "--lr", "1e-3", "--warmup", "1",
+              "--curve-stride", "2", "--checkpoint-every", "2", "--save-accept"])
+    report = json.loads((out / "draft-head-train.json").read_text())
+    assert report["sequences"] == {"train": 3, "val": 2, "eval": 3}
+    for tag in ("before", "after"):
+        rows = report["evals"][tag]
+        assert set(rows) == {"eval", "val", "probe_bf16"} and set(rows["eval"]) == {"full", "v16k", "primary"}
+        assert rows["eval"]["primary"] == rows["eval"]["v16k"]
+        assert len(rows["eval"]["v16k"]["tokens_per_iteration"]) == 3
+        bits = np.load(out / f"accept-eval-{tag}.npy")
+        assert len(bits) == 52 + 44 + 39 and int((bits != 255).sum()) == rows["eval"]["v16k"]["anchors"]
+        assert int((bits == 1).sum()) == round(rows["eval"]["v16k"]["top1_match_step"][0] * rows["eval"]["v16k"]["anchors"])
+    assert report["eval_before"] == report["evals"]["before"]["eval"]["primary"]
+    assert [row["step"] for row in report["curve"]] == [0, 2, 4] and set(report["curve"][1]) == {"step", "val", "curve"}
+    assert sorted(p.name for p in (out / "checkpoints").iterdir()) == ["step-00002.pt", "step-00004.pt"]
+    served = report["served_step1"]
+    assert served["head"] == "before" and served["splits"]["eval"]["nvfp4"]["anchors"] == len(anchors)
+    assert served["splits"]["eval"]["nvfp4"]["v16k"]["argmax_agree"] == 1.0
+    assert served["splits"]["eval"]["nvfp4"]["cos_mean"] > 0.999
+    assert served["splits"]["eval"]["bf16"]["cos_mean"] < served["splits"]["eval"]["nvfp4"]["cos_mean"]
+    # A second run evaluates the exported head without training: its "after" equals the first run's.
+    again = tmp_path / "again"
+    dht.main([*common, "--out", str(again), "--train-steps", "0", "--init-overlay", str(out / "overlay"),
+              "--served-head", "after"])
+    second = json.loads((again / "draft-head-train.json").read_text())
+    assert second["train_steps_done"] == 0 and "export" not in second
+    assert second["init_overlay"]["overlay_sha256"] == report["export"]["overlay_sha256"]
+    assert second["evals"]["before"]["eval"] == report["evals"]["before"]["eval"]
+    assert second["evals"]["after"]["eval"] == report["evals"]["after"]["eval"]
+    assert second["served_step1"]["head"] == "after"
 
 
 PINNED = os.environ.get("ARC_PINNED_SITE")

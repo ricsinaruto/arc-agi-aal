@@ -1,9 +1,8 @@
-"""Offline Kaggle/Modal entry point for the arena bundle: one server, sequential trials.
+"""Offline Kaggle entry point for the arena bundle: one server, four sequential trials.
 
-Uses the bundle helpers (``bootstrap.py`` next to this file in the bundle, built from
-``scripts/arena/bundle_bootstrap.py``: verified manifest, locked wheel install, evidence collection) and
-``arena.serving`` (hybrid-block studies) or ``arena.serving_core.cli serve-native`` (the ARC fork at 262,144 with
-prefix caching). Each trial is its own ``arena.run`` process.
+Reuses the Qwen bundle's helpers (``bootstrap.py`` next to this file: verified manifest,
+locked wheel install, evidence collection) and its ``serve-native`` server (the ARC fork at
+262,144 with prefix caching). Each trial is its own ``arena.run`` process.
 """
 
 import argparse
@@ -12,13 +11,29 @@ import os
 import shutil
 import subprocess
 import sys
+import tarfile
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from bootstrap import collect_evidence, install_agent_environment, verify  # noqa: E402
 
+NODE = "node-v22.19.0-linux-x64"
 TRIAL_GRACE = 600
+
+
+def stage_pi(bundle, working):
+    """Node, the pinned Pi tree, and the arena launcher next to a node_modules link."""
+    with tarfile.open(bundle / f"{NODE}.tar.xz") as archive:
+        archive.extractall(working / "node", filter="data")
+    shutil.copytree(bundle / "pi", working / "pi", symlinks=True)
+    arena = working / "pi-arena"
+    arena.mkdir()
+    shutil.copyfile(bundle / "pi-arena/agent.mjs", arena / "agent.mjs")
+    for name in ("package.json", ".node-version"):
+        shutil.copyfile(bundle / "pi" / name, arena / name)
+    (arena / "node_modules").symlink_to(working / "pi/node_modules", target_is_directory=True)
+    return arena, working / "node" / NODE / "bin/node"
 
 
 def run_echoing(command, env, process_log, *, timeout, prefix):
@@ -128,13 +143,14 @@ def main():
         "ONLY_RESET_LEVELS": "true",
     }
     python = install_agent_environment(bundle, working / "agent-venv", env)
+    pi_dir, node = stage_pi(bundle, working)
     if args.serve_check_only and study.get("backend") != "llamacpp":
         raise ValueError("--serve-check-only applies to llama.cpp studies")
     if study.get("backend") == "llamacpp":
         # Model screens (27 September): the platform supplies the llama-server binary and the weights
         # (LLAMACPP_SERVER_BIN, LLAMACPP_WEIGHTS_DIR); arena.llamacpp_run owns the server.
         command = [python, "-u", "-m", "arena.llamacpp_run", "--bundle", str(bundle), "--working", str(working),
-                   "--games-dir", args.games_dir,
+                   "--pi-dir", str(pi_dir), "--node", str(node), "--games-dir", args.games_dir,
                    "--started-epoch", str(started), "--max-seconds", str(args.max_seconds)]
         if args.serve_check_only:
             command.append("--serve-check-only")
@@ -149,7 +165,7 @@ def main():
         raise SystemExit(completed.returncode)
     if study.get("backend") == "sglang":
         command = [python, "-u", "-m", "arena.sglang_run", "--bundle", str(bundle),
-                   "--working", str(working),
+                   "--working", str(working), "--pi-dir", str(pi_dir), "--node", str(node),
                    "--input-root", args.input_root, "--started-epoch", str(started),
                    "--max-seconds", str(args.max_seconds)]
         if args.games_dir:
@@ -165,7 +181,7 @@ def main():
         raise SystemExit(completed.returncode)
     results = {}
     try:
-        serving_command = [python, "-m", "arena.serving_core.cli", "serve-native"]
+        serving_command = [python, "-m", "qwen_baselines.cli", "serve-native"]
         if study.get('candidate_profile'):
             serving_command = [python, '-m', 'arena.candidate_serving', '--study', str(bundle / 'configs/comparison.json')]
         elif study.get("cache_admission") == "hybrid_blocks":
@@ -213,7 +229,7 @@ def main():
             # Offline harness evolution: one driver process runs the rounds against the server.
             command = [python, "-m", "arena.evolve", "--bundle", str(bundle), "--working", str(working),
                        "--output", args.output, "--base-url", args.base_url, "--python", python,
-                       "--started-epoch", str(started),
+                       "--pi-dir", str(pi_dir), "--node", str(node), "--started-epoch", str(started),
                        "--max-seconds", str(args.max_seconds)]
             if games:
                 command += ["--games-dir", games]
@@ -269,20 +285,12 @@ def main():
                 # An unconditional run stop (arena.early_stop ``always``; hero-v2-blocks): the trial plays at most
                 # at_seconds of its longer wall, so it is budgeted by the stop.
                 trial_wall = min(trial_wall, float(stop['at_seconds']))
-            # Short research runs (harness arm, 3 October: <= 30-minute Modal runs) may shrink the two reserves (the
-            # post-trial 120 s and the 300 s per-trial margin) by a study field; the defaults are unchanged.
-            reserves = study.get('bootstrap_reserves') or {}
-            budget = started + args.max_seconds - float(reserves.get('end_seconds', 120)) - time.time()
-            margin = float(reserves.get('trial_seconds', 300))
+            budget = started + args.max_seconds - 120 - time.time()
             if trial["kind"] in ("level-bench", "expert-usage", "prune-quality"):
                 # The bench sizes its own wall from what is left (at least its min_wall_seconds); the
                 # expert-usage trial runs its passes until shortly before this timeout.
                 trial_wall = min(trial_wall, budget - 300)
-            skip = budget < trial_wall + margin or trial_wall <= 0
-            fit = (study.get('competition') or {}).get('fit_wall_min_seconds')
-            if fit and (study.get('competition') or {}).get('research_clones') and trial_wall > 0:
-                # Harness arm: the trial shortens its wall to what is left (arena.competition.gameplay_seconds).
-                skip = budget - margin < float(fit)
+            skip = budget < trial_wall + 300 or trial_wall <= 0
             if trial["kind"] == "expert-quant":
                 # Expert quantization (28 September): capture, then a GPU program sized to what is left; it
                 # needs no gameplay margin, only two minutes.
@@ -294,7 +302,7 @@ def main():
             command = [
                 python, "-m", "arena.run", "--source", str(bundle), "--study", str(bundle / "configs/comparison.json"),
                 "--output", str(working / "trials"), "--trial", trial["name"], "--server-dir", str(working / "serving"),
-                "--analysis-python", python,
+                "--pi-dir", str(pi_dir), "--node", str(node), "--analysis-python", python,
                 "--base-url", args.base_url, "--notebook-start-epoch", str(started),
                 "--notebook-seconds", str(args.max_seconds),
             ]

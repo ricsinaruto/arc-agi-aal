@@ -1,0 +1,22 @@
+{
+  "url": "https://github.com/Tencent/UI-Mate",
+  "revision": "1cb9e1e44ce856e23b593992b02efbd489943fcb",
+  "source_file": "agents/ui_mate_agent.py",
+  "source_sha256": "60e1f6924745333dcb0d363e7187d9045d04c06924a1150f02d334311fc38d77",
+  "extracted_nodes": [
+    "COLLAPSED_SCREENSHOT_TEXT",
+    "collapse_messages",
+    "_replace_with_placeholder",
+    "build_action_description",
+    "build_tools_def",
+    "build_tools_and_format_block",
+    "RESPONSE_FORMAT",
+    "extract_action_text",
+    "compact_response_for_history",
+    "parse_xml_tool_call",
+    "extract_xml_tool_calls",
+    "_clean_keys"
+  ],
+  "native_sha256": "8a064d7426d460f523e3620386f2c668a98ab4c6c853e398a1c897bbe968ba46",
+  "method": "Exact AST source segments, without changing function bodies; only standalone imports added. ARC adapter is separate. No OpenAI client or PyAutoGUI execution imported."
+}

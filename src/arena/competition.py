@@ -102,11 +102,6 @@ def gameplay_seconds(study, hard_end, *, now=None):
     # scheduler and the agents see it) but only at_seconds of it are played, so only those must fit.
     stop = study.get('early_stop') or {}
     needed = min(requested, stop['at_seconds']) if stop.get('always') else requested
-    fit = study['competition'].get('fit_wall_min_seconds')
-    if fit and study['competition'].get('research_clones') and fit <= available < needed:
-        # Harness-arm research runs (3 October): a slow server start shortens the wall instead of losing the run;
-        # the runs are compared at a common horizon. Never on a submission (no research clones there).
-        return int(available)
     if available < needed:
         raise TimeoutError('Insufficient time for the complete public rehearsal')
     return requested
@@ -209,6 +204,8 @@ def open_arcade(study, games_dir, output):
     server = None
     owner = None
     try:
+        if study.get('quality_eval') and is_rerun():
+            raise ValueError('quality_eval is a fixed public research roster, not a competition submission')
         if is_rerun() and not is_rehearsal(study):
             # Connection setup may be retried; environment actions never are.
             deadline = time.monotonic() + 600
@@ -223,8 +220,11 @@ def open_arcade(study, games_dir, output):
                         raise
                     time.sleep(2)
         else:
+            from .quality_eval import gateway_runs, validate_study
+
+            quality = validate_study(study)
             server = CompetitionArcadeServer(
-                game_ids=study['games'], total_runs=settings['preview_instances'],
+                game_ids=study['games'], total_runs=gateway_runs(quality) if quality else settings['preview_instances'],
                 environments_dir=str(games_dir), save_all_recordings=False,
             ).start()
             arcade = gateway_arcade(server.base_url, output / 'recordings')
@@ -235,6 +235,14 @@ def open_arcade(study, games_dir, output):
             raise RuntimeError('Public rehearsal roster size mismatch')
         resolved = copy.deepcopy(study)
         resolved['games'] = games
+        if study.get('quality_eval'):
+            # Version 2 (replicated roster): each exposed clone's source game, replica and seed.
+            from .quality_eval import roster
+            from .quality_eval import settings as quality_settings
+
+            rows = roster(quality_settings(study['quality_eval']), study['games'], games)
+            if rows is not None:
+                resolved['quality_roster'] = rows
         resolve_opening_cap(resolved, study, len(games))
         resolved['competition']['execution_mode'] = (
             'rehearsed_hidden_gateway' if is_rehearsal(study) else
@@ -248,12 +256,9 @@ def open_arcade(study, games_dir, output):
                 for i, game in enumerate(games)
             ], indent=2))
         owner = ScorecardOwner(arcade, output)
-        if server is not None and (settings.get('research_clones') or (settings.get('preview_live_score') and (
-                not is_rerun() or is_rehearsal(study)))):
-            # Live progress reads (ScorecardOwner.peek_score): research clones, or a preview / rerun rehearsal (owner
-            # 25 Oct: Nebius 9 h kf runs) of a competition bundle built with preview_live_score; monitoring only.
-            # Never the hidden gateway (no local server there).
-            owner.local_gateway = server
+        if server is not None and (settings.get('research_clones')
+                                   or (settings.get('preview_live_score') and not is_rerun())):
+            owner.local_gateway = server  # live progress reads (ScorecardOwner.peek_score)
         yield resolved, owner
     finally:
         try:

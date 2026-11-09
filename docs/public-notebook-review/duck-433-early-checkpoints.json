@@ -1,0 +1,67 @@
+{
+  "source_url": "https://www.kaggle.com/code/wuliao0/duck-qwen3-8-anim-base?scriptVersionId=347132234",
+  "source_version": 1,
+  "verified_at": "2026-09-11",
+  "method": "Read version-1 rendered notebook benchmark output via browser accessibility tree; headline scores rounded to two decimals. Approximate elapsed time independently checked as total tokens divided by reported job-wallclock tokens/s, not the summed per-game total wallclock field.",
+  "duck_checkpoints": [
+    {
+      "approx_elapsed_seconds": 600,
+      "score_percent": 0.8,
+      "actions": 247,
+      "completed_tokens": 168111,
+      "reported_tokens_per_second": 279.77,
+      "levels": 6,
+      "solved_game_types": [
+        "ar25",
+        "ft09",
+        "r11l",
+        "re86",
+        "sb26",
+        "tu93"
+      ],
+      "elapsed_from_reported_rate_seconds": 600.8900167995139,
+      "actions_per_1000_completed_tokens": 1.4692673293240777
+    },
+    {
+      "approx_elapsed_seconds": 1200,
+      "score_percent": 1.52,
+      "actions": 419,
+      "completed_tokens": 286143,
+      "reported_tokens_per_second": 238.26,
+      "levels": 11,
+      "solved_game_types": [
+        "ar25",
+        "ft09",
+        "lp85",
+        "r11l",
+        "re86",
+        "s5i5",
+        "sb26",
+        "su15",
+        "tu93",
+        "vc33"
+      ],
+      "elapsed_from_reported_rate_seconds": 1200.9695290858726,
+      "actions_per_1000_completed_tokens": 1.464302813628151
+    }
+  ],
+  "our_first_live_run": [
+    {
+      "elapsed_seconds": 600,
+      "actions": 150,
+      "completed_tokens": 204363,
+      "completed_replies": 133,
+      "levels": 2,
+      "actions_per_1000_completed_tokens": 0.733988050674535
+    },
+    {
+      "elapsed_seconds": 900,
+      "actions": 326,
+      "completed_tokens": 296135,
+      "completed_replies": 195,
+      "levels": 5,
+      "actions_per_1000_completed_tokens": 1.1008492748239822
+    }
+  ],
+  "interpretation": "Duck early score advantage occurs with fewer reported completed tokens. Throughput alone does not explain the gameplay gap. Token accounting, game ordering, temperature and prompt/interface differ; no isolated causal ablation."
+}

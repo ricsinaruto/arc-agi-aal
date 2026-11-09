@@ -1,7 +1,7 @@
 [project]
 name = "arc-agi3-qwen"
 version = "0.2.0"
-description = "ARC-AGI-3 experiments: the Duck arena on Qwen3.8-Flash served by a pinned vLLM fork on one GPU"
+description = "ARC-AGI-3 experiments: Qwen baselines, PRO-LONG on Pi and Duck controls on one local server"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "aiohttp>=3.12,<4",
@@ -22,6 +22,9 @@ kaggle = ["kaggle==2.2.4"]
 modal = ["modal==1.5.5"]
 dev = ["pytest>=8,<10", "pytest-asyncio>=0.25,<2", "ruff>=0.11,<1"]
 
+[project.scripts]
+arc-qwen = "qwen_baselines.cli:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -33,6 +36,9 @@ packages = [
   "src/taaf",
   "src/duck_transfer",
   "src/duck_controls",
+  "src/qwen_baselines",
+  "src/prolong_qwen",
+  "src/schema_qwen",
   "src/sglang_bench",
   "src/arena",
   "src/posttrain",
@@ -41,7 +47,6 @@ packages = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-markers = ["multirank: gloo multi-rank CPU test (runops.multirank)"]
 
 [tool.ruff]
 target-version = "py312"
@@ -51,6 +56,14 @@ extend-exclude = [
   "src/taaf",
   "src/arc_infra/serving_setup.py",
   "*.ipynb",
+  # Upstream research code carried verbatim (see the fidelity tests).
+  "src/prolong_qwen/prompts.py",
+  "src/prolong_qwen/base.py",
+  "src/prolong_qwen/action_queue.py",
+  "src/prolong_qwen/game_state.py",
+  "src/prolong_qwen/grid_utils.py",
+  "src/schema_qwen/agi3lib",
+  "src/schema_qwen/arc3.py",
 ]
 
 [tool.ruff.lint]

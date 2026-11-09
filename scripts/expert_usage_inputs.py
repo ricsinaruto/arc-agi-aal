@@ -248,8 +248,29 @@ def main():
     parser.add_argument("--heldout-families", default="sb26,s5i5,re86,g50t,ls20,tr87",
                         help="Held-out game families (the harness-evolution held-out roster, minus su15/dc22/cd82)")
     parser.add_argument("--seed", type=int, default=20260928)
+    parser.add_argument("--tuning-families", default=None,
+                        help="Phase 5: only these families; 'heldout' becomes a screen split of their own games")
+    parser.add_argument("--screen-share", type=float, default=0.25)
+    parser.add_argument("--balanced-per-family", type=int, default=0,
+                        help="exactly this many usage tokens from every one of the 25 public families, "
+                             "round-robin over runs (several runs and serving configs per family)")
+    parser.add_argument("--screen-per-family", type=int, default=16_000)
+    parser.add_argument("--families", default=None,
+                        help="balanced mode: only these families (7 Oct: the five games left out of c110)")
+    parser.add_argument("--runs", default=None,
+                        help="balanced mode: these run folders under runs/ (comma list) instead of the primary corpus "
+                             "(tune on the current harness's traffic)")
+    parser.add_argument("--level-alternate", action="store_true",
+                        help="balanced mode: per family, alternate instances whose last request was on level 3+ with "
+                             "earlier ones (late first, so the screen is a late instance)")
+    parser.add_argument("--level-rotate", action="store_true",
+                        help="balanced mode: per family, rotate instances whose last request was on level 3+, 1, 2 "
+                             "(three pools; the hidden run lives mostly on levels 1-3)")
     args = parser.parse_args()
+    if args.balanced_per_family:
+        return balanced(args)
     held = set(args.heldout_families.split(","))
+    tuning = set(args.tuning_families.split(",")) if args.tuning_families else None
     tok = Tokenizer.from_file(os.path.join(TOKENIZER_DIR, "tokenizer.json"))
     template = renderer()
     games = []
@@ -267,13 +288,20 @@ def main():
     match = {"system": [0, 0], "assistant": [0, 0], "tool": [0, 0]}  # [unmatched, matched]
     for run, gdir, log in games:
         fam = family(os.path.join(RUNS, run), gdir)
-        split = "heldout" if fam in held else "usage"
+        if tuning is not None:
+            if fam not in tuning:
+                continue
+            key = hashlib.sha256(f"{run}/{gdir}".encode()).digest()[0] / 256
+            split = "heldout" if key < args.screen_share else "usage"
+        else:
+            split = "heldout" if fam in held else "usage"
         if totals[split] >= targets[split]:
             if all(totals[k] >= targets[k] for k in totals):
                 break
             continue
         # Spread each set over families: at most ~1/6 of a set's tokens from one family.
-        if per_family[split].get(fam, 0) > targets[split] / (6 if split == "heldout" else 12):
+        share = (len(tuning) - 1) if tuning else (6 if split == "heldout" else 12)
+        if per_family[split].get(fam, 0) > targets[split] / share:
             continue
         parsed = parse_prompt_log(log)
         if parsed is None:
@@ -310,6 +338,7 @@ def main():
     os.makedirs(args.out, exist_ok=True)
     print("exact-text matches [unmatched, matched]:", match, flush=True)
     summary = {"seed": args.seed, "cap": args.cap, "heldout_families": sorted(held), "skipped": skipped,
+               "tuning_families": sorted(tuning) if tuning else None, "screen_share": args.screen_share,
                "exact_text_matches": {k: {"unmatched": v[0], "matched": v[1]} for k, v in match.items()},
                "tokenizer": TOKENIZER_DIR, "chat_template_sha256": hashlib.sha256(
                    open(os.path.join(TOKENIZER_DIR, "chat_template.jinja"), "rb").read()).hexdigest()}
@@ -329,6 +358,140 @@ def main():
         }
         print(split, summary[split]["sequences"], summary[split]["tokens"], summary[split]["assistant_tokens"],
               summary[split]["families"], flush=True)
+    with open(os.path.join(args.out, "selection.json"), "w") as f:
+        json.dump(summary, f, indent=1)
+
+
+FAMILIES25 = ("ar25", "bp35", "cd82", "cn04", "dc22", "ft09", "g50t", "ka59", "lf52", "lp85", "ls20", "m0r0", "r11l",
+              "re86", "s5i5", "sb26", "sc25", "sk48", "sp80", "su15", "tn36", "tr87", "tu93", "vc33", "wa30")
+
+
+def render_game(template, tok, gdir, log, match):
+    parsed = parse_prompt_log(log)
+    if parsed is None:
+        return None
+    description, messages = parsed
+    messages = exactify(messages, exact_sources(gdir), match)
+    tools = [{"type": "function", "function": {
+        "name": "python", "description": description,
+        "parameters": {"type": "object", "properties": {"code": {"type": "string",
+                                                                  "description": PARAMETER_DESCRIPTION}},
+                       "required": ["code"]}}}]
+    text = template.render(messages=messages, tools=tools, add_generation_prompt=True,
+                           enable_thinking=True, reasoning_effort="xhigh")
+    return tok.encode(text, add_special_tokens=False).ids
+
+
+def level_in_play(gdir: str) -> int:
+    """Levels completed at the game's last model request, plus one."""
+    done = 0
+    for line in open(os.path.join(gdir, "log.jsonl"), errors="replace"):
+        if '"model_request"' in line:
+            try:
+                done = int((json.loads(line).get("runtime") or {}).get("levels_completed", done))
+            except (json.JSONDecodeError, TypeError, ValueError):
+                pass
+    return done + 1
+
+
+def balanced(args):
+    """Equal tokens per family: per family, games interleaved round-robin over runs (shuffled), the screen split
+    filled first (``--screen-per-family``), then the usage split to exactly ``--balanced-per-family`` tokens (the
+    last sequence cut to the remainder: a prefix is a valid context)."""
+    from tokenizers import Tokenizer
+
+    tok = Tokenizer.from_file(os.path.join(TOKENIZER_DIR, "tokenizer.json"))
+    template = renderer()
+    rng = random.Random(args.seed)
+    families = tuple(args.families.split(",")) if args.families else FAMILIES25
+    if not families or len(set(families)) != len(families) or not set(families) <= set(FAMILIES25):
+        raise SystemExit(f"--families must be distinct public families: {families}")
+    by_family = {f: {} for f in families}
+    runs = args.runs.split(",") if args.runs else primary_runs()
+    missing = [run for run in runs if not os.path.isdir(os.path.join(RUNS, run))]
+    if missing:
+        raise SystemExit(f"--runs not found: {missing}")
+    for run in runs:
+        for log in sorted(glob.glob(os.path.join(RUNS, run, "**/games/*/prompts/prompt.log"), recursive=True)):
+            gdir = os.path.dirname(os.path.dirname(log))
+            fam = family(os.path.join(RUNS, run), gdir)
+            if fam in by_family:
+                by_family[fam].setdefault(run, []).append((run, gdir, log))
+    sets = {"usage": [], "heldout": []}
+    per_family = {"usage": {}, "heldout": {}}
+    runs_used = {"usage": {}, "heldout": {}}
+    match = {"system": [0, 0], "assistant": [0, 0], "tool": [0, 0]}
+    skipped = {"unparsed": 0, "short": 0}
+    targets = {"heldout": args.screen_per_family, "usage": args.balanced_per_family}
+    for fam in families:
+        queues = list(by_family[fam].values())
+        rng.shuffle(queues)
+        for q in queues:
+            rng.shuffle(q)
+        order = [q[i] for i in range(max(map(len, queues), default=0)) for q in queues if i < len(q)]
+        level = {gdir: level_in_play(gdir) for _, gdir, _ in order} if args.level_alternate or args.level_rotate else {}
+        if args.level_rotate:
+            pools = [[c for c in order if level[c[1]] >= 3], [c for c in order if level[c[1]] == 1],
+                     [c for c in order if level[c[1]] == 2]]
+            order = [pool[i] for i in range(max(map(len, pools), default=0)) for pool in pools if i < len(pool)]
+        elif args.level_alternate:
+            late = [c for c in order if level[c[1]] >= 3]
+            early = [c for c in order if level[c[1]] < 3]
+            paired = [c for pair in zip(late, early) for c in pair]
+            order = paired + late[len(early):] + early[len(late):]
+        split = "heldout"
+        for run, gdir, log in order:
+            if per_family[split].get(fam, 0) >= targets[split]:
+                if split == "usage":
+                    break
+                split = "usage"
+            ids = render_game(template, tok, gdir, log, match)
+            if ids is None:
+                skipped["unparsed"] += 1
+                continue
+            full = len(ids)
+            if full < 4000 or not assistant_spans(ids[:args.cap]):
+                skipped["short"] += 1
+                continue
+            ids = ids[:min(args.cap, targets[split] - per_family[split].get(fam, 0))]
+            spans = assistant_spans(ids)
+            sets[split].append({"index": len(sets[split]), "run": run, "game": os.path.basename(gdir), "family": fam,
+                                "tokens": len(ids), "full_tokens": full, "admitted_tokens": None,
+                                "assistant_spans": spans, "assistant_tokens": sum(b - a for a, b in spans),
+                                "ids": ids, **({"level": level[gdir]} if level else {})})
+            per_family[split][fam] = per_family[split].get(fam, 0) + len(ids)
+            runs_used[split].setdefault(fam, set()).add(run)
+        short = {k: per_family[k].get(fam, 0) for k in targets if per_family[k].get(fam, 0) < targets[k]}
+        if short:
+            raise RuntimeError(f"{fam}: not enough recorded traffic {short}")
+        print(fam, {k: (per_family[k][fam], len(runs_used[k][fam])) for k in targets}, flush=True)
+    os.makedirs(args.out, exist_ok=True)
+    summary = {"seed": args.seed, "cap": args.cap, "balanced_per_family": args.balanced_per_family,
+               "screen_per_family": args.screen_per_family, "families": list(families), "skipped": skipped,
+               "heldout_families": [], "tuning_families": list(families), "screen_share": None,
+               "runs": runs if args.runs else None, "level_alternate": args.level_alternate,
+               "level_rotate": args.level_rotate,
+               "exact_text_matches": {k: {"unmatched": v[0], "matched": v[1]} for k, v in match.items()},
+               "tokenizer": TOKENIZER_DIR, "chat_template_sha256": hashlib.sha256(
+                   open(os.path.join(TOKENIZER_DIR, "chat_template.jinja"), "rb").read()).hexdigest()}
+    for split, rows in sets.items():
+        path = os.path.join(args.out, f"{split}.json")
+        with open(path, "w") as f:
+            json.dump(rows, f, separators=(",", ":"))
+        summary[split] = {
+            "sequences": len(rows), "tokens": sum(r["tokens"] for r in rows),
+            "assistant_tokens": sum(r["assistant_tokens"] for r in rows),
+            "truncated": sum(r["full_tokens"] > r["tokens"] for r in rows),
+            "families": dict(sorted(per_family[split].items())),
+            "runs_per_family": {f: sorted(v) for f, v in sorted(runs_used[split].items())},
+            "runs": len({r["run"] for r in rows}),
+            "sha256": hashlib.sha256(open(path, "rb").read()).hexdigest(),
+            "rows": [{k: r[k] for k in ("index", "run", "game", "family", "tokens", "full_tokens", "admitted_tokens",
+                                        "assistant_tokens", "level") if k in r} for r in rows],
+        }
+        if args.level_alternate or args.level_rotate:
+            summary[split]["sequences_by_level"] = {
+                f: [sum(min(r["level"], 3) == k for r in rows if r["family"] == f) for k in (1, 2, 3)] for f in families}
     with open(os.path.join(args.out, "selection.json"), "w") as f:
         json.dump(summary, f, indent=1)
 

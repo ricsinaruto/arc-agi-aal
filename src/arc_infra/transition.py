@@ -6,39 +6,12 @@ frames themselves. ``summarize`` gives the changed-cell count and bounding box p
 segmented objects appeared, disappeared or moved (matched by Duck's shape hash).
 """
 
-import logging
-import os
-import threading
 from collections import OrderedDict, defaultdict
 
 import numpy as np
 
 from .objects import segment_host
 from .perception import board_hash
-
-# v7.1 (6 October): segmentation off the GIL (arc_infra.segment_worker); ARC_SEGMENT_WORKERS=0 keeps it in-process.
-SEGMENT_WORKERS = int(os.environ.get("ARC_SEGMENT_WORKERS", "3"))
-_POOL = {"pool": None, "failed": None}
-_POOL_LOCK = threading.Lock()
-
-
-def segment_offloaded(board, *, limit):
-    """``segment_host(board, limit=limit)`` in the segmentation workers; in-process if they are off or broken."""
-    if SEGMENT_WORKERS > 0 and not _POOL["failed"]:
-        with _POOL_LOCK:
-            if _POOL["pool"] is None:
-                from .segment_worker import SegmentPool
-
-                _POOL["pool"] = SegmentPool(SEGMENT_WORKERS)
-        try:
-            return _POOL["pool"].segment(board, limit)
-        except Exception as exc:  # noqa: BLE001 - a broken pool falls back for good
-            _POOL["failed"] = f"{type(exc).__name__}: {exc}"[:300]
-            logging.getLogger(__name__).warning("Segmentation pool failed; using in-process fallback: %s",
-                                               _POOL["failed"])
-    from .segment_worker import compact
-
-    return compact(segment_host(board, limit=limit))
 
 LISTED = 4
 # Background regions (more than half the board) reshape whenever a piece moves through
@@ -153,7 +126,7 @@ class TransitionCache:
             self.cache.move_to_end(key)
             return self.cache[key]
         self.misses += 1
-        objects = self.cache[key] = segment_offloaded(board, limit=self.component_limit)
+        objects = self.cache[key] = segment_host(board, limit=self.component_limit)
         while len(self.cache) > self.keep:
             self.cache.popitem(last=False)
         return objects

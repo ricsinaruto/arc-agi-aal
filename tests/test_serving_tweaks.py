@@ -60,7 +60,7 @@ def test_phase4_settings_stay_byte_identical_and_tweaks_are_opt_in():
                                                                             "draft_experts")},
                                                       "hc_fusion": False, "topk_sampler": True}
     tweaks = patch.validate(patch.TWEAKS)
-    assert tweaks == patch.TWEAKS and list(tweaks) == [k for k in patch.OPTIONS if k not in ("kv_cache_8bit", "kv_cache_4bit", "kv8_prefill", "expert_int3", "indexer_fp8", "draft_moe_backend")]
+    assert tweaks == patch.TWEAKS and list(tweaks) == [k for k in patch.OPTIONS if k not in ("kv_cache_8bit", "kv_cache_4bit", "kv8_prefill", "expert_int3", "indexer_fp8")]
     assert patch.TWEAKS == {**patch.PHASE4, "draft_vocab": "arena16k", "ple_uva": True, "embed_host": True}
     assert patch.validate({"ple_uva": True}) == {**{k: None for k in patch.CHOICES if k not in patch.OPTIONAL},
                                                  "hc_fusion": False, "topk_sampler": False, "ple_uva": True}
@@ -639,3 +639,12 @@ def test_indexer_fp8_is_opt_in_and_patches_only_the_indexer_files():
     extra = {t["relative"] for t in patch.targets(on)} - {t["relative"] for t in patch.targets(off)}
     assert extra == {patch.INDEXER_FP8["relative"], patch.QSA_OPS_FP8["relative"]}
     assert "float8_e4m3fn" in patch.INDEXER_FP8["edits"][0][1] and "keys.to(query.dtype)" in patch.QSA_OPS_FP8["edits"][0][1]
+
+
+def test_dev16k_vocabulary_identity_and_split():
+    record = json.loads(patch.draft_vocab_bytes(patch.validate({"draft_vocab": "arena16k-dev"})))
+    assert record["name"] == "arena16k-dev" and len(record["ids"]) == 16384
+    assert record["corpus"]["families"] == "cd82 cn04 ft09 lp85 ls20 re86 sb26 sk48 vc33 wa30".split()
+    assert record["corpus"]["retokenized_tokens"] == 10332229
+    assert set(range(248044, 248077)) <= set(record["ids"])
+    assert record["ids"] != VOCAB["ids"]

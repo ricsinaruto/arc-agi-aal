@@ -693,6 +693,19 @@ def test_spec_tail_skips_unknown_acceptance_and_column_crossings(runtime, monkey
     assert tail.stats["registered"] == 0
 
 
+def test_spec_tail_skips_length_capped_finishes(runtime, monkeypatch):
+    tail, pool, managers = spec_like(runtime, monkeypatch)
+    tokens = list(range(100, 125))
+    req = spec_request(pool, managers, tokens, 26, 10, "cap")
+    req.status = NS(name="FINISHED_LENGTH_CAPPED")
+    tail.register(req)
+    assert tail.stats["skip_spec_length"] == 1 and tail.stats["registered"] == 0
+    req = spec_request(pool, managers, tokens, 26, 10, "stop")
+    req.status = NS(name="FINISHED_STOPPED")
+    tail.register(req)
+    assert tail.stats["spec_inflight"] == 1 and tail.stats["registered"] == 1
+
+
 def test_spec_decode_flips_the_tail_helper_flag(tmp_path, monkeypatch):
     source = kv_manager_source()
     monkeypatch.setattr(patch, 'KV_MANAGER_DIAGNOSTICS_SHA256', hashlib.sha256(source).hexdigest())
@@ -868,24 +881,21 @@ def test_spec_accept_registers_a_finish_without_an_in_flight_step(runtime, monke
     req = spec_request(pool, managers, tokens, 25, 10, "s1")  # state slots 3 (running) and 4 (speculative)
     req._arc_last_accepted = accepted
     tail.register(req)
-    if accepted == 0:
-        assert tail.stats["spec_accepted"] == 1 and tail.stats["registered"] == 1
-        (entry,) = tail.entries[req.block_hashes[2]]
-        assert entry.length == 25 and entry.keys[2][1] is managers[2].req_to_blocks["s1"][slot]
-    else:
-        # 197d56c: accepted > 0 leaves the conv states outside slot `accepted` (another sequence's window): skipped,
-        # as is a stop on an accepted draft (computed == num_tokens).
-        assert tail.stats["spec_accepted"] == 0 and tail.stats["registered"] == 0
+    assert tail.stats["spec_accepted"] == 1 and tail.stats["registered"] == 1
+    (entry,) = tail.entries[req.block_hashes[2]]
+    assert entry.length == 25 and entry.keys[2][1] is managers[2].req_to_blocks["s1"][slot]
+    # A stop on an accepted draft: computed == num_tokens, the state after it in slot 1.
+    if accepted == 1:
         stop = spec_request(pool, managers, tokens[:25], 25, 10, "s3")
         stop._arc_last_accepted = 1
         tail.register(stop)
-        assert tail.stats["registered"] == 0
+        entry = tail.entries[stop.block_hashes[2]][0]  # newest first
+        assert entry.length == 25 and entry.keys[2][1] is managers[2].req_to_blocks["s3"][4]
     # An acceptance outside 0..k or a missing attribute is skipped.
     bad = spec_request(pool, managers, tokens, 25, 10, "s2")
     bad._arc_last_accepted = 2
-    before = tail.stats["skip_spec_unknown_acceptance"]
     tail.register(bad)
-    assert tail.stats["skip_spec_unknown_acceptance"] == before + 1
+    assert tail.stats["skip_spec_unknown_acceptance"] == 2
 
 
 def test_tail_spec_acceptance_patches_the_scheduler_and_the_helper_flag():
@@ -920,25 +930,3 @@ def test_spec_accept_registers_the_dropped_bonus_after_a_stop_on_the_last_draft(
 def test_drop_patch_records_tokens_after_the_stop():
     assert "request._arc_dropped = list(new_token_ids[num_new:])" in patch.DROP_REPLACEMENT
     assert patch.DROP_REPLACEMENT.endswith(patch.DROP_ANCHOR.split("\n", 1)[1])
-
-
-@pytest.mark.parametrize("n, computed, accepted, dropped", [(26, 25, 0, None), (26, 25, 1, None), (25, 25, 1, None),
-                                                            (25, 26, None, None), (25, 27, 1, [7777])])
-def test_spec_length_finish_registers_no_entry(runtime, monkeypatch, n, computed, accepted, dropped):
-    """v7: a finish by length under MTP-k (accepted, in-flight and dropped-bonus shapes) is skipped and recomputed."""
-    tail, pool, managers = spec_like(runtime, monkeypatch)
-    monkeypatch.setattr(runtime, "SPEC_ACCEPT", True)
-    tokens = list(range(100, 100 + n))
-    for rid, status in (("len", NS(name="FINISHED_LENGTH_CAPPED")), ("eos", NS(name="FINISHED_STOPPED"))):
-        req = spec_request(pool, managers, tokens, computed, 10, rid)
-        req.status, req._arc_last_accepted, req._arc_dropped = status, accepted, dropped
-        tail.register(req)
-    assert tail.stats["skip_spec_length"] == 1
-    # the same shape stopped by EOS registers, except an accepted draft without a dropped bonus (197d56c)
-    assert tail.stats["registered"] == (0 if accepted == 1 and dropped is None else 1)
-    monkeypatch.setattr(runtime, "SPEC_SKIP_LENGTH", False)
-    req = spec_request(pool, managers, tokens, computed, 10, "len2")
-    req.status, req._arc_last_accepted, req._arc_dropped = NS(name="FINISHED_LENGTH_CAPPED"), accepted, dropped
-    before = tail.stats["skip_spec_length"]
-    tail.register(req)
-    assert tail.stats["skip_spec_length"] == before

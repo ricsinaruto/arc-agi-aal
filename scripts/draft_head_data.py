@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import hashlib
 import json
 import os
 import random
@@ -36,6 +37,11 @@ import numpy as np
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 from posttrain.split import EXCLUDED, HOLDOUT, prefix  # noqa: E402
+
+# Throughput arm (6 October): the 10 dev / 15 held-out split; ls20 and re86 are the dev evaluation families (as the
+# expert-quant tuning inputs); held-out games never enter either split.
+DEV10 = ("cd82", "cn04", "ft09", "lp85", "ls20", "re86", "sb26", "sk48", "vc33", "wa30")
+DEV10_EVAL = ("ls20", "re86")
 
 RUNS = Path(os.environ.get("ARC_RUNS", "./runs"))
 TOKENIZER_DIR = RUNS / "serving-research/qwen-tokenizer"
@@ -246,6 +252,72 @@ def sequence(gdir, template, tokenizer, max_tokens):
             "calls": len(check), "generated": int(mask.sum())}
 
 
+GEN_PREFIX_IDS = (198, 248068, 198)  # "\n<think>\n" after "<|im_start|>assistant": the generation prompt
+
+
+def from_usage(args):
+    """Splits from expert-usage inputs (``scripts/expert_usage_inputs.py``: the same snapshots rendered with the
+    served template, exact replies, tool payloads and system prompts). Generated = each assistant span after its
+    ``\n<think>\n`` generation prompt, through ``<|im_end|>`` (or the cut)."""
+    option = lambda rows: dict(r.split("=", 1) for r in rows)  # noqa: E731
+    sources, families, per_family = option(args.from_usage), option(args.usage_families), option(args.usage_per_family)
+    key = lambda r: (r["run"], r["game"], r["full_tokens"])  # noqa: E731
+    splits = {}
+    for split, path in sources.items():
+        rows = json.loads(Path(path).read_text())
+        keep = set(families[split].split(",")) if split in families else None
+        cap, taken, out = int(per_family.get(split, 0)), {}, []
+        for row in rows:
+            fam = row["family"]
+            if keep is not None and fam not in keep:
+                continue
+            ids, spans = row["ids"], row["assistant_spans"]
+            if cap:
+                room = cap - taken.get(fam, 0)
+                if room <= 0:
+                    continue
+                ids = ids[:room]
+                spans = [[a, min(b, len(ids))] for a, b in spans if a < len(ids)]
+            taken[fam] = taken.get(fam, 0) + len(ids)
+            mask = np.zeros(len(ids), dtype=np.uint8)
+            for a, b in spans:
+                if tuple(ids[a:a + 3]) != GEN_PREFIX_IDS and b - a >= 3:
+                    raise ValueError(f"{split}: assistant span without the generation prompt")
+                mask[a + 3:b] = 1
+            out.append({"key": key(row), "family": fam, "run": row["run"], "game": row["game"],
+                        "ids": np.asarray(ids, dtype=np.int32), "mask": mask})
+        splits[split] = out
+    other = {r["key"] for split, rows in splits.items() if split != args.usage_disjoint for r in rows}
+    dropped = [r for r in splits.get(args.usage_disjoint, []) if r["key"] in other]
+    if dropped:
+        splits[args.usage_disjoint] = [r for r in splits[args.usage_disjoint] if r["key"] not in other]
+    out_dir = Path(args.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    manifest = {"source": "expert-usage inputs", "inputs": {
+        k: {"path": v, "sha256": hashlib.sha256(Path(v).read_bytes()).hexdigest()} for k, v in sources.items()},
+        "families": families, "per_family_tokens": per_family, "disjoint": args.usage_disjoint,
+        "dropped_overlap": [{"family": r["family"], "run": r["run"], "game": r["game"], "tokens": len(r["ids"])}
+                            for r in dropped], "splits": {}}
+    for split, rows in splits.items():
+        offsets = np.cumsum([0] + [len(r["ids"]) for r in rows]).astype(np.int64)
+        np.savez(out_dir / f"{split}.npz", tokens=np.concatenate([r["ids"] for r in rows]),
+                 loss=np.concatenate([r["mask"] for r in rows]), offsets=offsets)
+        per = {}
+        for r in rows:
+            row = per.setdefault(r["family"], {"sequences": 0, "tokens": 0, "generated_tokens": 0})
+            row["sequences"] += 1
+            row["tokens"] += len(r["ids"])
+            row["generated_tokens"] += int(r["mask"].sum())
+        manifest["splits"][split] = {
+            "sequences": len(rows), "games": sorted(per), "tokens": int(offsets[-1]),
+            "generated_tokens": int(sum(v["generated_tokens"] for v in per.values())), "calls": None,
+            "per_family": dict(sorted(per.items())),
+            "sequences_meta": [{"family": r["family"], "run": r["run"], "game": r["game"], "tokens": len(r["ids"]),
+                                "generated": int(r["mask"].sum())} for r in rows]}
+        print(json.dumps({k: v for k, v in manifest["splits"][split].items() if k not in ("sequences_meta", "per_family")}))
+    (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=1))
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", required=True)
@@ -254,7 +326,22 @@ def main(argv=None):
     parser.add_argument("--eval-games", type=int, default=0, help="cap (0: all)")
     parser.add_argument("--runs", nargs="*", help="run globs relative to the runs root (default: primary corpus)")
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--split", choices=("posttrain", "dev10"), default="posttrain")
+    parser.add_argument("--from-usage", nargs="+", metavar="SPLIT=JSON",
+                        help="7 Oct: splits from expert-usage input files (rows with ids and assistant_spans) "
+                             "instead of the recorded runs")
+    parser.add_argument("--usage-families", nargs="*", default=[], metavar="SPLIT=a,b",
+                        help="keep only these families of a --from-usage split")
+    parser.add_argument("--usage-per-family", nargs="*", default=[], metavar="SPLIT=N",
+                        help="whole sequences per family up to N tokens (the last one cut)")
+    parser.add_argument("--usage-disjoint", default="train",
+                        help="rows of this split that also appear in another split are dropped")
     args = parser.parse_args(argv)
+    if args.from_usage:
+        return from_usage(args)
+    holdout, excluded = HOLDOUT, EXCLUDED
+    if args.split == "dev10":
+        holdout = DEV10_EVAL
     from tokenizers import Tokenizer
 
     tokenizer = Tokenizer.from_file(str(TOKENIZER_DIR / "tokenizer.json"))
@@ -265,14 +352,14 @@ def main(argv=None):
     for run in runs:
         for gdir in game_dirs(run):
             gid = game_id(gdir)
-            if gid in EXCLUDED:
+            if gid in excluded or (args.split == "dev10" and gid not in DEV10):
                 continue
-            candidates["eval" if gid in HOLDOUT else "train"].append((run, gdir, gid))
+            candidates["eval" if gid in holdout else "train"].append((run, gdir, gid))
     rng = random.Random(args.seed)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    manifest = {"max_tokens": args.max_tokens, "runs": runs, "holdout_games": list(HOLDOUT),
-                "excluded_games": list(EXCLUDED), "splits": {}}
+    manifest = {"max_tokens": args.max_tokens, "runs": runs, "split": args.split, "holdout_games": list(holdout),
+                "excluded_games": list(excluded), "splits": {}}
     for split, rows in candidates.items():
         rng.shuffle(rows)
         cap = args.train_games if split == "train" else args.eval_games
@@ -287,7 +374,7 @@ def main(argv=None):
                 continue
             if seq is None:
                 continue
-            if split == "train" and gid in HOLDOUT:
+            if split == "train" and (gid in holdout or (args.split == "dev10" and gid not in DEV10)):
                 raise AssertionError("holdout game in training data")
             tokens.append(seq["tokens"])
             loss.append(seq["loss"])

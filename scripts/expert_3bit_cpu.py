@@ -44,8 +44,8 @@ def load_eval(torch, root, layer):
 
 def fc2_hessians(torch, x, ids, wts, gate_up_deq):
     token, weight, bounds = qm.routed_rows(ids, wts, range(B.E), B.E)
-    out = torch.zeros((B.E, B.INTER, B.INTER))
-    counts = torch.zeros(B.E)
+    out = torch.zeros((B.E, B.INTER, B.INTER), device=x.device)
+    counts = torch.zeros(B.E, device=x.device)
     for e in range(B.E):
         a, b = bounds[e], bounds[e + 1]
         if a == b:
@@ -63,13 +63,25 @@ def quantize(torch, weight, hessian, counts, fmt, group, method, batch, prior):
     outs = []
     for s in range(0, weight.shape[0], batch):
         w = weight[s:s + batch].float()
-        mult = (1.0,) if method == "rtn" else SEARCH
+        mult = (1.0,) if method == "rtn" else SEARCH  # signround starts from the searched scales
         deq, scales = tm.rtn(w, s2[s:s + batch], fmt, group, mult)
         if method == "gptq":
             h = hessian[s:s + batch].clone()
             qm.damp_hessian(h, counts[s:s + batch], percdamp=0.01)
             deq = tm.gptq_static(w, h, s2[s:s + batch], fmt, group, scales, act_order=True)
             del h
+        elif method == "requant":
+            # the production recipe (6 Oct question): GPTQ-ARC onto NVFP4 (W4A16) from BF16, then RTN-search to int3
+            h = hessian[s:s + batch].clone()
+            qm.damp_hessian(h, counts[s:s + batch], percdamp=0.01)
+            fp4_s2 = qm.scale2_of(w)
+            packed, fp4_scales = qm.gptq_static(w, h, fp4_s2, act_order=True)
+            del h
+            w4 = qm.dequantize(packed, fp4_scales, fp4_s2)
+            deq, _ = tm.rtn(w4, tm.scale2_of(w4, fmt), fmt, group, SEARCH)
+        elif method.startswith("signround"):
+            iters = int(method[len("signround"):] or 200)
+            deq, _ = tm.signround(w, hessian[s:s + batch], s2[s:s + batch], fmt, group, scales, iters=iters)
         outs.append(deq)
     return torch.cat(outs)
 
@@ -83,6 +95,7 @@ def main():
     ap.add_argument("--eval-rows", type=int, default=4096)
     ap.add_argument("--batch", type=int, default=32)
     ap.add_argument("--prior", type=float, default=4096)
+    ap.add_argument("--device", default="cpu")
     ap.add_argument("--bf16-dir", default=str(P3 / "bf16"))
     ap.add_argument("--model-dir", default=str(P3 / "ckpt"))
     ap.add_argument("--v1-dir", default=str(P3 / "v1"))
@@ -93,7 +106,7 @@ def main():
     args = ap.parse_args()
     torch.set_num_threads(os.cpu_count())
     ns = types.SimpleNamespace(model_dir=args.model_dir, bf16_dir=args.bf16_dir, deadline_seconds=1e9,
-                               out=args.out + ".bench", device="cpu", capture=args.calib_root)
+                               out=args.out + ".bench", device=args.device, capture=args.calib_root)
     bench = B.Bench(ns)
     layer = args.layer
     t0 = time.time()
@@ -102,7 +115,7 @@ def main():
     xe, ide, we = load_eval(torch, Path(args.eval_dir), layer)
     n = min(args.eval_rows, xe.shape[0])
     pick = torch.linspace(0, xe.shape[0] - 1, n).round().long()
-    xe, ide, we = xe[pick].contiguous(), ide[pick].contiguous(), we[pick].contiguous()
+    xe, ide, we = (t[pick].contiguous().to(bench.dev) for t in (xe, ide, we))
     print(f"loaded in {time.time() - t0:.0f} s; calib {xc.shape[0]} rows, eval {n}", flush=True)
     out = Path(args.out)
     results = json.loads(out.read_text()) if out.exists() else {"layer": layer, "methods": {}}
@@ -144,17 +157,18 @@ def main():
         group = int(g[1:])
         t = time.time()
         h1 = c1 = None
-        if method == "gptq":
+        hess = method in ("gptq", "requant") or method.startswith("signround")
+        if hess:
             h1, c1 = qm.hessians(xc, idc, wc, range(B.E), B.E)
             qm.pool_hessians(h1, c1, args.prior)
         gu = quantize(torch, src_gu, h1, c1, fmt, group, method, args.batch, args.prior)
         del h1
-        if method == "gptq":
+        if hess:
             h2, c2 = fc2_hessians(torch, xc, idc, wc, gu)
             qm.pool_hessians(h2, c2, args.prior)
         else:
             h2 = c2 = None
-        dn = quantize(torch, src_dn, h2, c2, fmt, group, method, B.E if method == "gptq" else args.batch, args.prior)
+        dn = quantize(torch, src_dn, h2, c2, fmt, group, method, B.E if hess else args.batch, args.prior)
         del h2
         y, _ = bench.moe_reference(xe, ide, we, lambda e: (gu[e], dn[e]))
         row = {"vs_bf16": qm.relative_error(y, ref), "cos": qm.cosine(y, ref),

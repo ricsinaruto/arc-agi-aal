@@ -108,3 +108,50 @@ def test_exact_pinned_constructor_dispatch_when_source_available(tmp_path):
         'original': hashlib.sha256(source.read_bytes()).hexdigest(),
         'patched': hashlib.sha256(patched).hexdigest(),
     }))
+
+
+def test_comparison_bootstrap_preserves_fleet_evidence(tmp_path, monkeypatch):
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    helper_spec = importlib.util.spec_from_file_location('mxfp8_helper_test', root / 'scripts/qwen/bootstrap.py')
+    helper = importlib.util.module_from_spec(helper_spec)
+    helper_spec.loader.exec_module(helper)
+    monkeypatch.setitem(sys.modules, 'bootstrap', helper)
+    spec = importlib.util.spec_from_file_location('mxfp8_bootstrap_test', root / 'scripts/mxfp8_bootstrap.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    bundle, work, output = (tmp_path / n for n in ('bundle', 'work', 'out'))
+    bundle.mkdir()
+    study = {'seconds': 900, 'model': 'flash', 'config': 'agent.yaml', 'kv_cache_memory_bytes': 8 * 1024**3,
+             'games': ['ft09-0d8bbf25', 'lp85-305b61c3', 'ar25-0c556536']}
+    (bundle / 'mxfp8-study.json').write_text(json.dumps(study))
+    monkeypatch.setattr(module, 'verify', lambda _: {'verified': True})
+    monkeypatch.setattr(module, 'install_agent_environment', lambda *a: 'python')
+    calls = []
+
+    def run(command, **kwargs):
+        calls.append(command)
+        assert kwargs['env']['ARC_VLLM_ONLINE_MXFP8'] == '1'
+        if 'serve-native' in command:
+            assert command[command.index('--kv-cache-memory-bytes') + 1] == str(8 * 1024**3)
+            (work / 'serving').mkdir()
+            (work / 'serving/online-mxfp8-patch.json').write_text('{}')
+            (work / 'serving/native-preflight.json').write_text(json.dumps({'profile': {'kv_cache_memory_bytes': 8 * 1024**3}}))
+            (work / 'serving/server.log').write_text('prefix ARC_MXFP8_LAYER {"prefix":"projection"}\n')
+        if 'sglang_bench.transfer' in command:
+            folder = Path(command[command.index('--output') + 1])
+            folder.mkdir(parents=True)
+            (folder / 'report.json').write_text('{"state":"complete"}')
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(module.subprocess, 'run', run)
+    monkeypatch.setattr(sys, 'argv', ['bootstrap', '--bundle', str(bundle), '--working', str(work),
+                                   '--output', str(output), '--games-dir', '/games', '--max-seconds', '2040'])
+    module.main()
+    assert (output / 'trials/transfer/report.json').exists()
+    assert (output / 'serving/mxfp8-layers.json').exists()
+    assert json.loads((output / 'setup.json').read_text())['state'] == 'complete'
+    fleet = calls[1]
+    assert fleet[fleet.index('--backend') + 1] == 'vllm'
+    assert fleet.count('--game') == 3

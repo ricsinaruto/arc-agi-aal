@@ -85,7 +85,7 @@ OPTIONAL = ('kv_cache_8bit', 'kv_cache_4bit', 'kv8_prefill') + TWEAK_OPTIONS + (
 CHOICES = {'mamba_ssm_cache_dtype': ('bfloat16',), 'moe_backend': ('flashinfer_b12x', 'marlin', 'humming'),
            'expert_int3': (16, 32),
            'draft_experts': ('nvfp4',), 'kv_cache_8bit': ('int8', 'fp8'), 'kv_cache_4bit': ('int4', 'k8v4'),
-           'kv8_prefill': ('bf16',), 'draft_vocab': ('arena16k',)}
+           'kv8_prefill': ('bf16',), 'draft_vocab': ('arena16k', 'arena8k-dev', 'arena16k-dev')}
 KV8_CACHE_DTYPES = {'int8': 'int8_per_token_head', 'fp8': 'fp8_per_token_head'}
 # k8v4 is not a vLLM mode: vLLM allocates an int8 per-token-head cache and arc_kv4 sets the page (392 B per head).
 KV4_CACHE_DTYPES = {'int4': 'int4_per_token_head', 'k8v4': 'int8_per_token_head'}
@@ -463,7 +463,9 @@ def draft_vocab_bytes(spec):
     """The draft subset file for ``draft_vocab`` (checked: sorted distinct ids in range, recorded size and hash)."""
     if not spec.get('draft_vocab'):
         return None
-    data = Path(__file__).with_name(DRAFT_VOCAB_SOURCE).read_bytes()
+    filename = {'arena8k-dev': 'serving_draft_vocab_dev8k.json',
+                'arena16k-dev': 'serving_draft_vocab_dev16k.json'}.get(spec['draft_vocab'], DRAFT_VOCAB_SOURCE)
+    data = Path(__file__).with_name(filename).read_bytes()
     record = json.loads(data)
     ids = record['ids']
     if (record['name'] != spec['draft_vocab'] or len(ids) != record['size'] or ids != sorted(set(ids))

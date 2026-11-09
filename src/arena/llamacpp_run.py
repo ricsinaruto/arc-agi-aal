@@ -166,7 +166,7 @@ def run(args):
             (working / "trials").mkdir(parents=True, exist_ok=True)
             command = [sys.executable, "-u", "-m", "arena.run", "--source", str(bundle), "--study", str(study_path),
                        "--output", str(working / "trials"), "--trial", trial["name"], "--server-dir", str(serving),
-                       "--games-dir", args.games_dir,
+                       "--games-dir", args.games_dir, "--pi-dir", args.pi_dir, "--node", args.node,
                        "--analysis-python", sys.executable, "--base-url", BASE_URL,
                        "--notebook-start-epoch", str(args.started_epoch), "--notebook-seconds", str(args.max_seconds)]
             returncode = run_trial(command, env, working / "trials", trial["name"],
@@ -187,7 +187,7 @@ def run(args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    for name in ("bundle", "working", "games-dir"):
+    for name in ("bundle", "working", "pi-dir", "node", "games-dir"):
         parser.add_argument("--" + name, required=True)
     parser.add_argument("--server-bin", default=os.environ.get("LLAMACPP_SERVER_BIN", "llama-server"))
     parser.add_argument("--weights-dir", default=os.environ.get("LLAMACPP_WEIGHTS_DIR"))

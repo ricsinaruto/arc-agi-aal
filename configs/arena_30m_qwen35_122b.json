@@ -1,0 +1,108 @@
+{
+  "name": "arena-30m-qwen35-122b-v1",
+  "status": "prepared-not-launched",
+  "games_source": "configs/duck_public_notebook.json:public_game_ids",
+  "games": [
+    "tn36-ef4dde99",
+    "lf52-271a04aa",
+    "cn04-2fe56bfb",
+    "bp35-0a0ad940",
+    "wa30-ee6fef47",
+    "lp85-305b61c3",
+    "r11l-495a7899",
+    "tu93-0768757b",
+    "sp80-589a99af",
+    "m0r0-492f87ba",
+    "vc33-5430563c",
+    "ar25-0c556536",
+    "ka59-38d34dbb",
+    "sc25-635fd71a",
+    "sk48-d8078629",
+    "dc22-fdcac232",
+    "cd82-fb555c5d",
+    "ft09-0d8bbf25",
+    "g50t-5849a774",
+    "ls20-9607627b",
+    "re86-8af5384d",
+    "s5i5-18d95033",
+    "sb26-7fbdac44",
+    "su15-1944f8ab",
+    "tr87-cd924810"
+  ],
+  "wall_seconds": 1800,
+  "windows": [
+    131072
+  ],
+  "kv_margin": 0.9,
+  "active_limit": "resolved_from_cache",
+  "opening_switch_level1_games": 2,
+  "level_budget_rule": "(k+1)*T1 active seconds for level k->k+1; regrant max(1.5*spent, spent+30)",
+  "backlog_priority": "fewest active seconds, then roster order",
+  "completion_cap": 16384,
+  "reasoning_effort": "native",
+  "temperature": 0.7,
+  "generation_slots": 25,
+  "serving_profile": "qwen35-122b-a10b-nvfp4-vllm",
+  "server": {
+    "max_model_len": 262144,
+    "prefix_caching": true,
+    "mtp_tokens": 0,
+    "max_num_seqs": 25,
+    "gpu_memory_utilization": "0.96",
+    "max_num_batched_tokens": 4096
+  },
+  "trials": [
+    {
+      "name": "duck-transfer",
+      "kind": "duck-transfer"
+    },
+    {
+      "name": "qwen-c",
+      "kind": "pi"
+    }
+  ],
+  "notebook_seconds": 9000,
+  "kernel_timeout": 9300,
+  "context_policy": "append-only; one tool-less model-written summary at the cap (C: Pi's native compaction at window - cap)",
+  "cache_admission": "hybrid_blocks",
+  "isolate_trial_cache": true,
+  "cache_experiment": {
+    "variant": "blocks",
+    "cpu_cache_gib": 0,
+    "kv_cache_dtype": "auto",
+    "compaction_changed": false,
+    "probe_seconds_limit": 270
+  },
+  "candidate_profile": "qwen35-122b-a10b-nvfp4",
+  "served_model": "nvidia/Qwen3.5-122B-A10B-NVFP4",
+  "model_revision": "98915d837c4e7c87ac8296d02e89de19b3207e6d",
+  "model_datasets": [
+    "richardcsaky/arc-qwen35-122b-nvfp4"
+  ],
+  "startup_timeout_seconds": 2700,
+  "model_template_notes": {
+    "gameplay": "native thinking enabled, no effort dial",
+    "summary": "native thinking disabled",
+    "history": "native template; no injected reasoning retention",
+    "mtp": "0 speculative tokens (the unquantized MoE MTP head, 785 tensors / 4.7 GiB BF16, stays in the inventory but is not loaded: KV room on the 96 GB card is the constraint)",
+    "observation": "native-multimodal"
+  },
+  "observation_mode": "native-multimodal",
+  "phase2_admission": "cache_capacity",
+  "model_sources": [],
+  "serving_notes": {
+    "architecture": "Qwen3_5MoeForConditionalGeneration (the Nex/Qwen3.6 path): 48 layers, 12 full attention (2 KV heads x 256) and 36 Gated DeltaNet; 256 experts, 8 active; vision tower kept",
+    "quantization": "ModelOpt NVFP4 experts (quant_algo NVFP4; pinned modelopt_fp4 command unchanged), BF16 attention, shared experts, embeddings and vision; 9 shards, 83.5 GB (77.7 GiB)",
+    "kv_cache_dtype": "bfloat16, pinned explicitly (the checkpoint declares an FP8 KV scheme without k/v scales; under auto the pinned vLLM resolves it to fp8_e4m3 with scale 1.0 and, as in Lightning v1, FlashInfer decode JIT-compiles an XQA kernel whose link fails on this runtime); 12 full-attention layers x 2 KV heads x 256: 24 KiB per token, ~3 GiB per 128K game (fp8 would halve it)",
+    "linear_attention_state": "36 Gated DeltaNet layers, 64 value heads x 128 x 128 recurrent state per sequence",
+    "reasoning_parser": "qwen3",
+    "tool_parser": "qwen3_coder",
+    "attention_backend": "pinned default (no override; the Nemotron TRITON_ATTN/marlin pins do not apply)",
+    "context": "config declares 262,144; served at 262,144",
+    "memory": "about 14 GiB left after weights at utilization 0.96; phase-2 concurrency resolves from the probe"
+  },
+  "budget_clock": "busy",
+  "level_budget_policy": "fixed-2x",
+  "backlog_policy": "readmissions",
+  "prioritize_parked_progress": true
+}

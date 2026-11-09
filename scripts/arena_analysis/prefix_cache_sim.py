@@ -62,6 +62,8 @@ def overlay(args):
                "mamba_demote_superseded": "demote" in args.patches}
     if "tail" in args.patches:
         options["request_end_tail"] = True
+    if "spec" in args.patches:
+        options["spec_decode"] = True  # MTP-k keep/demote + no EAGLE drop (3 October)
     if any(options.values()):
         print(prefix_cache_patch.apply(out, out, options))
 
@@ -93,16 +95,23 @@ def make_scheduler(a):
         ec_manager_config=SimpleNamespace(get_encoder_cache_manager_obj=lambda: None), ec_transfer_config=None,
         is_encoder_only=False, kv_events_config=None, kv_transfer_config=None, lora_config=None,
         max_concurrent_batches=1 if a.sync else 2, max_in_flight_tokens=a.batched * (1 if a.sync else 2),
-        num_lookahead_tokens=0, num_speculative_tokens=0, observability_config=ObservabilityConfig(),
-        parallel_config=ParallelConfig(), speculative_config=None, use_v2_model_runner=False)
+        num_lookahead_tokens=a.spec, num_speculative_tokens=a.spec, observability_config=ObservabilityConfig(),
+        parallel_config=ParallelConfig(),
+        # MTP-k (throughput arm, 3 October): one MTP module, eagle-family drafting, as the served MTP-1 config.
+        speculative_config=SimpleNamespace(num_speculative_tokens_per_batch_size=None, use_eagle=lambda: True,
+                                           use_multi_module_mtp=lambda: False, max_num_new_slots_for_drafting=0,
+                                           num_speculative_tokens=a.spec, method="mtp") if a.spec else None,
+        use_v2_model_runner=False)
     groups = [KVCacheGroupSpec(["attn"], FullAttentionSpec(block_size=a.block, num_kv_heads=1, head_size=64,
                                                            dtype=torch.bfloat16)),
-              KVCacheGroupSpec(["ring"], CircularBufferSpec(block_size=4, num_kv_heads=1, head_size=64,
+              # The served ring is 4 tokens at MTP-0 and 8 under MTP (ARC_CACHE_LAYOUT of the MTP-1 runs).
+              KVCacheGroupSpec(["ring"], CircularBufferSpec(block_size=8 if a.spec else 4, num_kv_heads=1, head_size=64,
                                                             dtype=torch.bfloat16))]
     groups += [KVCacheGroupSpec([f"gdn{i}"], MambaSpec(block_size=a.block, shapes=((4, 32),), dtypes=(torch.float32,),
-                                                       mamba_cache_mode="align")) for i in range(3)]
+                                                       mamba_cache_mode="align", num_speculative_blocks=a.spec))
+               for i in range(3)]
     groups.append(KVCacheGroupSpec(["ple"], MambaSpec(block_size=a.block, shapes=((2, 16),), dtypes=(torch.float32,),
-                                                      mamba_cache_mode="align")))
+                                                      mamba_cache_mode="align", num_speculative_blocks=a.spec)))
     kc = KVCacheConfig(num_blocks=a.blocks, kv_cache_tensors=[], kv_cache_groups=groups)
     cls = Scheduler if a.sync else AsyncScheduler
     return cls(vllm_config=vc, kv_cache_config=kc,
@@ -110,6 +119,9 @@ def make_scheduler(a):
                                                          grammar_init=lambda *x, **k: None),
                block_size=a.block, hash_block_size=a.hash_unit or a.block,
                mm_registry=SimpleNamespace(supports_multimodal_inputs=lambda m: False), log_stats=True)
+
+
+EOS = 30001
 
 
 def run(a):
@@ -139,10 +151,23 @@ def run(a):
 
     def recording(request, num_hits):
         hits[request.request_id] = num_hits
+        if a.dump and request.num_prompt_tokens >= a.system + 4 * a.block and num_hits <= max(a.block, a.system):
+            # Phase 4: which groups still hold each boundary of a collapsed request's prefix.
+            from vllm.v1.core.kv_cache_utils import make_block_hash_with_group_id
+
+            pool = s.kv_cache_manager.block_pool
+            per = a.block // (a.hash_unit or a.block)
+            bounds = range(1, request.num_prompt_tokens // a.block + 1)
+            have = {gid: [j for j in bounds if j * per - 1 < len(request.block_hashes) and pool.cached_block_hash_to_block
+                          .get_one_block(make_block_hash_with_group_id(request.block_hashes[j * per - 1], gid))]
+                    for gid in range(len(s.kv_cache_config.kv_cache_groups))}
+            print("COLLAPSE_LOOKUP", request.request_id, "prompt", request.num_prompt_tokens, "hit", num_hits,
+                  {gid: (len(js), js[-3:]) for gid, js in have.items()}, file=sys.stderr)
         return record(request, num_hits)
 
     s.kv_cache_manager.record_prefix_cache_stats = recording
     rng = random.Random(a.seed)
+    spec_rng = random.Random(a.seed + 1)
     B = a.block
     system = [rng.randrange(1, 30000) for _ in range(a.system)]
     games = []
@@ -151,14 +176,17 @@ def run(a):
         for _ in range(a.requests):
             new = [rng.randrange(1, 30000) for _ in range(rng.randrange(*a.new_abs))]
             reply = [rng.randrange(1, 30000) for _ in range(rng.randrange(*a.reply_abs))]
+            if a.eos:
+                reply[-1] = EOS  # the reply ends on a stop token (the arena's finishes), not at max_tokens
             plan.append((new, reply))
         games.append({"id": g, "plan": plan, "n": 0, "tokens": list(system), "wait": g, "active": None, "log": []})
 
     def submit(game):
         new, reply = game["plan"][game["n"]]
         prompt = game["tokens"] + new
-        req = Request(f"g{game['id']}-r{game['n']}", prompt, SamplingParams(max_tokens=len(reply), ignore_eos=True),
-                      None, block_hasher=hasher)
+        params = (SamplingParams(max_tokens=len(reply) + 64, stop_token_ids=[EOS]) if a.eos
+                  else SamplingParams(max_tokens=len(reply), ignore_eos=True))
+        req = Request(f"g{game['id']}-r{game['n']}", prompt, params, None, block_hasher=hasher)
         game["active"] = {"req": req, "reply": reply, "emitted": 0, "P": len(prompt)}
         s.add_request(req)
 
@@ -190,12 +218,14 @@ def run(a):
                     break
         for gid in ring_gids:
             table = managers[gid].req_to_blocks[rid]
-            for pos in range(hit - hit % ring, hit):  # the open compression group
+            for pos in range(hit - hit % 4, hit):  # the open compression group (QSA compress ratio 4)
                 got = slots.get(table[0].block_id, {}).get(pos % ring)
                 if got is None or got[1] != pos or seqs[got[0]][pos] != seqs[rid][pos]:
                     bad.append(("ring", gid, pos))
+                    if a.dump:
+                        print("RING_MISMATCH", rid, "hit", hit, "pos", pos, "got", got, file=sys.stderr)
                     break
-        for gid in mamba_gids:
+        for gid in (mamba_gids if not a.spec else ()):  # the tracker models MTP-0 worker semantics only
             table = managers[gid].req_to_blocks[rid]
             column = hit // B if hit % B else hit // B - 1
             got = state.get(table[column].block_id)
@@ -260,7 +290,7 @@ def run(a):
                     for pos in range(max(before, after - ring), after):
                         slots.setdefault(table[0].block_id, {})[pos % ring] = (rid, pos)
                 dst = (after + B - 1) // B - 1
-                for gid in mamba_gids:
+                for gid in (mamba_gids if not a.spec else ()):
                     blocks = managers[gid].req_to_blocks[rid]
                     src = running_col[rid]
                     # The align precopy carries the running state into the new column; the step then advances it.
@@ -274,8 +304,15 @@ def run(a):
                     continue
                 req = act["req"]
                 if req.num_computed_tokens >= req.num_prompt_tokens and act["emitted"] < len(act["reply"]):
-                    sampled[rid] = [act["reply"][act["emitted"]]]
-                    act["emitted"] += 1
+                    # MTP-k: the bonus token plus each draft accepted in order with probability --accept.
+                    n = 1
+                    while (n <= len(so.scheduled_spec_decode_tokens.get(rid, ())) and spec_rng.random() < a.accept):
+                        n += 1
+                    n = min(n, len(act["reply"]) - act["emitted"])
+                    sampled[rid] = act["reply"][act["emitted"]:act["emitted"] + n]
+                    act["emitted"] += n
+                    checks["generated_tokens"] += n
+                    checks["decode_steps"] += 1
                 else:
                     sampled[rid] = []
             queue.append((so, sampled))
@@ -288,6 +325,19 @@ def run(a):
             for game in games:
                 act = game["active"]
                 if act is not None and act["req"].is_finished():
+                    if a.dump:
+                        from vllm.v1.core.kv_cache_utils import make_block_hash_with_group_id
+
+                        rq, pool = act["req"], s.kv_cache_manager.block_pool
+                        per = a.block // (a.hash_unit or a.block)
+                        js = [j for j in range(1, len(rq.block_hashes) // per + 1)
+                              if pool.cached_block_hash_to_block.get_one_block(
+                                  make_block_hash_with_group_id(rq.block_hashes[j * per - 1], 0))]
+                        held = [b.block_id for b in managers[attn_gids[0]].req_to_blocks.get(rq.request_id, ())]
+                        print("FINISH", rq.request_id, "P", act["P"], "computed", rq.num_computed_tokens,
+                              "attn_cached", len(js), "max", js[-1] if js else None,
+                              "gaps", [j for j in range(1, (js[-1] if js else 0)) if j not in js][:5],
+                              "held", len(held), file=sys.stderr)
                     game["log"].append({"P": act["P"], "G": len(act["reply"]), "H": hits.get(act["req"].request_id)})
                     game["tokens"] = list(act["req"].prompt_token_ids) + act["reply"]
                     game["n"] += 1
@@ -312,14 +362,28 @@ def run(a):
             short_unit += max(0, ideal_unit - r["H"])
             above += max(0, r["H"] - ideal)
             end = p["P"] + p["G"]
+            if (r["H"] or 0) <= max(B, a.system // B * B) and p["P"] >= a.system + 4 * B:
+                # Phase 4: a full-prefix collapse (only the shared system prefix, or nothing, was hit).
+                checks["collapses"] += 1
+                checks["collapse_tokens"] += ideal - (r["H"] or 0)
+                if a.dump:
+                    print("COLLAPSE game", game["id"], "n", n, "prev", (p["P"], p["G"], p["H"]), "hit", r["H"],
+                          file=sys.stderr)
             labels["request_end" if r["H"] in (end - 1, end) and r["H"] > ideal
                    else "ideal" if r["H"] == ideal else "prev_prompt_end" if r["H"] == p["P"] // B * B
                    else "earlier_request" if n >= 2 and r["H"] in (log[n - 2]["P"] // B * B,
                                                                   (log[n - 2]["P"] + log[n - 2]["G"]) // B * B)
                    else "other"] += 1
+    if a.dump:
+        for game in games[:a.dump]:
+            print("game", game["id"], [(r["P"], r["G"], r["H"]) for r in game["log"]])
     tail = getattr(s.kv_cache_manager, "_arc_tail", None)
     if tail is not None:
         checks.update({"tail_" + k: v for k, v in tail.stats.items()})
+    prompt_total = sum(r["P"] for g in games for r in g["log"])
+    hit_total = sum(r["H"] or 0 for g in games for r in g["log"])
+    checks.update(prompt_tokens=prompt_total, recomputed_prompt_tokens=prompt_total - hit_total,
+                  hit_rate=round(hit_total / max(prompt_total, 1), 4))
     print({"hit_vs_ideal": dict(labels), "shortfall_tokens": short, "hash_unit": unit,
            "shortfall_vs_unit_ideal": short_unit, "hit_tokens_above_block_ideal": above, "steps": step,
            **dict(checks)})
@@ -331,7 +395,7 @@ def main():
     o = sub.add_parser("overlay")
     o.add_argument("--runtime", required=True, help="site-packages directory holding the pinned vllm package")
     o.add_argument("--out", required=True)
-    o.add_argument("patches", nargs="*", choices=("reclaim", "align", "keep", "demote", "tail"))
+    o.add_argument("patches", nargs="*", choices=("reclaim", "align", "keep", "demote", "tail", "spec"))
     r = sub.add_parser("run")
     r.add_argument("--block", type=int, default=64)
     r.add_argument("--blocks", type=int, default=700)
@@ -345,6 +409,10 @@ def main():
     r.add_argument("--new-abs", type=int, nargs=2, default=(20, 140))
     r.add_argument("--reply-abs", type=int, nargs=2, default=(30, 160))
     r.add_argument("--seed", type=int, default=0)
+    r.add_argument("--eos", action="store_true", help="replies end on a stop token (in-flight steps at finish)")
+    r.add_argument("--dump", type=int, default=0, help="print (prompt, reply, hit) per request for the first N games")
+    r.add_argument("--spec", type=int, default=0, help="MTP-k draft tokens (num_speculative_blocks = k)")
+    r.add_argument("--accept", type=float, default=0.78, help="per-draft acceptance probability (MTP-1 measured 0.78)")
     r.add_argument("--sync", action="store_true")
     r.add_argument("--demote-min", type=int, default=None)
     r.add_argument("--tail-placement", choices=("front", "back", "swap"), default=None,

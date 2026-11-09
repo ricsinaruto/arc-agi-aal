@@ -34,11 +34,15 @@ def validation_timeout(kind, test):
         # The same with the default one-hour public preview (the dfr-combined bundle's Kaggle start
         # timed out; test the identical bundle on Modal): the bundle's notebook_seconds 7,500 + 300 s.
         ("arena", "competition-preview-1h"): 7800,
-        # Four-hour preview (4 h runs of v3 and of the 256K + compaction variant): the bundle's
-        # notebook_seconds (3,900 + 14,400 for int3 builds) + 300 s.
-        ("arena", "competition-preview-4h"): 18600,
-        # Eight-hour preview (v6 for 8 h): notebook_seconds (3,900 + 28,800) + 300 s.
-        ("arena", "competition-preview-8h"): 33000,
+        ("arena", "dev10-preview-1h"): 7800,
+        # 7 October (stream sweep): the DEV10 preview for up to 4 h of play, so the steady state after the first
+        # drains is measured; the timeout is the bundle's notebook limit + 300 s.
+        ("arena", "dev10-preview-long"): 16800,
+        ("arena", "heldout15-preview-1h"): 7800,
+        ("arena", "quality-fixed"): 7800,
+        # quality_eval version 2 (7 October): replicas x games persistent workers behind the KV gate; up to 9,000 s of
+        # play (4M tokens at >= 445 tok/s) after the same <= 3,540 s of setup..
+        ("arena", "quality-fixed-replicated"): 13200,
         ("arena", "research-model"): 3600,
         ("arena", "full-duck-transfer"): 2100,
         ("arena", "cache-duck-transfer"): 2700,
@@ -99,6 +103,17 @@ def validation_timeout(kind, test):
         # <= 1 h, <=): one MTP arm (0 / 1 / 2) of the blocks3 serving on recorded arena contexts (~600-900 s
         # setup, ~10 min of points). Bound (2,400 + 60) s x ledger rate x 1.15 =.
         ("arena", "spec-sweep"): 2400,
+        # Kernel-level profile: the decode-sweep serving with the torch
+        # profiler configured, real recorded contexts against synthetic ones, CPU / API loads and ~5 traces. ~660 s
+        # setup, a 1,000 s bench wall (1,600 s bootstrap limit). Bound (2,400 + 60) s x ledger rate x 1.15 =.
+        ("arena", "kernel-profile"): 2400,
+        # Throughput arm (3 October): long-context MTP-1 / MTP-1 + wide tiles / MTP-0 spec bench on the dfr-combined
+        # serving, three server starts in one container (~9 min each) + three ~12 min benches.
+        ("arena", "tp-spec-long"): 4800,
+        # Wide-tiles validation: control then mid_wide in one
+        # container, drift (teacher-forced + greedy at batch 48) and real-context speed at 56/40/24 on each.
+        # ~660 s setup, ~420 s restart, two ~400 s trials. Bound (2,700 + 60) s x ledger rate x 1.15 =.
+        ("arena", "kernel-wide"): 2700,
         # Kernel work, phase 2: the kernel quality gate (control reference, patched
         # restart, ~20 minutes with both server starts) before the same one-hour 110-clone arena.
         ("arena", "duck-110-kernels"): 7800,
@@ -116,6 +131,15 @@ def validation_timeout(kind, test):
         # Draft-head fine-tune: one eager server start, hidden-state dumps, then the
         # trainer on the same GPU (scripts/build_arena.py DRAFT_HEAD_*; pilot).
         ("arena", "draft-head"): 3200,
+        # Draft head against the locked expert overlay: the same job with the
+        # bundle's own limit (notebook_seconds + 60, resolved below), at most 7,500 s.
+        ("arena", "draft-head-locked"): 7500,
+        # Weight-set comparison on the DEV screen: prune-quality trials, a reference server
+        # (held-out teacher forcing saved, then its repeat) and candidates on other expert overlays; bundle limit.
+        ("arena", "tp-weights-kl"): 6000,  # five servers on a 1M-token screen (v8 level gate)
+        # Sliding-window cache measurement (<= 20 min a job, <= in all): one eager server,
+        # teacher forcing on recorded DEV post-drain contexts (arena.swkv_kl); the bundle's limit + 60 s.
+        ("arena", "tp-swkv-kl"): 1200,
         # 8-bit QSA KV cache: one server start of the kv8 arm, the
         # served layout, drift against the recorded BF16-KV reference, decode points and the QSA microbenchmark;
         # the user's for the job ((1500 + 60) s at the ledger rate is).
@@ -159,6 +183,8 @@ def validation_timeout(kind, test):
         ("arena", "expert-usage"): 2760,
         # v4: the eager measurement arm alone (v3 showed it starts);.
         ("arena", "expert-usage-measure"): 1920,
+        # balanced refit: 9.5M usage tokens per family + four screened masks
+        ("arena", "expert-usage-measure-v2"): 2700,
         # Load-time expert pruning GPU check (not yet approved): three hero server starts (unpruned, 12.5%, 25%)
         # with held-out teacher forcing;.
         ("arena", "expert-prune-check"): 2100,
@@ -173,6 +199,8 @@ def validation_timeout(kind, test):
         ("arena", "expert-quant-calibrate"): 3300,
         # Phase 3 (29 September; <=): the v2 recalibration (4x calibration data, pooled prior, act-order).
         ("arena", "expert-quant-calibrate-v2"): 2400,
+        # balanced all-25 refit: ~9.5M tokens at stride 32 (stride 16 hung at ~36 GB of capture); W4A16 + direct int3 GPTQ
+        ("arena", "expert-quant-calibrate-v3"): 6000,
         ("arena", "expert-quant-eval"): 6300,
         # Long-context drift test ("yes, to the long-context drift test", <=): kernels-v2
         # reference + repeat, the hero serving and int8 KV alone on 39-44K-token contexts; three server starts
@@ -202,7 +230,77 @@ def validation_timeout(kind, test):
     }
     if (kind, test) not in choices:
         raise ValueError(f"Unsupported validation kind/test: {kind}/{test}")
+    if (kind, test) in (("arena", "quality-fixed-replicated"), ("arena", "draft-head-locked"), ("arena", "tp-spec-long"),
+                        ("arena", "tp-weights-kl"), ("arena", "tp-swkv-kl"), ("arena", "dev10-preview-1h"),
+                        ("arena", "heldout15-preview-1h"),
+                        ("arena", "dev10-preview-long")):
+        # 7 October: the bundle's own notebook limit + 300 s (half rosters and shards are shorter than four replicas).
+        # TIMEOUT is computed before BUNDLE below, so the path is resolved here (the three first HELDOUT15 runs were
+        # reserved at the full 13,200 s because this read the not-yet-defined global).
+        import json as _json
+        import os as _os
+        from pathlib import Path as _Path
+
+        bundle = globals().get("BUNDLE") or _os.environ.get("ARC_VALIDATION_BUNDLE") or "/opt/arc-validation"
+        config = _Path(bundle) / "configs/comparison.json"
+        if config.is_file():
+            margin = 60 if test in ("draft-head-locked", "tp-spec-long", "tp-weights-kl", "tp-swkv-kl") else 300
+            return min(choices[kind, test], int(_json.loads(config.read_text())["notebook_seconds"]) + margin)
     return choices[kind, test]
+
+
+def validate_dev10_preview(study, long=False):
+    families = {"cd82", "cn04", "ft09", "lp85", "ls20", "re86", "sb26", "sk48", "vc33", "wa30"}
+    games = study.get("games", [])
+    clones = study.get("competition", {})
+    if (len(games) != 10 or {g.split("-")[0] for g in games} != families
+            or clones.get("research_clones") or clones.get("preview_instances") != 100
+            or clones.get("preview_seconds") != study.get("wall_seconds")
+            or not (3600 < study.get("wall_seconds", 0) <= 14400 if long else study.get("wall_seconds") == 3600)
+            or not study.get("hero_v2")
+            or [(t["name"], t["kind"]) for t in study.get("trials", [])] != [("duck-transfer", "duck-transfer")]):
+        raise ValueError("DEV10 preview requires exactly ten tuning families, 100 clones, and one hour of Duck "
+                         "(dev10-preview-long: more than one and at most four hours)")
+
+
+def validate_heldout15_preview(study):
+    families = set("ar25 bp35 dc22 g50t ka59 lf52 m0r0 r11l s5i5 sc25 sp80 su15 tn36 tr87 tu93".split())
+    games = study.get("games", [])
+    clones = study.get("competition", {})
+    if (len(games) != 15 or {g.split("-")[0] for g in games} != families
+            or clones.get("research_clones") or clones.get("preview_instances") not in (110, 150)  # 110: build_v71.py's cap
+            or study.get("wall_seconds") != 3600 or clones.get("preview_seconds") != 3600
+            or not study.get("hero_v2")
+            or [(t["name"], t["kind"]) for t in study.get("trials", [])] != [("duck-transfer", "duck-transfer")]):
+        raise ValueError("HELDOUT15 preview requires exactly fifteen reporting families, 110 or 150 clones, and one hour of Duck")
+
+
+def validate_quality_fixed(bundle, test="quality-fixed"):
+    """Validate the exact bundled protocol before reserving a paid GPU."""
+    import runpy
+
+    # (play wall, notebook) limits in seconds; the notebook limit is the test's function timeout - 300.
+    limits = {"quality-fixed": (3600, 7500), "quality-fixed-replicated": (9000, 12900)}
+
+    study = json.loads((bundle / "configs/comparison.json").read_text())
+    validate = runpy.run_path(str(bundle / "src/arena/quality_eval.py"))["validate_study"]
+    cfg = validate(study)
+    if cfg is None:
+        raise ValueError("quality-fixed requires an explicit quality_eval protocol")
+    if (cfg.get("version") == 2) != (test == "quality-fixed-replicated"):
+        raise ValueError("quality_eval version 2 (replicated roster) launches as quality-fixed-replicated; "
+                         "version 1 as quality-fixed")
+    wall, notebook = limits[test]
+    if ([(t["name"], t["kind"]) for t in study.get("trials", [])] != [("duck-transfer", "duck-transfer")]
+            or not 0 < study.get("wall_seconds", 0) <= wall
+            or not 0 < study.get("notebook_seconds", 0) <= notebook
+            or (test == "quality-fixed-replicated"
+                and (study.get("competition") or {}).get("preview_seconds") != study.get("wall_seconds"))):
+        raise ValueError("quality-fixed requires one Duck trial, at most one hour play, and <=7500s notebook"
+                         if test == "quality-fixed" else
+                         f"{test} requires one Duck trial, at most {wall}s play (= preview_seconds), and "
+                         f"<={notebook}s notebook")
+    return study["quality_eval"]
 
 
 def arena_arguments(test):
@@ -210,7 +308,8 @@ def arena_arguments(test):
         return []
     if test == "campaign-9h":
         return ["--trial", "duck-transfer"]
-    if test in ("competition-preview", "competition-preview-1h", "competition-preview-4h", "competition-preview-8h"):
+    if test in ("competition-preview", "competition-preview-1h", "dev10-preview-1h", "dev10-preview-long", "heldout15-preview-1h", "quality-fixed",
+                "quality-fixed-replicated"):
         return ["--trial", "duck-transfer"]
     if test == "smoke":
         return ["--smoke"]
@@ -230,13 +329,19 @@ def arena_arguments(test):
         return ["--trial", "sweep"]
     if test == "spec-sweep":
         return ["--trial", "spec"]
+    if test == "kernel-profile":
+        return ["--trial", "kprof"]
+    if test in ("tp-spec-long", "tp-weights-kl", "tp-swkv-kl"):
+        return []  # mtp1, mtp1-wide, then mtp0 (server restarts in place); reference, then the candidates
+    if test == "kernel-wide":
+        return []  # wide-ref, then wide-gate (server restart in place)
     if test == "hero-v2-precheck":
         return ["--trial", "precheck"]
     if test == "duck-110-kernels":
         return []  # kernel-ref, kernel-gate, then duck-transfer (skipped unless the gate passed)
     if test in ("bench", "kernel-smoke", "tweaks-smoke", "kv8-smoke"):
         return ["--trial", "serving-bench"]
-    if test in ("expert-usage", "expert-usage-measure", "expert-prune-check", "expert-prune-hang",
+    if test in ("expert-usage", "expert-usage-measure", "expert-usage-measure-v2", "expert-prune-check", "expert-prune-hang",
                 "expert-prune-levels"):
         return []  # the measurement arm, then the server-start diagnostic arms
     if test == "hero-smoke":
@@ -253,9 +358,9 @@ def arena_arguments(test):
         return []  # the int4-KV arm, then the int8-KV arm (server restart in place)
     if test == "prefix-cache-v3-recheck":
         return ["--trial", "tail-int4"]
-    if test == "draft-head":
+    if test in ("draft-head", "draft-head-locked"):
         return ["--trial", "draft-head"]
-    if test in ("expert-quant-bench", "expert-quant-calibrate", "expert-quant-calibrate-v2"):
+    if test in ("expert-quant-bench", "expert-quant-calibrate", "expert-quant-calibrate-v2", "expert-quant-calibrate-v3"):
         return ["--trial", "expert-quant"]
     if test in ("expert-quant-eval", "drift-long", "kv4-drift", "kv8-prefill-check"):
         return []
@@ -277,6 +382,10 @@ TIMEOUT = validation_timeout(KIND, TEST)
 CPU_CEILING = 16 if TEST in ("hero-v2-int4-streams", "hero-v2-128k-streams", "hero-v2-blocks") else 8
 if TEST in ("hero-v2-samples-plans", "campaign-9h"):
     CPU_CEILING = 16  # run B's ceiling: 24 focus streams (+ their sibling requests) on 110 sandboxes
+if os.environ.get("ARC_VALIDATION_CPU"):  # throughput arm CPU test (7 October): launch-time override, 8-32 cores
+    CPU_CEILING = int(os.environ["ARC_VALIDATION_CPU"])
+    if not 8 <= CPU_CEILING <= 32:
+        raise ValueError("ARC_VALIDATION_CPU is 8-32")
 # Manual graceful stop (arena.early_stop): the runs-volume request and the local file the trial checks.
 STOP_FILE = "stop-request"
 STOP_LOCAL = "/tmp/arena-stop-request"
@@ -320,12 +429,14 @@ def reserve(run_id, kind, seconds, *, test="smoke"):
         cpu = globals().get("CPU_CEILING", 8)  # the tests exec reserve() alone
         rate = 0.000842 + cpu * 0.0000131 + 192 * 0.00000222
         bound = (seconds + 60) * rate * 1.15
-        from arc_infra.runops.records import row_cost
-        committed = data["infrastructure_reserve_usd"] + sum(row_cost(r)[0] for r in data["runs"])
+        committed = data["infrastructure_reserve_usd"] + sum(r["charged_bound_usd"] for r in data["runs"])
         if committed + bound > data["cap_usd"]:
             raise RuntimeError(f"Spend cap: ${committed:.2f} + ${bound:.2f} required")
         if any(r["run_id"] == run_id for r in data["runs"]):
             raise ValueError("Run already reserved; inspect saved call instead of relaunching")
+        tp_arm = run_id.startswith("tp-")
+        if tp_arm and sum(r["charged_bound_usd"] for r in data["runs"] if r["run_id"].startswith("tp-")) + bound > 2000:
+            raise RuntimeError("Throughput arm spend cap: ") # (was)
         data["runs"].append({
             "run_id": run_id, "state": "reserved", "kind": kind,
             "charged_bound_usd": bound, "max_seconds": seconds,
@@ -377,7 +488,7 @@ def reserve(run_id, kind, seconds, *, test="smoke"):
                 else "expert-usage measurement (routing capture, pruned-router KL/NLL on "
                      "held-out games); v3 server-start diagnostics <= plus the measurement "
                      "<= "
-                if test in ('expert-usage', 'expert-usage-measure')
+                if test in ('expert-usage', 'expert-usage-measure', 'expert-usage-measure-v2')
                 else "load-time expert pruning GPU check (held-out KL of the 12.5% and "
                      "25% pruned hero against the unpruned hero, and the freed memory); one Modal GPU job"
                 if test == 'expert-prune-check'
@@ -414,6 +525,15 @@ def reserve(run_id, kind, seconds, *, test="smoke"):
                 else "draft-head (MTP) fine-tune; pilot <= Modal one GPU job "
                      "at a time"
                 if test == 'draft-head'
+                else "draft-head (MTP) fine-tune against the locked expert overlay, "
+                     "DEV10 training traffic, HELDOUT15 evaluation; throughput arm, <= of reservations"
+                if test == 'draft-head-locked'
+                else "INT2-cold-half screen, assistant KL on the DEV screen against "
+                     "the locked INT3 build; throughput arm"
+                if test == 'tp-weights-kl'
+                else "sliding-window cache measurement, <= 20 min a job, <= in "
+                     "all; throughput arm"
+                if test == 'tp-swkv-kl'
                 else "8-bit QSA KV cache smoke (served layout, drift, decode, QSA "
                      "microbenchmark); one Modal GPU job, "
                 if test == 'kv8-smoke'
@@ -422,7 +542,7 @@ def reserve(run_id, kind, seconds, *, test="smoke"):
                 if test == 'expert-quant-bench'
                 else "ARC expert re-quantization, stage 2 (GPTQ on ARC activations; end-to-end "
                      "check); one Modal GPU job at a time, stage "
-                if test in ('expert-quant-calibrate', 'expert-quant-eval', 'expert-quant-calibrate-v2')
+                if test in ('expert-quant-calibrate', 'expert-quant-eval', 'expert-quant-calibrate-v2', 'expert-quant-calibrate-v3')
                 else "long-context drift test (kernels-v2 reference + repeat, hero serving, int8 KV "
                      "alone on 39-44K-token c110 contexts); one test-slot Modal GPU job, "
                 if test == 'drift-long'
@@ -449,11 +569,22 @@ def reserve(run_id, kind, seconds, *, test="smoke"):
                      "one MTP arm of the blocks3 serving on recorded arena contexts; research GPU (<= 1 h including "
                      "setup, <= up to three pilots)"
                 if test == 'spec-sweep'
+                else "(\"for throughput: 1. do the kernel-level profile, then custom kernels ... 3. "
+                     "Explain the 13% real-run slowdown\"): kernel-level profile of the blocks3 serving at 24/40/56 "
+                     "streams on real recorded contexts vs synthetic; one research GPU (<= 1 h including setup)"
+                if test == 'kernel-profile'
+                else "(user: \"do the kernel-level profile, then custom kernels\"): wide "
+                     "decode tiles validation, control vs mid_wide on the blocks3 serving, speed at 56/40/24 + drift; "
+                     "one research GPU (<= 1 h including setup), "
+                if test == 'kernel-wide'
                 else "(via coordinator): kv8 BF16 prefill path check (hero-v2 reference + "
                      "repeat, kv8_prefill gate, injected-prefill bench); one test-slot Modal GPU job, "
                 if test == 'kv8-prefill-check'
                 else "User requested Modal-only validation on 22 September 2026"),
         })
+        if tp_arm:
+            data["runs"][-1]["authorization"] = ("throughput research arm, up to four parallel Modal "
+                                                 "GPUs and (run ids tp-*)")
         file.seek(0)
         json.dump(data, file, indent=1)
         file.write("\n")
@@ -515,7 +646,7 @@ def benchmark(run_id: str):
                         or study['trials'][0] != {'name': 'duck-transfer', 'kind': 'duck-transfer'}
                         or study.get('backend', 'vllm') != 'vllm'):
                     raise ValueError('Duck arena fallback requires 25 games, the test wall, Duck-transfer and vLLM')
-            if TEST in ('competition-preview', 'competition-preview-1h', 'competition-preview-4h', 'competition-preview-8h'):
+            if TEST in ('competition-preview', 'competition-preview-1h'):
                 study = json.loads((source / 'configs/comparison.json').read_text())
                 clones = study.get('competition') or {}
                 if (not clones or clones.get('research_clones') or clones.get('preview_instances') != 110
@@ -523,6 +654,13 @@ def benchmark(run_id: str):
                         or [t['name'] for t in study['trials']] != ['duck-transfer']):
                     raise ValueError('The competition preview test runs an unmodified submission bundle (110 public '
                                      'clones for its preview seconds, the Duck-transfer trial only)')
+            if TEST in ('dev10-preview-1h', 'dev10-preview-long'):
+                validate_dev10_preview(json.loads((source / 'configs/comparison.json').read_text()),
+                                       long=TEST == 'dev10-preview-long')
+            if TEST == 'heldout15-preview-1h':
+                validate_heldout15_preview(json.loads((source / 'configs/comparison.json').read_text()))
+            if TEST in ("quality-fixed", "quality-fixed-replicated"):
+                validate_quality_fixed(source, TEST)
             if TEST == 'duck-110':
                 study = json.loads((source / 'configs/comparison.json').read_text())
                 clones = study.get('competition') or {}
@@ -801,6 +939,38 @@ def benchmark(run_id: str):
                         or study['notebook_seconds'] > TIMEOUT - 60):
                     raise ValueError('spec-sweep needs the one-trial spec bench on the int4 blocks3 serving at 44 '
                                      'sequences, graphs to 44 x (MTP + 1) and its recorded contexts')
+            if TEST == 'tp-spec-long':
+                study = json.loads((source / 'configs/comparison.json').read_text())
+                bench = (study.get('throughput_bench') or {}).get('spec_sweep') or {}
+                if (not set(t['name'] for t in study['trials']) <= {'mtp1', 'mtp1-wide', 'mtp0', 'mtp1-wide-fp8', 'tf-bf16', 'tf-fp8', 'prof', 'mtp2-wide-fp8', 'tail-mtp', 'curve', 'tail-accept', 'vocab16k', 'vocab8k-dev', 'vocab16k-dev'}
+                        or 'tp_spec_long' not in study
+                        or study['server'].get('mtp_tokens') != 1 or not (source / bench.get('contexts', '-')).is_file()
+                        or study['notebook_seconds'] > TIMEOUT - 60):
+                    raise ValueError('tp-spec-long needs the three-arm long-context spec bench and its contexts')
+            if TEST == 'kernel-profile':
+                study = json.loads((source / 'configs/comparison.json').read_text())
+                bench = study.get('throughput_bench') or {}
+                trial = study['trials'][0] if len(study['trials']) == 1 else {}
+                server = study['server']
+                if ('kernel_profile_pilot' not in study or trial.get('name') != 'kprof'
+                        or trial.get('kind') != 'serving-bench'
+                        or (trial.get('server_env') or {}).get('ARENA_TORCH_PROFILER') != '1'
+                        or (server.get('serving_kernels') or {}).get('kv_cache_4bit') != 'int4'
+                        or server.get('prefix_match_unit') != 16 or server.get('max_num_seqs') != 56
+                        or not bench.get('kernel_profile') or study['notebook_seconds'] > TIMEOUT - 60
+                        or not (source / bench['kernel_profile']['contexts_file']).is_file()):
+                    raise ValueError('kernel-profile needs the one-trial profiled int4 serving bench at 56 sequences '
+                                     'with its contexts file')
+            if TEST == 'kernel-wide':
+                study = json.loads((source / 'configs/comparison.json').read_text())
+                names = [t['name'] for t in study['trials']]
+                gate_env = study['trials'][-1].get('server_env') or {}
+                if (names != ['wide-ref', 'wide-gate'] or 'kernel_wide' not in study
+                        or 'mid_wide' not in json.loads(gate_env.get('ARENA_DENSE_KERNELS', '{}'))
+                        or 'ARENA_DENSE_KERNELS' in (study['trials'][0].get('server_env') or {})
+                        or study['server'].get('max_num_seqs') != 56 or study['notebook_seconds'] > TIMEOUT - 60
+                        or not (source / 'configs/kernel-quality/prompts.json').is_file()):
+                    raise ValueError('kernel-wide needs the wide-ref / wide-gate pair on the 56-sequence serving')
             if TEST == 'hero-v2-precheck':
                 study = json.loads((source / 'configs/comparison.json').read_text())
                 bench = study.get('throughput_bench') or {}
@@ -874,7 +1044,7 @@ def benchmark(run_id: str):
                         or not all((source / v['mask']).is_file()
                                    for v in study['expert_prune_check']['variants'].values())):
                     raise ValueError('The expert-prune check requires the prune-quality study on the hero arm')
-            if TEST in ('expert-usage', 'expert-usage-measure'):
+            if TEST in ('expert-usage', 'expert-usage-measure', 'expert-usage-measure-v2'):
                 study = json.loads((source / 'configs/comparison.json').read_text())
                 if (study['trials'][0]['kind'] != 'expert-usage'
                         or {t['kind'] for t in study['trials'][1:]} - {'server-check'}
@@ -963,6 +1133,35 @@ def benchmark(run_id: str):
                         or not study['server'].get('draft_head', {}).get('dump')
                         or not (source / study['draft_head']['data'] / 'train.npz').is_file()):
                     raise ValueError('The draft-head test requires the draft-head study and its data')
+            if TEST == 'tp-weights-kl':
+                study = json.loads((source / 'configs/comparison.json').read_text())
+                if ({t['kind'] for t in study['trials']} != {'prune-quality'}
+                        or [t.get('role') for t in study['trials']] != ['reference'] + ['candidate'] * (len(study['trials']) - 1)
+                        or any(t.get('reference') != study['trials'][0]['name'] for t in study['trials'][1:])
+                        or study['server'].get('mtp_tokens') != 0
+                        or not (source / 'configs/expert-usage/heldout.json').is_file()):
+                    raise ValueError('tp-weights-kl needs prune-quality trials: one reference, then its candidates')
+            if TEST == 'tp-swkv-kl':
+                study = json.loads((source / 'configs/comparison.json').read_text())
+                env = study['trials'][0].get('server_env', {}) if study['trials'] else {}
+                if ([(t['kind'], t.get('role')) for t in study['trials']] != [('prune-quality', 'swkv')]
+                        or study['server'].get('mtp_tokens') != 0
+                        or any(env.get(k) != '1' for k in ('ARENA_SWKV_PROBE', 'ARENA_ENFORCE_EAGER',
+                                                            'ARENA_WARM_PROMPT_LOGPROBS'))
+                        or not (source / 'configs/swkv/contexts.json').is_file()):
+                    raise ValueError('tp-swkv-kl needs one swkv trial on an eager probe server and its contexts')
+            if TEST == 'draft-head-locked':
+                study = json.loads((source / 'configs/comparison.json').read_text())
+                settings = study.get('draft_head') or {}
+                if ([(t['name'], t['kind']) for t in study['trials']] != [('draft-head', 'draft-head')]
+                        or not study['server'].get('draft_head', {}).get('dump')
+                        or not study['server'].get('expert_overlay') or not study['server'].get('expert_prune')
+                        or not settings.get('splits')
+                        or not all((source / settings['data'] / f'{name}.npz').is_file() for name in settings['splits'])
+                        or (settings.get('trainer', {}).get('train_steps', 300)
+                            and 'train' not in settings['splits'])):
+                    raise ValueError('The locked draft-head test requires the draft-head study on the pruned expert '
+                                     'overlay and the data of every listed split')
             if TEST == 'kv8-smoke':
                 study = json.loads((source / 'configs/comparison.json').read_text())
                 bench = study.get('throughput_bench') or {}
@@ -981,7 +1180,7 @@ def benchmark(run_id: str):
                     raise ValueError('The expert-quant bench requires the stage-1 study on the capture overlay')
                 if not Path(study['expert_quant']['bf16_dir'], 'model.safetensors.index.json').is_file():
                     raise FileNotFoundError('The BF16 expert shards are missing (scripts/modal_expert_bf16.py)')
-            if TEST in ('expert-quant-calibrate', 'expert-quant-calibrate-v2'):
+            if TEST in ('expert-quant-calibrate', 'expert-quant-calibrate-v2', 'expert-quant-calibrate-v3'):
                 study = json.loads((source / 'configs/comparison.json').read_text())
                 if ([(t['name'], t['kind'], t.get('phase')) for t in study['trials']]
                         != [('expert-quant', 'expert-quant', 'calibrate')]
@@ -1143,7 +1342,7 @@ def benchmark(run_id: str):
         identity["elapsed_seconds"] = time.time() - started
         (output / "execution.json").write_text(json.dumps(identity, indent=2))
         runs.commit()
-        if TEST in ("expert-quant-calibrate", "expert-quant-calibrate-v2"):
+        if TEST in ("expert-quant-calibrate", "expert-quant-calibrate-v2", "expert-quant-calibrate-v3"):
             assets.commit()  # the replacement shards (the assets volume, served from /kaggle/input)
     return str(output)
 
@@ -1182,6 +1381,8 @@ def main(run_id: str = "", probe_only: bool = False):
         return
     if not run_id:
         raise ValueError("--run-id is required")
+    if TEST in ("quality-fixed", "quality-fixed-replicated"):
+        validate_quality_fixed(BUNDLE, TEST)
     bound = reserve(run_id, KIND, TIMEOUT, test=TEST)
     folder = {"paired-30m": "docs/validation-20260923", "duck-30m": "docs/validation-20260924",
               "bench": "docs/validation-20260924", "evolve": "docs/validation-20260924", "evolve-rehearsal": "docs/validation-20260926", "bench-ab": "docs/validation-20260927",
@@ -1201,12 +1402,12 @@ def main(run_id: str = "", probe_only: bool = False):
               "draft-head": "docs/validation-20260927",
               "kv8-smoke": "docs/validation-20260927",
               "expert-quant-bench": "docs/validation-20260927", "expert-quant-calibrate": "docs/validation-20260927",
-              "expert-quant-eval": "docs/validation-20260927", "expert-quant-calibrate-v2": "docs/validation-20260927",
+              "expert-quant-eval": "docs/validation-20260927", "expert-quant-calibrate-v2": "docs/validation-20260927", "expert-quant-calibrate-v3": "docs/validation-20260927",
               "drift-long": "docs/validation-20260927",
               "kv4-drift": "docs/validation-20260927",
               "kv8-prefill-check": "docs/validation-20260927",
               "expert-usage": "docs/validation-20260927",
-              "expert-usage-measure": "docs/validation-20260927",
+              "expert-usage-measure": "docs/validation-20260927", "expert-usage-measure-v2": "docs/validation-20260927",
               "expert-prune-check": "docs/validation-20260927",
               "expert-prune-levels": "docs/validation-20260927",
               "expert-prune-hang": "docs/validation-20260927",
@@ -1220,20 +1421,27 @@ def main(run_id: str = "", probe_only: bool = False):
               "prefix-unit-int4-tf": "docs/validation-20260927",
               "holo-soak": "docs/validation-20260927",
               }.get(TEST, "docs/validation-20260922")
-    if TEST in ("campaign-9h", "research-model", "decode-sweep", "spec-sweep"):
+    if TEST in ("campaign-9h", "research-model", "decode-sweep", "spec-sweep", "kernel-profile", "kernel-wide"):
         folder = "docs/validation-20260930"
-    if TEST in ("competition-preview", "competition-preview-1h", "competition-preview-4h", "competition-preview-8h"):
+    if TEST in ("competition-preview", "competition-preview-1h", "dev10-preview-1h", "dev10-preview-long", "heldout15-preview-1h", "quality-fixed",
+                "quality-fixed-replicated"):
         folder = "docs/validation-20261001"
+    if TEST == "tp-spec-long":
+        folder = "docs/validation-20261003"
+    if TEST in ("draft-head-locked", "tp-weights-kl"):
+        folder = "docs/validation-20260927"
+    if TEST == "tp-swkv-kl":
+        folder = "docs/validation-20261008"
     record = ROOT / folder / f"modal-{run_id}.json"
     record.parent.mkdir(parents=True, exist_ok=True)
     data = {"state": "submission_intent", "run_id": run_id, "kind": KIND, "test": TEST,
             "charged_bound_usd": bound,
-            "platform_policy": ("Modal only: offline test of a Kaggle submission archive (no Kaggle GPU quota)" if TEST in ("competition-preview", "competition-preview-1h", "competition-preview-4h", "competition-preview-8h") else "Modal only: seven authorized nine-hour benchmarks plus user-requested additional nine-hour arms and <=4 one-hour research pilots" if TEST == "campaign-9h" else "kaggle-first; 30-minute queue fallback" if TEST == 'paired-30m'
+            "platform_policy": ("Modal only: offline test of a Kaggle submission archive (no Kaggle GPU quota)" if TEST in ("competition-preview", "competition-preview-1h") else "Modal only: seven authorized nine-hour benchmarks plus user-requested additional nine-hour arms and <=4 one-hour research pilots" if TEST == "campaign-9h" else "kaggle-first; 30-minute queue fallback" if TEST == 'paired-30m'
                                 else "kaggle-first; 10-minute queue fallback" if TEST in ('duck-30m', 'duck-60m', 'bench', 'bench-ab')
                                 else "modal probe beside the Kaggle runs" if TEST == 'duck-probe'
-                                else "modal-only; one Modal GPU job at a time" if TEST in ('level-bench', 'duck-110', 'duck-110-kernels', 'kernel-smoke', 'tweaks-smoke', 'draft-head', 'kv8-smoke', 'kernel-stack', 'hero-smoke', 'prefix-cache-smoke', 'kernel-phase6', 'kernel-phase6b', 'expert-quant-bench',
-                                                                                                          'expert-quant-calibrate', 'expert-quant-eval', 'expert-quant-calibrate-v2',
-                                                                                                           'expert-usage', 'expert-usage-measure', 'expert-prune-check', 'expert-prune-levels',
+                                else "modal-only; one Modal GPU job at a time" if TEST in ('level-bench', 'duck-110', 'duck-110-kernels', 'kernel-smoke', 'tweaks-smoke', 'draft-head', 'draft-head-locked', 'kv8-smoke', 'kernel-stack', 'hero-smoke', 'prefix-cache-smoke', 'kernel-phase6', 'kernel-phase6b', 'expert-quant-bench',
+                                                                                                          'expert-quant-calibrate', 'expert-quant-eval', 'expert-quant-calibrate-v2', 'expert-quant-calibrate-v3',
+                                                                                                           'expert-usage', 'expert-usage-measure', 'expert-usage-measure-v2', 'expert-prune-check', 'expert-prune-levels',
                                                                                                            'expert-prune-hang')
                                 else "modal-only; the test GPU slot beside the hero-v2 slot"
                                 if TEST in ('drift-long', 'kv4-drift', 'holo-smoke', 'holo-60m', 'hero-v2-precheck', 'kv8-prefill-check', 'holo-soak', 'prefix-unit-int4', 'prefix-unit-int4-tf',

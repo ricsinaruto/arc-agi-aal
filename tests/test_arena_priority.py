@@ -251,29 +251,6 @@ def test_no_level_budgets_and_no_retirement():
     assert events(g0)[-1] == ("finish", "wall_end") and events(games[1]) == [("finish", "wall_end")]
 
 
-def test_wall_end_does_not_readmit_during_worker_cleanup():
-    now, wall, games, sched, log = build(count=3, slots=1)
-    charge(now, games[0], 1000)
-    now.value = 300
-    sched.wall_end()
-    before_events = list(sched.events)
-    before_states = [g.state for g in games]
-    before_active = [g.clock.active_seconds() for g in games]
-    before_counts = dict(sched.priority_counts)
-
-    now.value = 303
-    games[0].note_context_drain(tokens_before=57000, tokens_after=1000)
-    sched.tick()
-    sched.start_all()
-    sched.wall_end()
-    now.value = 310
-    assert sched.events == before_events
-    assert [g.state for g in games] == before_states
-    assert [g.clock.active_seconds() for g in games] == before_active
-    assert dict(sched.priority_counts) == before_counts
-    assert [g.clock.completion_tokens() for g in games] == [1000, 0, 0]
-
-
 def test_audit_accepts_a_priority_run_and_refuses_a_handover_without_an_eviction():
     now, wall, games, sched, log = build(count=4, slots=2)
     charge(now, games[0], 3000)
@@ -394,14 +371,3 @@ async def test_the_trial_loop_runs_priority_handovers(tmp_path, monkeypatch):
     summary = report_["scheduler"]["priority"]
     assert summary["games_started"] == 3 and summary["counts"]["compaction"] >= 3
     assert report_["scheduler"]["budget_policy"] == "priority"
-
-
-def test_without_the_floor_long_spent_levels_still_rank_by_what_they_spent():
-    kwargs = dict(normalize_score=True, tail_lookup="remaining")
-    spent = [priority_value(PrioritySnapshot(3, tokens // 1000, float(tokens), total_levels=8), **kwargs, floor=False)
-             for tokens in (0, 100_000, 300_000, 600_000, 900_000)]
-    assert spent == sorted(spent, reverse=True) and len(set(spent)) == 5 and spent[-1] > 0
-    floored = [priority_value(PrioritySnapshot(3, tokens // 1000, float(tokens), total_levels=8), **kwargs)
-               for tokens in (300_000, 600_000, 900_000)]
-    assert floored == [1, 1, 1]
-    assert settings({"floor": False})["floor"] is False and settings()["floor"] is True

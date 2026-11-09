@@ -43,9 +43,9 @@ DEFAULTS = {
     "note": True,
 }
 BOOLEANS = ("coalesce", "middle_truncation", "drop_malformed", "note")
-# v7.1: ``keep_tokens`` drains to this many tokens instead of ``drain_tokens`` below the budget (no
-# half-budget cap); absent unless set, so earlier builds record the same block.
-OPTIONAL = {"keep_tokens": None}
+# Optional (throughput arm, 7 October): the share of the budget one drain may drop (absent: dfranzen's half). A
+# drain recomputes what it keeps, so prefill per appended token is kept / dropped: 1 at a half, 1/3 at 0.75.
+CAP_FRACTION = "drain_cap_fraction"
 
 
 def settings(value):
@@ -56,7 +56,7 @@ def settings(value):
         value = {}
     if not isinstance(value, dict):
         raise ValueError("drain_half is true/false or a dict of settings")
-    unknown = set(value) - set(DEFAULTS) - set(OPTIONAL)
+    unknown = set(value) - set(DEFAULTS) - {CAP_FRACTION}
     if unknown:
         raise ValueError(f"Unknown drain_half settings {sorted(unknown)}; known: {sorted(DEFAULTS)}")
     result = {**DEFAULTS, **value}
@@ -66,12 +66,12 @@ def settings(value):
     for key in ("drain_tokens", "turn_cap", "turn_drain", "tool_output_tokens"):
         if type(result[key]) is not int or result[key] < 0:
             raise ValueError(f"drain_half {key} is a non-negative integer")
-    if "keep_tokens" in result and (type(result["keep_tokens"]) is not int or result["keep_tokens"] < 1024):
-        raise ValueError("drain_half keep_tokens is an integer >= 1024")
     if result["tool_output_tokens"] < 64:
         raise ValueError("drain_half tool_output_tokens is at least 64 (the public loop's floor)")
     if result["turn_cap"] and result["turn_drain"] >= result["turn_cap"]:
         raise ValueError("drain_half turn_drain must be below turn_cap (0 turn_cap: no turn cap)")
+    if CAP_FRACTION in result and not (isinstance(result[CAP_FRACTION], float) and 0.5 <= result[CAP_FRACTION] <= 0.85):
+        raise ValueError(f"drain_half {CAP_FRACTION} is a float in [0.5, 0.85]")
     return result
 
 
@@ -79,13 +79,11 @@ def role(message):
     return str(message.get("role", "")).strip()
 
 
-def drain_target(budget, drain_tokens, keep_tokens=None):
-    """``(drain, target)``: the drain capped at half the budget and the token level a drain stops at (``keep_tokens``:
-    the target itself, below the budget)."""
-    if keep_tokens:
-        target = min(int(keep_tokens), int(budget))
-        return int(budget) - target, target
-    drain = min(max(0, int(drain_tokens)), int(budget) // 2)
+def drain_target(budget, drain_tokens, cap_fraction=0.5):
+    """``(drain, target)``: the drain capped at ``cap_fraction`` (half) of the budget and the token level a drain
+    stops at."""
+    cap = int(budget) // 2 if cap_fraction == 0.5 else int(int(budget) * cap_fraction)
+    drain = min(max(0, int(drain_tokens)), cap)
     return drain, (max(1, int(budget) - drain) if drain else int(budget))
 
 
@@ -140,9 +138,7 @@ def turn_cut(history, *, max_turns, drain_turns=0, force=False, protect=None):
     while cut < len(history) and role(history[cut]) != "user":
         cut += 1
     limit = len(history) - 1 if protect is None else protect
-    cut = min(cut, limit)
-    # A cut clamped at the observation that drops no assistant turn (only a previous drain note) is a no-op drain.
-    return cut if any(role(m) == "assistant" for m in history[:cut]) else 0
+    return min(cut, limit)
 
 
 def latest_observation(history, is_observation=None):
@@ -176,7 +172,7 @@ def drain_history(history, *, count, budget, estimate, spec, force=False, is_obs
     - estimate(kept))``. ``kept`` is ``history`` itself when nothing is dropped. ``force`` (a context-length rejection)
     drains to the target whatever the count says and always drops something: one block at least, else the oldest
     exchange of the current turn."""
-    drain, target = drain_target(budget, spec["drain_tokens"], spec.get("keep_tokens"))
+    drain, target = drain_target(budget, spec["drain_tokens"], spec.get(CAP_FRACTION, 0.5))
     work = list(history)
     protect = latest_observation(work, is_observation)
     if protect is None:
@@ -195,10 +191,8 @@ def drain_history(history, *, count, budget, estimate, spec, force=False, is_obs
         if force and not blocks and drop_oldest_block(work, preserve_recent=protected):
             blocks += 1  # the server said no although the count fits: one block at least, as the public retry
         protect = latest_observation(work, is_observation)
-        floor = budget
-        while (used() > floor or (force and not blocks and not exchanges)) and drop_turn_exchange(work, protect):
+        while (used() > budget or (force and not blocks and not exchanges)) and drop_turn_exchange(work, protect):
             exchanges += 1
-            floor = target  # once the turn itself must shrink, shrink it to the target: no drain on every call
     token_dropped = bool(blocks or exchanges)
     turn_messages = 0
     if spec["turn_cap"]:

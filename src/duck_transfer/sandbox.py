@@ -96,38 +96,6 @@ def segment_layer(layer, color_chars):
     return cached
 """
 
-CACHE_TELEMETRY = '''
-import functools as _heap_functools
-import time as _heap_time
-
-_HEAP_CACHE_TYPE = type(_heap_functools.lru_cache()(lambda: None))
-_HEAP_NEXT = 0.0
-
-
-def _cache_telemetry(runtime, interval):
-    global _HEAP_NEXT
-    now = _heap_time.monotonic()
-    if interval <= 0 or now < _HEAP_NEXT:
-        return None
-    _HEAP_NEXT = now + interval
-    caches, seen = [], set()
-    for name, value in list(runtime.items()):
-        # Exact native wrappers only: never call model-defined inspection methods.
-        if type(name) is not str or type(value) is not _HEAP_CACHE_TYPE or id(value) in seen:
-            continue
-        seen.add(id(value))
-        caches.append({"name": name[:128], **_HEAP_CACHE_TYPE.cache_info(value)._asdict()})
-    rss = None
-    try:
-        with open("/proc/self/statm") as stream:
-            rss = int(stream.read().split()[1]) * os.sysconf("SC_PAGE_SIZE")
-    except (OSError, ValueError, IndexError):
-        pass
-    return {"rss_bytes": rss, "cache_count": len(caches),
-            "cache_entries": sum(cache["currsize"] for cache in caches),
-            "caches": sorted(caches, key=lambda cache: -cache["currsize"])[:8]}
-'''
-
 RESET_AFTER_TIMEOUT = "python state was reset after a timeout (redefine helpers before reuse)"
 RESET_AFTER_EXIT = "Sandbox process exited unexpectedly; python state was reset"
 INTERRUPTED_AFTER_TIMEOUT = (
@@ -369,7 +337,6 @@ LOOP_FIXES = '''
                         "stdout": stdout.getvalue(),
                         "action_results": _json_safe(action_results),
                         "interrupted": isinstance(exc, ToolTimeout),
-                        "history_size": len(retained_history),
                     }
                 )
         try:
@@ -517,9 +484,6 @@ def stateful_bootstrap(bootstrap, *, fixes=None):
     if fixes is not None and set(fixes) - set(SANDBOX_FIXES):
         raise ValueError(f"Unknown sandbox fixes {sorted(set(fixes) - set(SANDBOX_FIXES))}")
     loop = LOOP if fixes is None else LOOP_FIXES
-    loop = loop.replace('"stdout": stdout.getvalue(),',
-                        '"stdout": stdout.getvalue(), "cache_telemetry": '
-                        '_cache_telemetry(runtime_globals, initial.get("cache_telemetry_seconds", 60)),')
     text = head + loop.strip("\n") + "\n" + tail_sep + tail
     replacements = {
         # The loop refreshes the runtime variables before every request.
@@ -532,7 +496,7 @@ def stateful_bootstrap(bootstrap, *, fixes=None):
             "    action_results = []\n    retained_history = []\n    stdout = io.StringIO()\n",
         # Segmentation memo keyed by the grid: current_frame is rebuilt every call and
         # containment is a full-grid flood fill per component.
-        "\nHOST_STDOUT = sys.stdout\n": SEGMENTATION_MEMO + CACHE_TELEMETRY + "\nHOST_STDOUT = sys.stdout\n",
+        "\nHOST_STDOUT = sys.stdout\n": SEGMENTATION_MEMO + "\nHOST_STDOUT = sys.stdout\n",
         # RLIMIT_CPU counts cumulative CPU time; a long-lived child needs the game's budget,
         # which also bounds an orphan should the fleet process die.
         "    _set_limits(timeout_seconds)\n":
@@ -639,13 +603,6 @@ class StatefulSandbox:
         # (``handler(request) -> payload``; None: the child never asks) and the guard refusals it reported.
         self.animation_handler = None
         self.dfr_guards = []
-        # arena dfr_loop ``inventory_animation``: an inventory request answers the lazy views' animation requests
-        # (``len``/``repr`` of a variable bound to one) instead of discarding the interpreter as an unknown message.
-        self.inventory_answers_animation = False
-        # arena hx_harness toolbox (``arena.hx_harness.with_toolbox``): the child's last registry / observer report.
-        self.hx_state = None
-        # Diagnostics only; native model LRU caches retain their exact behavior.
-        self.cache_telemetry_seconds = 60
 
     def configure_fixes(self, bootstrap, *, interrupt, grace=3.0):
         """Switch to a fixes bootstrap (``stateful_bootstrap(..., fixes=...)``) before the first call."""
@@ -704,12 +661,11 @@ class StatefulSandbox:
     def _delta(self, state):
         """State with only the history entries the child has not received yet."""
         state = dict(state or {})
-        history = state.get("history") or []  # a list, or the host's lazy duck_transfer.agent.HistoryPayloads
-        size = len(history)
-        base = self.synced if size >= self.synced else 0
-        state["history"], state["history_base"] = list(history[base:]), base
-        self.synced = size
-        self.delta_entries += size - base
+        history = list(state.get("history") or [])
+        base = self.synced if len(history) >= self.synced else 0
+        state["history"], state["history_base"] = history[base:], base
+        self.synced = len(history)
+        self.delta_entries += len(history) - base
         return state
 
     def _discard(self, reason):
@@ -749,7 +705,6 @@ class StatefulSandbox:
                             "state": self._delta(initial_state),
                             "color_chars": self.color_chars,
                             "cpu_seconds": int(self.cpu_seconds),
-                            "cache_telemetry_seconds": self.cache_telemetry_seconds,
                         }
                     )
                 else:
@@ -803,7 +758,15 @@ class StatefulSandbox:
                 kind = str(message.get("type", "")).strip()
                 if kind == "animation":
                     # arena dfr_harness: a lazy animation view asked for the last animated action's frames/timeline.
-                    self._send(self._animation_reply(message, refuse=interrupted_at is not None))
+                    handler = self.animation_handler
+                    try:
+                        if handler is None or interrupted_at is not None:
+                            raise RuntimeError("no animation handler")
+                        reply = {"type": "animation_result",
+                                 "animation": handler(dict(message.get("request") or {}))}
+                    except Exception:  # noqa: BLE001
+                        reply = {"type": "animation_error", "error": "Animation frames are not available."}
+                    self._send(reply)
                     continue
                 if kind == "action" and interrupted_at is not None:
                     # Sent before the interrupt landed: refused, never executed (the child raises on the reply).
@@ -818,14 +781,6 @@ class StatefulSandbox:
                     raw = reply.get("action_result") or {}
                     if isinstance(raw, dict):
                         results.append(dict(raw))
-                    if (self.interrupt_on_timeout and interrupted_at is None and time.monotonic() >= deadline
-                            and self.process is not None and self.process.poll() is None):
-                        # The timeout passed inside this action: signal before the reply, so the interrupt lands while
-                        # the child's ``action`` is disarmed and raises right after it (not after a racing next action).
-                        interrupted_at = time.monotonic()
-                        deadline = interrupted_at + self.interrupt_grace
-                        self._interrupt()
-                        self._event("duck_python_interrupt", timeout=timeout_seconds)
                     self._send(
                         {
                             "type": "action_result",
@@ -835,9 +790,6 @@ class StatefulSandbox:
                     )
                     continue
                 if kind in {"final", "error"}:
-                    telemetry = message.get("cache_telemetry")
-                    if isinstance(telemetry, dict):
-                        self._event("duck_python_heap", **telemetry)
                     output = {
                         "stdout": str(message.get("stdout", "") or ""),
                         "result": message.get("result"),
@@ -851,20 +803,15 @@ class StatefulSandbox:
                         # arena dfr_harness: stale-state / terminal refusals raised in the child (nothing executed).
                         self.dfr_guards.extend(guards)
                         self._event("duck_python_dfr_guards", guards=guards)
-                    hx = message.get("hx")
-                    if isinstance(hx, dict):
-                        # arena hx_harness: registered tools / observers and the last observer outputs.
-                        self.hx_state = hx
                     plans = message.get("plans")
                     if plans:
                         # arena action_plans: one summary per run_plan call of this python call.
                         self.plans.extend(plans)
                         self._event("duck_python_plans", plans=plans)
-                    if interrupted_at is not None and message.get("history_size") != self.synced:
-                        # Resend the whole history next time unless the child reports the entries the host sent
-                        # (v7.1: a full resync of a 20K-step history was a ~300 MB message built under the GIL).
-                        self.synced = 0
                     if interrupted_at is not None:
+                        # Resend the whole history next time: the child's copy is intact, but a full resync costs
+                        # one larger message and rules out a drift after an interrupted call.
+                        self.synced = 0
                         if kind == "error":
                             self.interrupts += 1
                             self._event("duck_python_interrupted", interrupts=self.interrupts,
@@ -880,15 +827,6 @@ class StatefulSandbox:
                     "stdout": "",
                     "action_results": list(results),
                 }
-
-    def _animation_reply(self, message, refuse=False):
-        handler = self.animation_handler
-        try:
-            if handler is None or refuse:
-                raise RuntimeError("no animation handler")
-            return {"type": "animation_result", "animation": handler(dict(message.get("request") or {}))}
-        except Exception:  # noqa: BLE001
-            return {"type": "animation_error", "error": "Animation frames are not available."}
 
     def inventory(self, timeout=5.0):
         """The live user definitions (``LOOP_FIXES`` inventory request), or None when there is no interpreter or it
@@ -925,9 +863,6 @@ class StatefulSandbox:
                 except json.JSONDecodeError:
                     self._discard("invalid_response")
                     return None
-                if message.get("type") == "animation" and self.inventory_answers_animation:
-                    self._send(self._animation_reply(message))
-                    continue
                 if message.get("type") != "inventory":
                     self._discard("unknown_message")
                     return None

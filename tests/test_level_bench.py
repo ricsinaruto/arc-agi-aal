@@ -308,7 +308,7 @@ def test_bootstrap_echoes_only_bench_lines(tmp_path, capsys, monkeypatch):
     import sys
 
     # In the bundle the Qwen bootstrap sits next to the arena one as ``bootstrap``.
-    helpers = importlib.util.spec_from_file_location("bootstrap", ROOT / "scripts/arena/bundle_bootstrap.py")
+    helpers = importlib.util.spec_from_file_location("bootstrap", ROOT / "scripts/qwen/bootstrap.py")
     qwen = importlib.util.module_from_spec(helpers)
     helpers.loader.exec_module(qwen)
     monkeypatch.setitem(sys.modules, "bootstrap", qwen)

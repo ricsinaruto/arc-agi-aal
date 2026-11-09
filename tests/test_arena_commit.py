@@ -27,14 +27,6 @@ ROOT = Path(__file__).resolve().parents[1]
 CONTROL = json.loads((ROOT / "configs/arena_30m.json").read_text())
 WINDOW, CAP = 100_000, 16_000
 
-@pytest.fixture(autouse=True)
-def _fast_scheduler_ticks(monkeypatch):
-    """Real-wall trials: a 0.1 s tick keeps the audit's 1.1 s switch bar clear of CI CPU jitter (25 Oct flakes: 1.157 s
-    and 1.185 s on a 1 s tick)."""
-    from arena import trial
-    monkeypatch.setattr(trial, "TICK_SECONDS", 0.1)
-
-
 
 def steady(count=6, **commit):
     """Commit scheduler past the opening: g0 and g1 cleared level 1 and hold the focus slots."""
@@ -378,7 +370,7 @@ async def test_preemptions_count_only_when_a_focus_request_ran_without_a_lane_re
 
 
 def test_priority_policy_reaches_the_server_command_for_this_variant_only(tmp_path, monkeypatch):
-    from test_serving_core import import_fork
+    from test_qwen_serving import import_fork
 
     from arena import serving
 

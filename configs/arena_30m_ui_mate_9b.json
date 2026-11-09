@@ -1,0 +1,90 @@
+{
+  "name": "arena-paired-30m-ui-mate-9b-v1",
+  "status": "prepared-not-launched",
+  "games_source": "configs/duck_public_notebook.json:public_game_ids",
+  "games": [
+    "tn36-ef4dde99",
+    "lf52-271a04aa",
+    "cn04-2fe56bfb",
+    "bp35-0a0ad940",
+    "wa30-ee6fef47",
+    "lp85-305b61c3",
+    "r11l-495a7899",
+    "tu93-0768757b",
+    "sp80-589a99af",
+    "m0r0-492f87ba",
+    "vc33-5430563c",
+    "ar25-0c556536",
+    "ka59-38d34dbb",
+    "sc25-635fd71a",
+    "sk48-d8078629",
+    "dc22-fdcac232",
+    "cd82-fb555c5d",
+    "ft09-0d8bbf25",
+    "g50t-5849a774",
+    "ls20-9607627b",
+    "re86-8af5384d",
+    "s5i5-18d95033",
+    "sb26-7fbdac44",
+    "su15-1944f8ab",
+    "tr87-cd924810"
+  ],
+  "wall_seconds": 1800,
+  "windows": [
+    131072
+  ],
+  "kv_margin": 0.9,
+  "active_limit": 2,
+  "opening_switch_level1_games": 2,
+  "level_budget_rule": "(k+1)*T1 active seconds for level k->k+1; regrant max(1.5*spent, spent+30)",
+  "backlog_priority": "fewest active seconds, then roster order",
+  "completion_cap": 16384,
+  "reasoning_effort": "native",
+  "temperature": 0.7,
+  "generation_slots": 25,
+  "serving_profile": "ui-mate-native-bf16-vllm",
+  "server": {
+    "max_model_len": 262144,
+    "prefix_caching": true,
+    "mtp_tokens": 0,
+    "max_num_seqs": 25,
+    "gpu_memory_utilization": "0.96",
+    "max_num_batched_tokens": 4096
+  },
+  "trials": [
+    {
+      "name": "duck-transfer",
+      "kind": "duck-transfer"
+    },
+    {
+      "name": "qwen-c",
+      "kind": "pi"
+    }
+  ],
+  "notebook_seconds": 7800,
+  "kernel_timeout": 8100,
+  "context_policy": "append-only; one tool-less model-written summary at the cap (C: Pi's native compaction at window - cap)",
+  "cache_admission": "hybrid_blocks",
+  "isolate_trial_cache": true,
+  "cache_experiment": {
+    "variant": "blocks",
+    "cpu_cache_gib": 0,
+    "kv_cache_dtype": "auto",
+    "compaction_changed": false,
+    "probe_seconds_limit": 270
+  },
+  "candidate_profile": "ui-mate-9b",
+  "served_model": "tencent/UI-Mate-9B",
+  "model_revision": "05dd5f2975195a5bb03d4363e8767f12158c8421",
+  "model_datasets": [
+    "richardcsaky/arc-ui-mate-9b-bf16"
+  ],
+  "startup_timeout_seconds": 1800,
+  "model_template_notes": {
+    "gameplay": "native thinking enabled",
+    "summary": "native thinking disabled",
+    "history": "native template; 9B ignores preserve_thinking, 27B supports it; common false setting retained",
+    "mtp": "disabled; no MTP tensors",
+    "quantization": "none; published BF16"
+  }
+}

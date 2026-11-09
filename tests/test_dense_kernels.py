@@ -13,7 +13,7 @@ from types import SimpleNamespace as NS
 
 import httpx
 import pytest
-from test_serving_core import import_fork
+from test_qwen_serving import import_fork
 
 from arc_infra import dense_kernels_patch as patch
 from arena import kernel_gate as gate

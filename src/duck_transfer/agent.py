@@ -5,8 +5,6 @@ import json
 import re
 import threading
 import time
-from collections import OrderedDict
-from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 
@@ -40,21 +38,6 @@ def verbatim_history_text(field, message, normalized):
     if not isinstance(raw, str) or not normalized:
         return normalized
     return THINK_TAG.sub("", raw)
-
-
-class HistoryPayloads(Sequence):
-    """The public ``_ascii_history_view_payload(history)`` list, built per entry on access."""
-
-    def __init__(self, owner, history):
-        self.owner, self.history = owner, history
-
-    def __len__(self):
-        return len(self.history)
-
-    def __getitem__(self, index):
-        if isinstance(index, slice):
-            return [self.owner.history_payload(entry) for entry in self.history[index]]
-        return self.owner.history_payload(self.history[index])
 
 
 class ContextLengthRejected(requests.RequestException):
@@ -93,7 +76,7 @@ class DuckAgent(GameSession):
         self.transition_results = {}
         self.length_truncations = 0
         # v5 plumbing: the runtime state lives here; the file is written at start and end.
-        self.frame_payloads = OrderedDict()
+        self.frame_payloads = {}
         self.state_flushes = 0
         self.prompt_log_writes = 0
         # v5 feedback: receipts, repeat refusal, stuck notices, GAME_OVER bookkeeping.
@@ -149,9 +132,8 @@ class DuckAgent(GameSession):
     def write_duck_state(self, action="", result=None):
         from inference.agent.runtime_state import Frame, HistoryEntry
 
-        rows = self.__dict__.setdefault("_rows", {})  # v7.1: one tuple per distinct row (frames share most rows)
         frame = Frame(
-            grid=tuple(rows.setdefault(r, r) for r in map(tuple, self.obs.board.tolist())),
+            grid=tuple(tuple(int(c) for c in row) for row in self.obs.board),
             step=self.steps,
             level=max(1, min(self.obs.total_levels, self.obs.levels + 1)),
         )
@@ -204,46 +186,19 @@ class DuckAgent(GameSession):
         return self.duck_history[-1].frame, list(self.duck_history)
 
     def ascii_history(self, history):
-        """Per-entry payloads memoised by step (frames are immutable); results attached.
-
-        v7.1: a lazy sequence; the sandbox host sends only the entries its child has not seen, so building every
-        entry on every action and python call (O(steps): 20 ms at k039's 20K steps) is gone."""
-        return HistoryPayloads(self, history)
-
-    _frame_view = (None, None)
-
-    def frame_view_payload(self, frame):
-        """The public ``_ascii_frame_view_payload(frame)``, memoised for the frame object (v7.1: the current frame was
-        rendered again on every action and python call)."""
-        if frame is None:
-            return self.module._ascii_frame_view_payload(frame)
-        held, payload = self._frame_view
-        if held is not frame:
-            payload = self.module._ascii_frame_view_payload(frame)
+        """Per-entry payloads memoised by step (frames are immutable); results attached."""
+        entries = []
+        for entry in history:
+            step = entry.frame.step
+            payload = self.frame_payloads.get(step)
             if payload is None:
-                return None
-            payload["grid"] = frame.grid  # the frame's tuple grid (same JSON)
-            self._frame_view = (frame, payload)
-        return dict(payload)
-
-    HISTORY_PAYLOAD_CACHE = 64
-
-    def history_payload(self, entry):
-        step = entry.frame.step
-        payload = self.frame_payloads.get(step)
-        if payload is None:
-            payload = self.module._ascii_history_view_payload([entry])[0]
-            # The frame's own tuple grid (same JSON): no 65 GC-tracked lists per step held for the whole game.
-            payload["frame"]["grid"] = entry.frame.grid
-            self.frame_payloads[step] = payload
-            # Canonical frames remain in duck_history. Old rendered payloads can be rebuilt on a child restart.
-            if len(self.frame_payloads) > self.HISTORY_PAYLOAD_CACHE:
-                self.frame_payloads.popitem(last=False)
-        else:
-            self.frame_payloads.move_to_end(step)
-        payload = dict(payload)
-        payload["result"] = dict(self.transition_results.get(step, {}))
-        return payload
+                payload = self.frame_payloads[step] = self.module._ascii_history_view_payload(
+                    [entry]
+                )[0]
+            payload = dict(payload)
+            payload["result"] = dict(self.transition_results.get(step, {}))
+            entries.append(payload)
+        return entries
 
     def valid_actions(self):
         from inference.agent.action_names import to_model_actions
@@ -410,23 +365,6 @@ class DuckAgent(GameSession):
         None. ``verdicts``: one ``(label, payload or None)`` per action tried (None: refused)."""
         return None
 
-    def finish_batch(self, result, requested, verdicts, stop):
-        """The batch receipt (the arena's dfr_loop action feedback adds traces and the echo); ``result`` here."""
-        return result
-
-    def begin_turn(self):
-        """True when the coming analyzer invocation starts a new turn (the arena's dfr_loop: False on a resumption
-        after a token yield, which the stuck notice and the refusal count do not see as a turn)."""
-        return True
-
-    def end_turn(self, result):
-        """Hook after each analyzer invocation (the arena's dfr_loop yield bookkeeping); no-op here."""
-        return None
-
-    def analyzer_should_stop(self):
-        """The analyzer's ``should_stop`` (the arena's dfr_loop also yields after its generated-token budget)."""
-        return self.stopping.is_set() or self.remaining() <= 0
-
     async def step_duck(self, arguments):
         raw = arguments.get("actions")
         if raw is None:
@@ -577,7 +515,7 @@ class DuckAgent(GameSession):
         }
         if skipped:
             result["skipped_repeats"] = skipped
-        return self.finish_batch(result, [display(action) for action in actions], verdicts, stop)
+        return result
 
     async def count_prompt(self, messages, tools, template_kwargs=None):
         """``(text tokens, images, text characters, image tokens)`` from the server tokenizer
@@ -726,15 +664,7 @@ class DuckAgent(GameSession):
             else:
                 raise
         except Exception as exc:
-            # A worker that already finished with the deadline's own TimeoutError (its request or tool call ran into
-            # the wall; dfr-combined v3 Kaggle preview, 3 October: one of 110 games) ended on time, as
-            # GameplayRequestExpired does; a worker still running after ``timeout`` (a hang) or any other exception
-            # stays a cleanup error.
-            if (type(exc) is TimeoutError and self.worker.done() and not self.worker.cancelled()
-                    and type(self.worker.exception()) is TimeoutError and self.remaining() <= 0):
-                self.workspace.append("worker_deadline_timeout", step=self.steps)
-            else:
-                self.status, self.error = "error", f"Duck worker cleanup: {type(exc).__name__}"
+            self.status, self.error = "error", f"Duck worker cleanup: {type(exc).__name__}"
         finally:
             if self.worker.done():
                 self.worker = None
@@ -781,9 +711,8 @@ class DuckAgent(GameSession):
                         game_over_step=game_over.get("step"),
                         actions=game_over.get("actions"),
                     )
-                if self.begin_turn():
-                    self.stuck.note_turn()
-                    self.turn_refusals = 0
+                self.stuck.note_turn()
+                self.turn_refusals = 0
                 self.worker = loop.run_in_executor(
                     self.executor,
                     partial(
@@ -795,12 +724,11 @@ class DuckAgent(GameSession):
                         transcript_path=self.workspace.root / "duck-transcript.txt",
                         analysis_step=self.turns,
                         request_timeout_seconds=self.remaining(),
-                        should_stop=self.analyzer_should_stop,
+                        should_stop=lambda: self.stopping.is_set() or self.remaining() <= 0,
                     ),
                 )
                 result = await asyncio.shield(self.worker)
                 self.worker = None
-                self.end_turn(result)
                 if self.backend_error:
                     raise RuntimeError(self.backend_error)
                 if result is not None and result.retryable_failure and self.remaining() > 0:
@@ -821,24 +749,12 @@ class DuckAgent(GameSession):
             await self.drain_worker()
             self.sandbox.close()
             self.executor.shutdown(wait=False, cancel_futures=True)
-            cancelled = False
-            try:
-                if self.duck_history:
-                    writing = asyncio.create_task(asyncio.to_thread(self.flush_duck_state))
-                    while True:
-                        try:
-                            await asyncio.shield(writing)
-                            break
-                        except asyncio.CancelledError:
-                            if writing.cancelled():
-                                raise
-                            cancelled = True  # Finish the artifact before trial cleanup can archive it.
-            except OSError as exc:
-                self.workspace.append("state_flush_failed", error=str(exc))
-            finally:
-                self.workspace.append("finished", **self.result())
-            if cancelled:
-                raise asyncio.CancelledError
+            if self.duck_history:
+                try:
+                    self.flush_duck_state()
+                except OSError as exc:
+                    self.workspace.append("state_flush_failed", error=str(exc))
+            self.workspace.append("finished", **self.result())
         return self.result()
 
     def result(self):

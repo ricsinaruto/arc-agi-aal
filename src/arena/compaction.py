@@ -221,6 +221,55 @@ class CompactionMixin:
             messages = before(messages)
         measure = getattr(owner, "trigger_tokens", None) or owner.estimate_prompt_tokens
         budget = max(1, self._context_budget_tokens - max(0, extra_safety_tokens))
+        fraction = getattr(owner, "compaction_keep_fraction", None)
+        if fraction is not None:
+            from .fraction_compaction import split_fraction
+
+            measure = owner.fraction_measure
+            # Preserve v7.1's explicit loop-reset escape hatch independently of normal compaction.
+            if getattr(owner, "lrule_pending", None) is not None:
+                fresh = owner.loop_fresh_context(messages, tools, measure)
+                if fresh is not None:
+                    return fresh
+            if measure(messages, tools) <= budget and not extra_safety_tokens:
+                return messages
+            # A turn that runs long without acting has no user message after its observation, so the shortest
+            # observation-aligned tail is the whole turn and cannot fit beside a summary (k007 of
+            # sft-flash-compact-500k-v4: 53.6K kept, refilled, then nothing left to cut). Keep that observation
+            # and the newest complete tool exchanges instead; the turn's older exchanges go into the summary.
+            cap = getattr(owner, "compaction_summary_cap", None) or 0
+            try:
+                source, tail, record = split_fraction(messages, tools, measure, fraction)
+                fits = measure(compacted_messages(messages[0], "", tail), tools) + cap <= budget
+            except ValueError:
+                fits = False
+            if not fits:
+                from .context_drain import latest_observation
+
+                anchor = latest_observation(messages, getattr(owner, "is_observation", None))
+                if not anchor:
+                    raise ValueError("Summary plus required retained tail exceeds context budget")
+                source, tail, record = split_fraction(messages, tools, measure, fraction, anchor=anchor)
+            if getattr(owner, "compaction_full_prefix", False):
+                # Throughput arm (7 October): a request that ends inside the cached context has no saved recurrent
+                # state to resume from and recomputes all of ``source`` (~100K tokens per compaction, measured).
+                # The whole context plus the prompt resumes from the last reply's state; the prompt names the
+                # messages that stay verbatim, which the summary must not repeat.
+                owner.summary_scope = len(messages) - len(source)
+                try:
+                    summary = owner.summarize(messages)
+                finally:
+                    owner.summary_scope = None
+            else:
+                summary = owner.summarize(source)
+            result = compacted_messages(messages[0], summary, tail)
+            if measure(result, tools) > budget:
+                raise ValueError("Summary plus required retained tail exceeds context budget")
+            owner.workspace.append("fraction_compaction", step=owner.steps, **record)
+            acquisition = getattr(owner, "generation_budget", None)
+            if acquisition is not None:
+                acquisition.record("fraction_compaction", game_id=owner.game_id, step=owner.steps, **record)
+            return result
         if getattr(owner, "drain", None) is not None:
             # hero-v2 drain_half (arena.context_drain): drop the oldest history blocks instead of a summary. The
             # public loop passes ``extra_safety_tokens`` only on its context-length retry: that drain is forced.

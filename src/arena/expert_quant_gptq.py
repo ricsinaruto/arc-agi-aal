@@ -45,8 +45,10 @@ class Gptq(Bench):
         self.results.update(settings={k: getattr(args, k) for k in ("percdamp", "min_rows", "blocksize",
                                                                      "scale_search", "eval_rows", "calib_rows",
                                                                      "prior_rows", "act_order", "prune_mask",
-                                                                     "omit_pruned")},
-                            shards={}, counts={})
+                                                                     "omit_pruned", "int3_group")},
+                            shards={}, shards_int3={}, counts={})
+        self.results["settings"]["int3_scale_metric"] = getattr(args, "int3_scale_metric", "mse")
+        self.results["settings"]["int3_scale_sign_search"] = getattr(args, "int3_scale_sign_search", False)
         self.prefetched = {}
         self.kept = None
         self.prune_sha256 = None
@@ -69,12 +71,23 @@ class Gptq(Bench):
         torch = self.torch
         root = self.args.calib
         meta = json.load(open(os.path.join(root, "meta.json")))
+        if meta.get("calibration_row_mix"):
+            self.results["settings"]["calibration_row_mix"] = meta["calibration_row_mix"]
         rows = int(meta["rows"][str(layer)])
         take = rows if self.args.calib_rows <= 0 else min(rows, self.args.calib_rows)
         q = np.fromfile(os.path.join(root, f"L{layer:02d}.x"), dtype=np.uint8, count=take * H).reshape(take, H)
         s = np.fromfile(os.path.join(root, f"L{layer:02d}.s"), dtype=np.float32, count=take)
         ids = np.fromfile(os.path.join(root, f"L{layer:02d}.ids"), dtype=np.int16, count=take * TOPK).reshape(take, TOPK)
         w = np.fromfile(os.path.join(root, f"L{layer:02d}.w"), dtype=np.float32, count=take * TOPK).reshape(take, TOPK)
+        if meta.get("row_importance"):
+            importance = np.fromfile(os.path.join(root, f"L{layer:02d}.importance"), dtype=np.float32, count=take)
+            if len(importance) != take or not np.isfinite(importance).all() or not (importance > 0).all():
+                raise ValueError("invalid calibration row importance")
+            w *= np.sqrt(importance[:, None])
+            self.results["settings"]["row_importance"] = meta["row_importance"]
+        if self.args.calib_subsample < 1.0:  # uniform row subset (saturation study), fixed seed
+            pick = np.sort(np.random.default_rng(0).choice(take, int(take * self.args.calib_subsample), replace=False))
+            q, s, ids, w = q[pick], s[pick], ids[pick], w[pick]
         x = (torch.from_numpy(q).to(self.dev).view(torch.float8_e4m3fn).float()
              * torch.from_numpy(s).to(self.dev).unsqueeze(1)).to(torch.bfloat16)
         return x, torch.from_numpy(ids.astype(np.int32)).to(self.dev), torch.from_numpy(w).to(self.dev)
@@ -133,6 +146,37 @@ class Gptq(Bench):
             packs.append(p)
             scales.append(sc)
         return torch.cat(packs), torch.cat(scales)
+
+    def int3_batched(self, weight, hessian, counts, batch):
+        """Direct GPTQ of BF16 [E, N, K] weights onto the int3 grid (``expert_3bit_math``; 6 October: 23% lower MoE
+        error than requantizing the NVFP4 GPTQ result). Returns float32 dequantized weights, signed group scales and
+        the new per-expert scale_2."""
+        from arena import expert_3bit_math as tm
+        from arena.expert_3bit_overlay import SEARCH
+
+        torch, qm, group = self.torch, self.qm, self.args.int3_group
+        s2 = tm.scale2_of(weight, "int3")
+        deqs, scales = [], []
+        for s in range(0, weight.shape[0], batch):
+            w = weight[s:s + batch].float()
+            h = hessian[s:s + batch].clone()
+            importance = (h.diagonal(dim1=-2, dim2=-1)
+                          if getattr(self.args, "int3_scale_metric", "mse") == "hessian-diagonal" else None)
+            sc = tm.group_scales(w, s2[s:s + batch], "int3", group, SEARCH, column_weights=importance,
+                                 search_signs=getattr(self.args, "int3_scale_sign_search", False))
+            qm.damp_hessian(h, counts[s:s + batch], percdamp=self.args.percdamp)
+            deqs.append(tm.gptq_static(w, h, s2[s:s + batch], "int3", group, sc, act_order=True,
+                                       blocksize=self.args.blocksize))
+            scales.append(sc)
+            del h, w
+        return torch.cat(deqs), torch.cat(scales), s2
+
+    def pack_int3(self, deq, scales, scale_2, batch=64):
+        from arena import expert_3bit_math as tm
+
+        parts = [tm.to_nvfp4(deq[s:s + batch], scales[s:s + batch], scale_2[s:s + batch], self.args.int3_group)
+                 for s in range(0, deq.shape[0], batch)]
+        return self.torch.cat([p for p, _ in parts]), self.torch.cat([b for _, b in parts])
 
     def fc1_hessians(self, x, ids, wts):
         E = B.E  # noqa: N806
@@ -196,6 +240,9 @@ class Gptq(Bench):
         res["rows_per_expert"] = {"min": float(c1.min()), "median": float(c1.median()), "max": float(c1.max())}
         res["row_counts"] = [int(v) for v in c1.tolist()]
         p13, f13 = self.gptq_batched(gate_up, s13, h1, c1, self.args.batch)
+        q13 = sc13 = n13 = None
+        if self.args.int3_out:
+            q13, sc13, n13 = self.int3_batched(gate_up, h1, c1, self.args.batch)
         del h1
         fb = ~keep
         p13[fb], f13[fb] = served["w13"][fb], served["w13_sf"][fb]
@@ -216,25 +263,46 @@ class Gptq(Bench):
         res["activation_amax"] = {"calib_x": float(x.float().abs().max()), "calib_fc1_out": float(amax_h),
                                   "checkpoint_a13_amax": float(served["a13"].max() * FP4_MAX * FP8_MAX),
                                   "checkpoint_a2_amax": float(served["a2"].max() * FP4_MAX * FP8_MAX)}
+        new3 = None
+        if self.args.int3_out:
+            # int3 FC2 with the int3 FC1 weights (sequential within the expert, as above).
+            t4 = time.time()
+            h2, c2, _ = self.fc2_hessians(x, ids, wts, lambda e: q13[e])
+            if self.args.prior_rows > 0:
+                qm.pool_hessians(h2, c2, self.args.prior_rows)
+            q2, sc2, n2 = self.int3_batched(down, h2, c2, E)
+            del h2
+            i13, b13 = self.pack_int3(q13, sc13, n13)
+            i2, b2 = self.pack_int3(q2, sc2, n2)
+            res["int3_weight_rel"] = {"gate_up": qm.relative_error(q13, gate_up), "down": qm.relative_error(q2, down)}
+            del q13, sc13, q2, sc2
+            n13, n2 = n13.to(served["s2_gate"].device), n2.to(served["s2_down"].device)
+            i13[fb], b13[fb], i2[fb], b2[fb] = served["w13"][fb], served["w13_sf"][fb], served["w2"][fb], served["w2_sf"][fb]
+            n13[fb], n2[fb] = served["s2_gate"][fb].float(), served["s2_down"][fb].float()
+            new3 = {**served, "w13": i13, "w13_sf": b13, "w2": i2, "w2_sf": b2, "s2_gate": n13, "s2_up": n13,
+                    "s2_down": n2}
+            res["int3_seconds"] = round(time.time() - t4, 1)
         del x, ids, wts
         new = {**served, "w13": p13, "w13_sf": f13, "w2": p2, "w2_sf": f2}
         res["changed_fraction"] = {"w13": float((p13 != served["w13"]).float().mean()),
                                    "w2": float((p2 != served["w2"]).float().mean())}
         # Held-out errors.
         try:
-            res["errors"] = self.evaluate(layer, served, new, gate_up, down)
+            res["errors"] = self.evaluate(layer, served, new, gate_up, down, new3)
         except Exception as exc:  # noqa: BLE001
             self.results["errors"].append(f"L{layer} eval: {type(exc).__name__}: {str(exc)[:300]}")
             log({"layer": layer, "eval_error": traceback.format_exc()[-1500:]})
         # Replacement shards.
         t3 = time.time()
         res["shards"] = self.write_shards(layer, new)
+        if new3 is not None:
+            res["shards_int3"] = self.write_shards(layer, new3, self.args.int3_out, "shards_int3", scale2=True)
         res["write_seconds"] = round(time.time() - t3, 1)
         res["seconds"] = round(time.time() - t0, 1)
         log({"layer": layer, "errors": res.get("errors"), "experts_gptq": res["experts_gptq"],
              "rows_per_expert": res["rows_per_expert"], "seconds": res["seconds"]})
 
-    def evaluate(self, layer, served, new, gate_up, down):
+    def evaluate(self, layer, served, new, gate_up, down, new3=None):
         torch, qm = self.torch, self.qm
         xe, ide, we = self.load_capture("eval", layer)
         if self.kept is not None:
@@ -248,7 +316,8 @@ class Gptq(Bench):
 
         ref, _ = self.moe_reference(xe, ide, we, bf16_expert)
         errors = {"rows": int(n)}
-        for name, weights in (("checkpoint", served), ("gptq", new)):
+        arms = [("checkpoint", served), ("gptq", new)] + ([("int3", new3)] if new3 is not None else [])
+        for name, weights in arms:
             deq = self.dequant_expert(weights)
             y, _ = self.moe_reference(xe, ide, we, deq)
             errors[f"{name}_w4a16"] = {"vs_bf16": qm.relative_error(y, ref), "cos_bf16": qm.cosine(y, ref)}
@@ -261,8 +330,9 @@ class Gptq(Bench):
                     errors[f"{name}_{kernel}"] = {"error": f"{type(exc).__name__}: {str(exc)[:200]}"}
         return errors
 
-    def write_shards(self, layer, new):
-        """One replacement shard per checkpoint shard of this layer: same tensor names, dtypes and shapes."""
+    def write_shards(self, layer, new, out_dir=None, key="shards", scale2=False):
+        """One replacement shard per checkpoint shard of this layer: same tensor names, dtypes and shapes
+        (``scale2``: the new per-expert ``weight_scale_2`` too, the int3 overlay)."""
         INTER = B.INTER  # noqa: N806
         from safetensors import safe_open
         from safetensors.torch import save_file
@@ -292,6 +362,9 @@ class Gptq(Bench):
                     elif kind == "weight_scale":
                         value = {"gate_proj": new["w13_sf"][e, :INTER], "up_proj": new["w13_sf"][e, INTER:],
                                  "down_proj": new["w2_sf"][e]}[proj]
+                    elif kind == "weight_scale_2" and scale2:
+                        value = new[{"gate_proj": "s2_gate", "up_proj": "s2_up", "down_proj": "s2_down"}[proj]][e]
+                        value = value.reshape(original.shape).to(original.dtype)
                     else:  # weight_scale_2, input_scale: unchanged
                         value = original
                     value = value.to("cpu").contiguous()
@@ -301,23 +374,26 @@ class Gptq(Bench):
                         raise RuntimeError(f"{name}: {value.dtype} {tuple(value.shape)} != {original.dtype} "
                                            f"{tuple(original.shape)}")
                     tensors[name] = value
-            path = os.path.join(self.args.overlay_out, shard)
+            path = os.path.join(out_dir or self.args.overlay_out, shard)
             save_file(tensors, path + ".tmp", metadata=metadata)
             os.replace(path + ".tmp", path)
             written[shard] = {"bytes": os.path.getsize(path), "sha256": sha256_file(path), "tensors": len(tensors),
                               "base_bytes": os.path.getsize(os.path.join(self.args.model_dir, shard))}
-            self.results["shards"][shard] = written[shard]
+            self.results[key][shard] = written[shard]
         return written
 
-    def manifest(self):
-        layers = sorted(int(k) for k, v in self.results["layers"].items() if v.get("shards"))
+    def manifest(self, out_dir=None, key="shards"):
+        layers = sorted(int(k) for k, v in self.results["layers"].items() if v.get(key))
+        settings = dict(self.results["settings"])
+        if key == "shards_int3":
+            settings.update(grid="int3", group=self.args.int3_group, method="gptq-direct")
         manifest = {"format": FORMAT, "base_model_dir": self.args.model_dir, "layers": layers,
-                    "shards": self.results["shards"], "settings": self.results["settings"],
+                    "shards": self.results[key], "settings": settings,
                     "complete": len(layers) == 48, "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
         if self.kept is not None:
             manifest["expert_prune_sha256"] = self.prune_sha256
             manifest["omits_pruned"] = bool(self.args.omit_pruned)
-        path = os.path.join(self.args.overlay_out, "overlay-manifest.json")
+        path = os.path.join(out_dir or self.args.overlay_out, "overlay-manifest.json")
         with open(path, "w") as fh:
             json.dump(manifest, fh, indent=1, sort_keys=True)
         return manifest
@@ -348,9 +424,18 @@ def main(argv=None):
     parser.add_argument("--omit-pruned", action="store_true",
                         help="with --prune-mask: leave the pruned experts out of the replacement shards")
     parser.add_argument("--device", default="cuda")
+    parser.add_argument("--int3-out", default=None, help="also write a direct GPTQ-int3 overlay (NVFP4 container)")
+    parser.add_argument("--int3-group", type=int, default=16)
+    parser.add_argument("--int3-scale-sign-search", action="store_true",
+                        help="Search both signs of each INT3 group scale")
+    parser.add_argument("--int3-scale-metric", choices=("mse", "hessian-diagonal"), default="mse",
+                        help="initial int3 scale search objective; GPTQ still uses the full Hessian")
+    parser.add_argument("--calib-subsample", type=float, default=1.0)
     args = parser.parse_args(argv)
     args.rtn_search = False
     os.makedirs(args.overlay_out, exist_ok=True)
+    if args.int3_out:
+        os.makedirs(args.int3_out, exist_ok=True)
     job = Gptq(args)
     job.env()
     layers = [int(x) for x in args.layers.split(",")]
@@ -371,6 +456,8 @@ def main(argv=None):
             job.flush()
         thread = following
     job.results["manifest"] = job.manifest()
+    if args.int3_out:
+        job.results["manifest_int3"] = job.manifest(args.int3_out, "shards_int3")
     job.flush()
     log({"done": True, "elapsed": round(time.time() - job.start, 1), "layers": job.results["manifest"]["layers"],
          "errors": job.results["errors"]})

@@ -28,6 +28,7 @@ from arc_infra.stack_kernels_patch import apply as apply_stack_kernels
 from arc_infra.stack_kernels_patch import validate as validate_stack_kernels
 from arc_infra.stall_dump_patch import apply as apply_stall_dump
 from arc_infra.stall_dump_patch import validate as validate_stall_dump
+from qwen_baselines.serving import start
 
 from . import expert_overlay as expert_overlay_module
 from .cache import BlockBudget
@@ -36,7 +37,6 @@ from .cache_reclamation import apply as apply_reclamation
 from .compatibility import validate_settings
 from .prefix_cache_patch import apply as apply_prefix_cache
 from .prefix_cache_patch import validate as validate_prefix_cache
-from .serving_core.serving import start
 
 SPECULATIVE_METHODS = ('ngram_gpu',)  # the pinned script's --async-scheduling rejects the CPU `ngram` proposer
 
@@ -91,7 +91,7 @@ LAB_ENV = ('ARENA_KV_CACHE_DTYPE', 'ARENA_MTP_TOKENS', 'ARENA_MAX_CUDAGRAPH_CAPT
            'ARENA_TORCH_PROFILER', 'ARENA_DENSE_KERNELS', 'ARENA_SERVING_KERNELS', 'ARENA_STACK_KERNELS',
            'ARENA_EXPERT_OVERLAY', 'ARENA_EXPERT_PROBE', 'ARENA_ENFORCE_EAGER', 'ARENA_READY_GUARD',
            'ARENA_EXPERT_PRUNE', 'ARENA_STALL_DUMP', 'ARENA_PREFIX_CACHE', 'ARENA_PROMPT_TOKENS_DETAILS',
-           'ARENA_PREFIX_MATCH_UNIT', 'ARENA_WARM_PROMPT_LOGPROBS', 'ARENA_SETUP_TIMEOUTS')
+           'ARENA_PREFIX_MATCH_UNIT', 'ARENA_WARM_PROMPT_LOGPROBS', 'ARENA_SETUP_TIMEOUTS', 'ARENA_SWKV_PROBE')
 # ARENA_SETUP_TIMEOUTS="<server ready>,<setup total>" (competition int3 builds, 30 September): raises the pinned recipe's
 # SERVER_READY_TIMEOUT (1,500 s) and SETUP_TOTAL_TIMEOUT (1,800 s), module globals read when main() runs; Kaggle's slow
 # weight load plus Humming's kernel build can pass 1,800 s. Only raises (never lowers) them.
@@ -222,6 +222,11 @@ def lab_overrides(environ=None):
         if environ['ARENA_WARM_PROMPT_LOGPROBS'] not in ('0', '1'):
             raise ValueError('ARENA_WARM_PROMPT_LOGPROBS must be 0 or 1')
         result['warm_prompt_logprobs'] = environ['ARENA_WARM_PROMPT_LOGPROBS'] == '1'
+    if environ.get('ARENA_SWKV_PROBE'):
+        # Sliding-window measurement (8 October): the QSA selection mask / position shift RPC (arena.swkv_probe_patch).
+        if environ['ARENA_SWKV_PROBE'] not in ('0', '1'):
+            raise ValueError('ARENA_SWKV_PROBE must be 0 or 1')
+        result['swkv_probe'] = environ['ARENA_SWKV_PROBE'] == '1'
     return result
 
 
@@ -231,12 +236,13 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
               expert_overlay=None, input_root='/kaggle/input', expert_probe=False, enforce_eager=False,
               ready_guard_seconds=None, expert_prune=None, expert_prune_sha256=None, prefix_cache=None, prompt_tokens_details=False,
               stall_dump_seconds=None, prefix_match_unit=None, warm_prompt_logprobs=False, research_checkpoint=None,
-              graph_capture_sizes=None, setup_timeouts=None, renderer_num_workers=None,
-              mm_processor_cache_gb=None):
+              graph_capture_sizes=None, setup_timeouts=None, swkv_probe=False):
     if research_checkpoint is not None and (expert_overlay is not None or expert_prune is not None):
         raise ValueError('A research checkpoint cannot use the base Flash expert overlay or pruning mask')
     if type(warm_prompt_logprobs) is not bool:
         raise ValueError('warm_prompt_logprobs must be boolean')
+    if type(swkv_probe) is not bool or (swkv_probe and not enforce_eager):
+        raise ValueError('swkv_probe is boolean and needs enforce_eager (its wrappers are Python)')
     prefix_cache = validate_prefix_cache(prefix_cache)
     # Stall-only worker dump without pruning (arc_infra.stall_dump_patch; a pruned server carries it on its mask).
     stall_dump_seconds = validate_stall_dump(stall_dump_seconds)
@@ -247,11 +253,6 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
         raise ValueError('prompt_tokens_details must be boolean')
     if prefix_match_unit is not None and prefix_match_unit not in PREFIX_MATCH_UNITS:
         raise ValueError(f'prefix_match_unit must be one of {PREFIX_MATCH_UNITS}')
-    if renderer_num_workers is not None and (type(renderer_num_workers) is not int or not 1 <= renderer_num_workers <= 16):
-        raise ValueError('renderer_num_workers is an integer 1..16')
-    if mm_processor_cache_gb is not None and (type(mm_processor_cache_gb) not in (int, float)
-                                              or not 0 <= mm_processor_cache_gb <= 4):
-        raise ValueError('mm_processor_cache_gb is a number of GiB in 0..4 (vLLM default 4)')
     dense_kernels = validate_dense_kernels(dense_kernels)
     draft_head = validate_draft_head(draft_head)
     expert_overlay = expert_overlay_module.validate(expert_overlay)
@@ -302,6 +303,10 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
             from .prompt_logprobs_patch import apply as apply_prompt_logprobs
 
             apply_prompt_logprobs(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working)
+        if swkv_probe:
+            from .swkv_probe_patch import apply as apply_swkv_probe
+
+            apply_swkv_probe(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working)
         if dense_kernels is not None:
             # Kernel work, phase 2: the overlay changes the quant methods, which vLLM's AOT compile cache
             # key does not see; drop any compiled graph an earlier (control) server left in this container.
@@ -451,18 +456,6 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
             if '--prefix-match-unit' in argv:
                 raise ValueError('The pinned serving command already sets --prefix-match-unit')
             argv.extend(['--prefix-match-unit', str(prefix_match_unit)])
-        if renderer_num_workers is not None:
-            # B200 (5 October): the API server's chat-template and tokenizer thread pool (vLLM default 1); multimodal
-            # processing keeps its own single thread.
-            if '--renderer-num-workers' in argv:
-                raise ValueError('The pinned serving command already sets --renderer-num-workers')
-            argv.extend(['--renderer-num-workers', str(renderer_num_workers)])
-        if mm_processor_cache_gb is not None:
-            # v7 (5 October): the processed-image LRU is duplicated in the API server and the engine core
-            # (4 GiB each by default); host RAM on Kaggle is ~78.6 GiB with 47.7 GiB of PLE pinned.
-            if '--mm-processor-cache-gb' in argv:
-                raise ValueError('The pinned serving command already sets --mm-processor-cache-gb')
-            argv.extend(['--mm-processor-cache-gb', str(mm_processor_cache_gb)])
         return argv
 
     recipe.server_command = wrapped_command
@@ -479,12 +472,10 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
         result['prompt_tokens_details'] = True
     if warm_prompt_logprobs:
         result['warm_prompt_logprobs'] = True
+    if swkv_probe:
+        result['swkv_probe'] = True
     if prefix_match_unit is not None:
         result['prefix_match_unit'] = prefix_match_unit
-    if renderer_num_workers is not None:
-        result['renderer_num_workers'] = renderer_num_workers
-    if mm_processor_cache_gb is not None:
-        result['mm_processor_cache_gb'] = mm_processor_cache_gb
     if graph_metrics:
         result['cudagraph_metrics'] = True
     if speculative is not None:
@@ -601,9 +592,8 @@ def main():
               prompt_tokens_details=lab.get('prompt_tokens_details',
                                             study['server'].get('prompt_tokens_details', False)),
               prefix_match_unit=lab.get('prefix_match_unit', study['server'].get('prefix_match_unit')),
-              renderer_num_workers=study['server'].get('renderer_num_workers'),
-              mm_processor_cache_gb=study['server'].get('mm_processor_cache_gb'),
               warm_prompt_logprobs=lab.get('warm_prompt_logprobs', False),
+              swkv_probe=lab.get('swkv_probe', False),
               ready_guard_seconds=lab.get('ready_guard'),
               setup_timeouts=lab.get('setup_timeouts'),
               expert_prune=with_stall_dump(bundle_expert_prune(prune_spec, Path(args.study).parent.parent),

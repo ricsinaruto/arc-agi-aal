@@ -63,12 +63,14 @@ def main():
     parser.add_argument("--count", type=int, default=48)
     parser.add_argument("--low", type=int, default=9000)
     parser.add_argument("--high", type=int, default=30000)
+    parser.add_argument("--trial-dir", default=None,
+                        help="a recorded arena trial folder (games/*/prompts/prompt.log); default: the three-block run")
     args = parser.parse_args()
     from tokenizers import Tokenizer
 
     tok = Tokenizer.from_file(os.path.join(TOKENIZER_DIR, "tokenizer.json"))
     template = renderer()
-    trial = os.path.join(RUNS, TRIAL)
+    trial = args.trial_dir or os.path.join(RUNS, TRIAL)
     by_family = {}
     for gdir in sorted(glob.glob(os.path.join(trial, "games", "*"))):
         log = os.path.join(gdir, "prompts", "prompt.log")
@@ -106,7 +108,7 @@ def main():
         else:
             skipped.append(target)
     blob = json.dumps(contexts, separators=(",", ":"))
-    out = {"source": TRIAL, "count": len(contexts), "low": args.low, "high": args.high,
+    out = {"source": args.trial_dir or TRIAL, "count": len(contexts), "low": args.low, "high": args.high,
            "mean_tokens": round(sum(c["tokens"] for c in contexts) / len(contexts)),
            "families": sorted({c["family"] for c in contexts}), "skipped": skipped,
            "contexts_sha256": hashlib.sha256(blob.encode()).hexdigest(), "contexts": contexts}

@@ -579,3 +579,231 @@ def test_serving_capture_and_expert_overlay_hooks(tmp_path, monkeypatch):
     assert serving.lab_overrides({"ARENA_EXPERT_OVERLAY": "off"}) == {"expert_overlay": None}
     assert serving.lab_overrides({"ARENA_EXPERT_OVERLAY": json.dumps(spec)}) == {"expert_overlay": spec}
     assert "expert_overlay" not in serving.lab_overrides({})
+
+
+def test_balanced_corpus_budgets_preserve_prefixes_and_do_not_modify_inputs():
+    rows = [{"index": i, "family": f, "ids": [i] * n, "assistant_spans": [[2, n]]}
+            for i, (f, n) in enumerate([("a", 5), ("b", 8), ("a", 7)])]
+    original = json.loads(json.dumps(rows))
+    small, totals = eq.balanced_prefix_rows(rows, 6)
+    assert totals == {"a": 6, "b": 6}
+    assert [(r["index"], len(r["ids"])) for r in small] == [(0, 5), (1, 6), (2, 1)]
+    assert small[1]["assistant_spans"] == [[2, 6]] and small[2]["assistant_tokens"] == 0
+    large, _ = eq.balanced_prefix_rows(rows, 8)
+    assert all(r["ids"] == next(x for x in large if x["index"] == r["index"])["ids"][:len(r["ids"])] for r in small)
+    assert rows == original
+    with pytest.raises(ValueError, match="insufficient"):
+        eq.balanced_prefix_rows(rows, 9)
+
+
+def test_int3_hessian_diagonal_scales_minimize_weighted_candidate_error():
+    torch = pytest.importorskip("torch")
+    from arena import expert_3bit_math as tm
+
+    torch.manual_seed(5)
+    weight = torch.randn(2, 5, 32)
+    importance = torch.exp(torch.randn(2, 32) * 3)
+    scale2 = tm.scale2_of(weight, "int3")
+    candidates = (1.0, 0.95, 0.9, 0.85)
+    scales = tm.group_scales(weight, scale2, "int3", 16, candidates, column_weights=importance)
+    plain = tm.group_scales(weight, scale2, "int3", 16, candidates)
+    uniform = tm.group_scales(weight, scale2, "int3", 16, candidates, column_weights=torch.ones_like(importance))
+    assert torch.equal(plain, uniform)
+
+    def error(sc):
+        div = tm.divisor(sc, scale2, 16)
+        quant = tm.nearest(weight / div, tm.levels_tensor("int3")) * div
+        return ((quant - weight).square() * importance[:, None]).reshape(2, 5, 2, 16).sum(-1)
+
+    for candidate in candidates:
+        one = tm.group_scales(weight, scale2, "int3", 16, (candidate,))
+        assert torch.all(error(scales) <= error(one) + 1e-6)
+    with pytest.raises(ValueError, match="nonnegative"):
+        tm.group_scales(weight, scale2, "int3", 16, column_weights=-importance)
+
+
+def test_calibration_roles_use_prediction_position_and_require_exact_capture():
+    rows = [{"index": 7, "ids": list(range(5)), "assistant_spans": [[2, 4]]},
+            {"index": 8, "ids": list(range(3)), "assistant_spans": [[0, 2]]}]
+    summary = {"completed_indices": [7, 8], "prompt_tokens": 8, "stride": 1,
+               "processed_tokens": {"20": 8}, "rows": {"20": 8}}
+    values = eq.calibration_role_weights(rows, summary, 4)
+    # Predictor positions 1,2 and 5; never the previous sequence's final token4.
+    assert [v > 1 for v in values] == [False, True, True, False, False, True, False, False]
+    assert sum(values) == pytest.approx(8)
+    assert eq.calibration_role_weights(rows, summary, 1) == [1] * 8
+    for override in [{"completed_indices": [8, 7]}, {"processed_tokens": {"20": 7}},
+                     {"rows": {"20": 7}}, {"failed": ["request"]}, {"dropped_rows": 1}]:
+        with pytest.raises(ValueError):
+            eq.calibration_role_weights(rows, {**summary, **override}, 4)
+    strided = {**summary, "stride": 2, "rows": {"20": 4}}
+    assert [v > 1 for v in eq.calibration_role_weights(rows, strided, 4)] == [False, True, False, False]
+
+
+@pytest.mark.parametrize("failed", [False, True])
+def test_capture_only_persists_both_splits_without_fitting(tmp_path, monkeypatch, failed):
+    import time
+
+    inputs = tmp_path / eq.INPUTS
+    inputs.mkdir(parents=True)
+    for split in ("calib", "eval"):
+        (inputs / f"{split}.json").write_text(json.dumps([{"index": 0, "ids": [1, 2]}]))
+
+    async def capture(client, rows, *, directory, **kwargs):
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / "meta.json").write_text("{}")
+        return {"rows": {"20": 2}, "bytes": 16, "requests": 1, "prompt_tokens": 2,
+                "failed": ["request failed"] if failed else [], "wall_seconds": 0}
+
+    monkeypatch.setattr(eq, "capture", capture)
+    monkeypatch.setattr(eq, "server_process_env", lambda _: ({}, {"pid": 0}))
+    monkeypatch.setattr(eq, "stop_server", lambda _: {"returncode": 0})
+    monkeypatch.setattr(eq, "run_program", lambda *args, **kwargs: pytest.fail("capture_only fitted weights"))
+    monkeypatch.setenv("ARC_VALIDATION_OUTPUT", str(tmp_path / "persisted"))
+    study = {"server": {}, "expert_quant": {"capture_only": True, "calib_stride": 1, "eval_stride": 1,
+             "eval_max_rows": 4, "concurrency": 1, "gpu_reserve_seconds": 0}}
+    result = asyncio.run(eq.run_expert_quant(study, {"phase": "calibrate"}, source=tmp_path,
+                         output=tmp_path / "output", server_dir=tmp_path / "server", base_url="http://test/v1",
+                         deadline_epoch=time.time() + 30, log=lambda *args, **kwargs: None))
+    assert result["status"] == ("error" if failed else "complete")
+    assert all((tmp_path / "persisted/expert-capture" / split / "meta.json").is_file()
+               for split in ("calib", "eval"))
+
+
+def test_int3_scale_sign_search_can_improve_asymmetric_grid():
+    torch = pytest.importorskip("torch")
+    from arena import expert_3bit_math as tm
+
+    weight = torch.tensor([[[4.0, -3.9, -3.9] + [0.0] * 13]])
+    scale2 = tm.scale2_of(weight, "int3")
+    base = tm.group_scales(weight, scale2, "int3", 16)
+    both = tm.group_scales(weight, scale2, "int3", 16, search_signs=True)
+    levels = tm.levels_tensor("int3")
+    def decode(scales):
+        div = tm.divisor(scales, scale2, 16)
+        return tm.nearest(weight / div, levels) * div
+    assert base.item() < 0 and both.item() > 0
+    assert ((decode(both) - weight) ** 2).sum() < ((decode(base) - weight) ** 2).sum()
+    packed, blocks = tm.to_nvfp4(decode(both), both, scale2, 16)
+    assert packed.shape == (1, 1, 8) and blocks.shape == (1, 1, 1)
+
+
+def test_calibration_mix_preserves_rows_and_aligned_fields(tmp_path):
+    import numpy as np
+
+    def write(root, offset):
+        root.mkdir()
+        values = np.arange(8) + offset
+        meta = {"format": "fp8", "rows": {"20": 8}, "shapes": {"20": {"hidden": 2, "topk": 2}},
+                "processed_tokens": {"20": 256}, "dropped_rows": 0, "write_errors": []}
+        (root / "meta.json").write_text(json.dumps(meta))
+        for ext, dtype, width in (("x", np.uint8, 2), ("s", np.float32, 1),
+                                  ("ids", np.int16, 2), ("w", np.float32, 2)):
+            np.repeat(values[:, None], width, axis=1).astype(dtype).tofile(root / f"L20.{ext}")
+
+    first, second, dest = tmp_path / "first", tmp_path / "second", tmp_path / "mixed"
+    write(first, 0)
+    write(second, 100)
+    result = eq.mix_calibration_rows(first, second, dest, .25)
+    assert result["rows"] == {"20": [6, 2]}
+    values = np.fromfile(dest / "L20.x", dtype=np.uint8).reshape(8, 2)[:, 0]
+    assert len(set(values)) == 8 and sum(values >= 100) == 2
+    for ext, dtype, width in (("s", np.float32, 1), ("ids", np.int16, 2), ("w", np.float32, 2)):
+        assert np.array_equal(np.fromfile(dest / f"L20.{ext}", dtype=dtype).reshape(8, width)[:, 0], values)
+    meta = json.loads((dest / "meta.json").read_text())
+    assert meta["rows"] == {"20": 8} and "processed_tokens" not in meta
+    (second / "L20.x").write_bytes(b"truncated")
+    with pytest.raises(ValueError, match="size mismatch"):
+        eq.mix_calibration_rows(first, second, tmp_path / "bad", .25)
+    with pytest.raises(ValueError, match="fraction"):
+        eq.mix_calibration_rows(first, second, tmp_path / "invalid", 1.1)
+
+
+@pytest.mark.parametrize("failed_extra", [False, True])
+def test_capture_mixture_persists_and_rejects_partial_capture(tmp_path, monkeypatch, failed_extra):
+    import time
+
+    import numpy as np
+
+    from arena import isolation
+
+    inputs = tmp_path / eq.INPUTS
+    inputs.mkdir(parents=True)
+    for split in ("calib", "late", "eval"):
+        (inputs / f"{split}.json").write_text(json.dumps([{"index": 0, "ids": [1, 2]}]))
+    observed = []
+    async def capture(client, rows, *, directory, fmt, **kwargs):
+        observed.append(directory.name)
+        if directory.name == "calib_extra":
+            assert kwargs["stride"] == 2
+        directory.mkdir(parents=True)
+        meta = {"format": fmt, "rows": {"20": 8}, "shapes": {"20": {"hidden": 2, "topk": 2}}}
+        (directory / "meta.json").write_text(json.dumps(meta))
+        for ext, dtype, width in (("x", np.uint8, 2), ("s", np.float32, 1),
+                                  ("ids", np.int16, 2), ("w", np.float32, 2)):
+            np.zeros((8, width), dtype=dtype).tofile(directory / f"L20.{ext}")
+        return {"rows": {"20": 8}, "bytes": 160, "requests": 1, "prompt_tokens": 2,
+                "failed": ["bad"] if failed_extra and directory.name == "calib_extra" else [], "wall_seconds": 0}
+    async def isolate(*args):
+        return {"reset": True}
+    monkeypatch.setattr(eq, "capture", capture)
+    monkeypatch.setattr(isolation, "isolate_trial", isolate)
+    monkeypatch.setattr(eq, "server_process_env", lambda _: ({}, {"pid": 0}))
+    monkeypatch.setattr(eq, "stop_server", lambda _: {"returncode": 0})
+    monkeypatch.setattr(eq, "run_program", lambda *args, **kwargs: pytest.fail("capture_only fitted weights"))
+    monkeypatch.setenv("ARC_VALIDATION_OUTPUT", str(tmp_path / "persisted"))
+    study = {"server": {}, "expert_quant": {"capture_only": True, "calib_stride": 1, "eval_stride": 1,
+             "eval_max_rows": 8, "concurrency": 1, "gpu_reserve_seconds": 0,
+             "calibration_mix": {"file": "late.json", "fraction": .25, "stride": 2}}}
+    def run():
+        return asyncio.run(eq.run_expert_quant(study, {"phase": "calibrate"}, source=tmp_path,
+                         output=tmp_path / "output", server_dir=tmp_path / "server", base_url="http://test/v1",
+                         deadline_epoch=time.time() + 30, log=lambda *args, **kwargs: None))
+    if failed_extra:
+        with pytest.raises(RuntimeError, match="failed requests"):
+            run()
+    else:
+        result = run()
+        assert result["status"] == "complete" and result["calibration_row_mix"]["rows"] == {"20": [6, 2]}
+        assert (tmp_path / "persisted/expert-capture/calib_mixed/meta.json").is_file()
+    assert observed == ["calib", "calib_extra", "eval"]
+
+
+@pytest.mark.parametrize("reference", [None, "/models/original-nvfp4"])
+def test_quantized_capture_can_keep_original_reference_grid(tmp_path, monkeypatch, reference):
+    import time
+
+    inputs = tmp_path / eq.INPUTS
+    inputs.mkdir(parents=True)
+    for split in ("calib", "eval", "stage1"):
+        (inputs / f"{split}.json").write_text(json.dumps([{"index": 0, "ids": [1, 2], "split": "eval"}]))
+
+    async def capture(client, rows, *, directory, **kwargs):
+        directory.mkdir(parents=True, exist_ok=True)
+        return {"rows": {"20": 2}, "bytes": 16, "requests": 1, "prompt_tokens": 2,
+                "failed": [], "wall_seconds": 0}
+
+    monkeypatch.setattr(eq, "capture", capture)
+    monkeypatch.setattr(eq, "server_process_env", lambda _: ({}, {"pid": 0,
+                        "argv": ["serve", "/models/int3-overlay"]}))
+    monkeypatch.setattr(eq, "stop_server", lambda _: {"returncode": 0})
+    monkeypatch.setattr(eq, "persist_async", lambda *args: (None, {}))
+    commands = []
+
+    def run(module, args, **kwargs):
+        commands.append(args)
+        Path(args[args.index("--out") + 1]).write_text(json.dumps({"layers": {"20": {"errors": {"ok": True}}}}))
+        return {"returncode": 0}
+
+    monkeypatch.setattr(eq, "run_program", run)
+    settings = {"stride": 1, "calib_stride": 1, "eval_stride": 1, "eval_max_rows": 4, "concurrency": 1,
+                "gpu_reserve_seconds": 0, "bf16_dir": "/models/bf16", "eval_rows": 2, "layers": [20]}
+    if reference:
+        settings["reference_model_dir"] = reference
+    result = asyncio.run(eq.run_expert_quant({"server": {}, "expert_quant": settings}, {"phase": "bench"},
+                         source=tmp_path, output=tmp_path / "output", server_dir=tmp_path / "server",
+                         base_url="http://test/v1", deadline_epoch=time.time() + 30, log=lambda *args, **kwargs: None))
+    assert result["capture_model_dir"] == "/models/int3-overlay"
+    assert result["reference_model_dir"] == (reference or "/models/int3-overlay")
+    assert commands[0][commands[0].index("--model-dir") + 1] == result["reference_model_dir"]
+    assert result["status"] == "complete"

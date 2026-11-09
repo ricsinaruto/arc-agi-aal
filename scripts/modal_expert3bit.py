@@ -20,12 +20,16 @@ HERE = Path(__file__).resolve().parents[1]
 ROOT = Path(os.environ.get("ARC_VALIDATION_ROOT") or HERE).resolve()
 RECORDS = HERE / "docs/validation-20260930"
 TIMEOUTS = {"bench": 1200,  # v1 (2,400 s) was stopped for the 9 h runs; v2 is trimmed
+            "splitbench": 1500,  # 7 October: arena.expert_split_bench (hot uint3 + cold uint2), no local capture
             "overlay": 3600,  # CPU only: the int3 overlay of 192 shards, 4 worker processes
             "cpustudy": 3600,
+            "moeeval": 3600,  # CPU only: MoE output error of finished overlays on persisted eval captures
             "overlaydiff": 900}  # CPU only: rebuild one present overlay shard twice and diff it (determinism)  # CPU only: the 3-bit GPTQ-ARC quality screen, one container per layer
 KIND = os.environ.get("ARC_EXPERT3BIT_KIND", "bench")
+if os.environ.get("ARC_EXPERT3BIT_TIMEOUT"):  # a shorter limit (and bound) for a job of known length
+    TIMEOUTS[KIND] = min(TIMEOUTS[KIND], int(os.environ["ARC_EXPERT3BIT_TIMEOUT"]))
 TIMEOUT = TIMEOUTS[KIND]
-GPU = KIND not in ("overlay", "cpustudy", "overlaydiff")
+GPU = KIND not in ("overlay", "cpustudy", "overlaydiff", "moeeval")
 STUDY_LAYERS = (20, 40)
 CPU, RAM_GIB = (8, 96) if GPU else (32, 64)
 OVERLAY_ROOT = "/assets/flash-input/datasets/richardcsaky"
@@ -44,7 +48,7 @@ image = (modal.Image.debian_slim(python_version="3.12")
          .apt_install("libseccomp2", "binutils", "libglib2.0-0", "libgl1", "libnuma1", "libgomp1", "build-essential",
                       "ninja-build")
          .add_local_dir(str(HERE / "src"), "/opt/src", copy=True, ignore=["**/__pycache__/**"])
-         .add_local_dir(str(HERE / "runs/expert-3bit/capture") if GPU else str(HERE / "src/arena"), "/opt/capture",
+         .add_local_dir(str(HERE / "runs/expert-3bit/capture") if KIND == "bench" else str(HERE / "src/arena"), "/opt/capture",
                         copy=True)  # the capture is local to the bench's worktree; CPU kinds do not build this image
          .add_local_file(__file__, "/root/modal_expert3bit.py", copy=True))
 cpu_image = (modal.Image.debian_slim(python_version="3.12")
@@ -70,8 +74,7 @@ def reserve(run_id, kind, storage_usd=STORAGE_USD, authorization=None):
         active = sum(r.get("kind") == "research-pilot" and r.get("state") == "reserved" for r in d["runs"])
         if GPU and active >= 3:  # at most three pilot GPUs; the 9 h runs have priority
             raise RuntimeError("Three research pilot reservations active; reconcile before another")
-        from arc_infra.runops.records import row_cost
-        used = d["infrastructure_reserve_usd"] + sum(row_cost(r)[0] for r in d["runs"])
+        used = d["infrastructure_reserve_usd"] + sum(r["charged_bound_usd"] for r in d["runs"])
         if used + bound > d["cap_usd"]:
             raise RuntimeError(f"Cap: {used}+{bound}>{d['cap_usd']}")
         d["runs"].append({"run_id": run_id, "state": "reserved",
@@ -150,7 +153,7 @@ def runtime_env():
 
 @app.function(image=image, gpu="RTX-PRO-6000", cpu=(0.125, CPU), memory=(128, RAM_GIB * 1024), timeout=TIMEOUT,
               retries=0, max_containers=1, volumes={"/assets": assets, "/runs": runs})
-def bench(run_id: str, argv: list):
+def bench(run_id: str, argv: list, module: str = "arena.expert_3bit_bench"):
     import subprocess
     import sys
     import time
@@ -164,7 +167,7 @@ def bench(run_id: str, argv: list):
         record["extract_seconds"] = extract_runtime()
         env = runtime_env()
         deadline = TIMEOUT - (time.time() - started) - 180
-        cmd = [sys.executable, "-u", "-m", "arena.expert_3bit_bench", "--model-dir", MODEL_DIR,
+        cmd = [sys.executable, "-u", "-m", module, "--model-dir", MODEL_DIR,
                "--capture", "/opt/capture", "--out", str(out / "bench.json"), "--deadline-seconds", str(deadline),
                *argv]
         with (out / "bench.log").open("w") as log:
@@ -187,9 +190,9 @@ def _overlay_worker(job):
 
     from arena import expert_3bit_overlay as ov
 
-    source, out, group = job
+    source, out, group, int2 = job
     torch.set_num_threads(8)
-    return os.path.basename(out), ov.convert_shard(torch, source, out, group, "cpu")
+    return os.path.basename(out), ov.convert_shard(torch, source, out, group, "cpu", int2=int2)
 
 
 def _verify_worker(job):
@@ -201,10 +204,10 @@ def _verify_worker(job):
 
     from arena import expert_3bit_overlay as ov
 
-    source, out = job
+    source, out, max_rel = job
     torch.set_num_threads(4)  # verification runs 8 processes
     try:
-        return os.path.basename(out), ov.verify_shard(torch, source, out), None
+        return os.path.basename(out), ov.verify_shard(torch, source, out, max_rel), None
     except Exception as exc:  # noqa: BLE001
         return os.path.basename(out), None, repr(exc)
 
@@ -236,7 +239,7 @@ def cpustudy(run_id: str, layer: int, methods: str):
 
 @app.function(image=cpu_image, cpu=CPU, memory=RAM_GIB * 1024, timeout=TIMEOUTS["overlay"], retries=0, max_containers=1,
               volumes={"/assets": assets, "/runs": runs})
-def overlay(run_id: str, name: str, group: int, source: str):
+def overlay(run_id: str, name: str, group: int, source: str, int2: dict = None):
     """int3 overlay (NVFP4 container) of every routed-expert shard of ``source`` into OVERLAY_ROOT/name.
 
     Resumable (v2, 30 September: v1 was stopped at 80 of 192 shards): shards already present are first checked
@@ -258,6 +261,10 @@ def overlay(run_id: str, name: str, group: int, source: str):
     rec_dir = Path("/runs/research") / run_id
     rec_dir.mkdir(parents=True, exist_ok=True)
     record = {"run_id": run_id, "kind": "expert3bit-overlay", "name": name, "group": group, "source": source}
+    # int2: {layer: expert ids} on the 2-bit grid (7 October screen); their re-rounding error is larger.
+    max_rel = 0.7 if int2 else 0.35
+    if int2:
+        record["int2_experts"] = sum(len(v) for v in int2.values())
 
     def log(**row):
         print(json.dumps({"seconds": round(time.time() - started), **row}), flush=True)
@@ -287,7 +294,7 @@ def overlay(run_id: str, name: str, group: int, source: str):
             verify = {}
             bad = []
             for shard, rel, err in vpool.imap_unordered(
-                    _verify_worker, [(str(Path(source) / s), str(out_dir / s)) for s in present]):
+                    _verify_worker, [(str(Path(source) / s), str(out_dir / s), max_rel) for s in present]):
                 verify[shard] = rel
                 if err:
                     bad.append({"shard": shard, "error": err})
@@ -297,7 +304,8 @@ def overlay(run_id: str, name: str, group: int, source: str):
                 raise RuntimeError(f"{len(bad)} present shards failed verification: suspect the verifier")
             for row in bad:
                 (out_dir / row["shard"]).rename(out_dir / (row["shard"] + ".bad"))
-            jobs = [(str(Path(source) / s), str(out_dir / s), group) for s in shards if not (out_dir / s).exists()]
+            jobs = [(str(Path(source) / s), str(out_dir / s), group, int2) for s in shards
+                    if not (out_dir / s).exists()]
             stats = {}
             for n, (shard, st) in enumerate(pool.imap_unordered(_overlay_worker, jobs)):
                 stats[shard] = st
@@ -306,7 +314,7 @@ def overlay(run_id: str, name: str, group: int, source: str):
             record["built"] = len(jobs)
             new_bad = []
             for shard, rel, err in vpool.imap_unordered(
-                    _verify_worker, [(str(Path(source) / s), str(out_dir / s)) for s in sorted(stats)]):
+                    _verify_worker, [(str(Path(source) / s), str(out_dir / s), max_rel) for s in sorted(stats)]):
                 verify[shard] = rel
                 if err:
                     new_bad.append({"shard": shard, "error": err})
@@ -317,11 +325,15 @@ def overlay(run_id: str, name: str, group: int, source: str):
         if missing:
             raise RuntimeError(f"unverified shards: {missing[:5]}")
         manifest_shards = {}
+        # A source that omits a mask's pruned experts (tp phase 5) keeps its shards' sizes, not the base's.
+        src_manifest = json.loads((Path(source) / "overlay-manifest.json").read_text())
+        omits = bool(src_manifest.get("omits_pruned"))
         for s in shards:
             path = out_dir / s
-            size, base = path.stat().st_size, (Path(MODEL_DIR) / s).stat().st_size
+            size = path.stat().st_size
+            base = (Path(source) / s if omits else Path(MODEL_DIR) / s).stat().st_size
             if size != base:
-                raise RuntimeError(f"{s}: {size} bytes != base {base}")
+                raise RuntimeError(f"{s}: {size} bytes != {'source' if omits else 'base'} {base}")
             manifest_shards[s] = {"bytes": size, "sha256": sha(path), "base_bytes": base}
         log(event="hashed", shards=len(manifest_shards))
         manifest = {"format": ov.FORMAT, "base_model_dir": MODEL_DIR, "layers": list(range(48)),
@@ -329,6 +341,10 @@ def overlay(run_id: str, name: str, group: int, source: str):
                     "settings": {"grid": "int3", "group": group, "method": "rtn-search", "search": list(ov.SEARCH),
                                  "source_dir": source},
                     "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+        if omits:
+            manifest.update(omits_pruned=True, expert_prune_sha256=src_manifest["expert_prune_sha256"])
+        if int2:
+            manifest["settings"]["int2_experts"] = {str(k): sorted(v) for k, v in sorted(int2.items(), key=lambda kv: int(kv[0]))}
         raw = json.dumps(manifest, indent=1, sort_keys=True).encode()
         (out_dir / "build-stats.json").write_text(json.dumps(stats, indent=1))
         (out_dir / "verify.json").write_text(json.dumps(verify, indent=1, sort_keys=True))
@@ -353,6 +369,132 @@ def overlay(run_id: str, name: str, group: int, source: str):
     return record
 
 
+def _moe_eval_worker(job):
+    """One layer: the routed-expert MoE output of each overlay against the true BF16 experts (dequantized weights,
+    BF16 activations, float32: the W4A16 / W3A16 arm of ``arena.expert_quant_gptq.Gptq.evaluate``, same row pick), on
+    each level's own eval capture. Only the routed experts are read, so overlays that omit pruned experts work."""
+    import sys
+
+    sys.path.insert(0, "/opt/src")
+    import numpy as np
+    import torch
+    from safetensors import safe_open
+
+    from arena import expert_quant_bench as B  # noqa: N812
+    from arena import expert_quant_math as qm
+
+    layer, spec = job
+    torch.set_num_threads(spec["threads"])
+    fp8 = torch.float8_e4m3fn
+    index = json.loads((Path(MODEL_DIR) / "model.safetensors.index.json").read_text())["weight_map"]
+    bf16_index = json.loads((Path(spec["bf16_dir"]) / "model.safetensors.index.json").read_text())["weight_map"]
+    prefix = f"model.language_model.layers.{layer}.mlp.experts."
+    ref = {}
+    for proj in ("gate_up_proj", "down_proj"):
+        with safe_open(str(Path(spec["bf16_dir"]) / bf16_index[prefix + proj]), framework="pt", device="cpu") as fh:
+            ref[proj] = fh.get_tensor(prefix + proj)
+    out = {"layer": layer, "levels": {}}
+    for level in spec["levels"]:
+        root = Path(level["eval_dir"])
+        rows = int(json.loads((root / "meta.json").read_text())["rows"][str(layer)])
+        x = torch.from_numpy(np.fromfile(root / f"L{layer:02d}.x", dtype=np.int16).reshape(rows, B.H)).view(
+            torch.bfloat16)
+        ids = torch.from_numpy(np.fromfile(root / f"L{layer:02d}.ids", dtype=np.int16).reshape(rows, B.TOPK)
+                               .astype(np.int32))
+        w = torch.from_numpy(np.fromfile(root / f"L{layer:02d}.w", dtype=np.float32).reshape(rows, B.TOPK))
+        if level.get("pruned"):  # a pruned server routes in the kept experts' ranks
+            ids = qm.remap_pruned_ids(ids, sorted(set(range(B.E)) - set(level["pruned"][str(layer)])))
+        n = min(spec["eval_rows"], rows)
+        pick = torch.linspace(0, rows - 1, n).round().long()
+        xf, ids, w = x[pick].float(), ids[pick].contiguous(), w[pick].contiguous()
+        token, weight, bounds = qm.routed_rows(ids, w, range(B.E), B.E)
+        routed = [e for e in range(B.E) if bounds[e] != bounds[e + 1]]
+
+        def moe(expert, xf=xf, token=token, weight=weight, bounds=bounds, routed=routed, n=n):
+            y = torch.zeros((n, B.H), dtype=torch.float32)
+            for e in routed:
+                a, b = bounds[e], bounds[e + 1]
+                gate_up, down = expert(e)
+                h = xf[token[a:b]] @ gate_up.t()
+                h = torch.nn.functional.silu(h[:, :B.INTER]) * h[:, B.INTER:]
+                y.index_add_(0, token[a:b], (h @ down.t()) * weight[a:b].unsqueeze(1))
+            return y
+
+        base = moe(lambda e: (ref["gate_up_proj"][e].float(), ref["down_proj"][e].float()))
+        res = {"rows": n, "routed_experts": len(routed)}
+        for arm, folder in level["overlays"].items():
+            handles = {}
+
+            def tensor(name, folder=folder, handles=handles):
+                shard = index[name]
+                if shard not in handles:
+                    handles[shard] = safe_open(str(Path(folder) / shard), framework="pt", device="cpu").__enter__()
+                return handles[shard].get_tensor(name)
+
+            def expert(e, tensor=tensor):
+                def part(proj, kind):
+                    return tensor(f"{prefix}{e}.{proj}.{kind}").view(torch.uint8)
+
+                gate_up = qm.dequantize(
+                    torch.cat([part("gate_proj", "weight"), part("up_proj", "weight")]).unsqueeze(0),
+                    torch.cat([part("gate_proj", "weight_scale"), part("up_proj", "weight_scale")]).view(fp8).unsqueeze(0),
+                    tensor(f"{prefix}{e}.gate_proj.weight_scale_2").reshape(1).float())[0]
+                down = qm.dequantize(part("down_proj", "weight").unsqueeze(0),
+                                     part("down_proj", "weight_scale").view(fp8).unsqueeze(0),
+                                     tensor(f"{prefix}{e}.down_proj.weight_scale_2").reshape(1).float())[0]
+                return gate_up, down
+
+            y = moe(expert)
+            res[arm] = {"vs_bf16": qm.relative_error(y, base), "cos_bf16": qm.cosine(y, base)}
+            for fh in handles.values():
+                fh.__exit__(None, None, None)
+        out["levels"][level["name"]] = res
+    return out
+
+
+@app.function(image=cpu_image, cpu=CPU, memory=RAM_GIB * 1024, timeout=TIMEOUTS["moeeval"], retries=0,
+              max_containers=1, volumes={"/assets": assets, "/runs": runs})
+def moeeval(run_id: str, spec: dict):
+    """MoE output error vs BF16 of finished overlays (7 October: the CPU requant INT3 has no such number from its fit).
+    ``spec``: bf16_dir, eval_rows, layers, workers, threads and levels [{name, eval_dir, pruned (mask) or None,
+    overlays {arm: dir}}]. Writes research/<run id>/moe-eval.json (per layer and the mean over layers)."""
+    import multiprocessing as mp
+    import time
+    import traceback
+
+    started = time.time()
+    rec_dir = Path("/runs/research") / run_id
+    rec_dir.mkdir(parents=True, exist_ok=True)
+    record = {"run_id": run_id, "kind": "expert3bit-moeeval",
+              "levels": [{k: v for k, v in level.items() if k != "pruned"} for level in spec["levels"]]}
+    try:
+        layers = {}
+        # A fresh process per layer: the four-level 48-layer job was interrupted twice after ~40 layers (7 October;
+        # cause not established, worker memory suspected) and Modal re-ran the input each time.
+        with mp.get_context("spawn").Pool(spec["workers"], maxtasksperchild=1) as pool:
+            for row in pool.imap_unordered(_moe_eval_worker, [(layer, spec) for layer in spec["layers"]]):
+                layers[row["layer"]] = row["levels"]
+                print(json.dumps({"seconds": round(time.time() - started), "layer": row["layer"],
+                                  "done": len(layers)}), flush=True)
+                (rec_dir / "moe-eval.json").write_text(json.dumps({"layers": layers}, indent=1, sort_keys=True))
+        mean = {}
+        for level in spec["levels"]:
+            for arm in level["overlays"]:
+                values = [layers[i][level["name"]][arm]["vs_bf16"] for i in spec["layers"]]
+                mean.setdefault(level["name"], {})[arm] = {"mean_vs_bf16": sum(values) / len(values),
+                                                           "layers": len(values)}
+        record["mean"] = mean
+        (rec_dir / "moe-eval.json").write_text(json.dumps({"mean": mean, "layers": layers, "spec": record["levels"]},
+                                                          indent=1, sort_keys=True))
+    except BaseException as exc:  # noqa: BLE001
+        record["error"] = repr(exc)
+        record["traceback"] = traceback.format_exc()
+    record["elapsed_seconds"] = time.time() - started
+    (rec_dir / "execution.json").write_text(json.dumps(record, indent=2))
+    runs.commit()
+    return record
+
+
 @app.function(image=cpu_image, cpu=CPU, memory=RAM_GIB * 1024, timeout=TIMEOUTS["overlaydiff"], retries=0,
               max_containers=1, volumes={"/assets": assets, "/runs": runs})
 def overlaydiff(run_id: str, name: str, group: int, source: str, shard: str):
@@ -363,6 +505,7 @@ def overlaydiff(run_id: str, name: str, group: int, source: str, shard: str):
 
     sys.path.insert(0, "/opt/src")
     import torch
+
     from safetensors import safe_open
 
     from arena import expert_3bit_overlay as ov
@@ -418,13 +561,18 @@ def main(kind: str, run_id: str, args: str = "", name: str = "arc-expert-int3-g1
         raise ValueError(f"set ARC_EXPERT3BIT_KIND={kind}")
     bound = reserve(run_id, kind, storage_usd, authorization or None)
     if kind == "overlay":
-        call = overlay.spawn(run_id, name, group, source)
+        call = overlay.spawn(run_id, name, group, source,
+                             json.loads(Path(args).read_text())["int2"] if args else None)  # args: an int2 spec file
     elif kind == "overlaydiff":
         call = overlaydiff.spawn(run_id, name, group, source, args)
+    elif kind == "moeeval":
+        call = moeeval.spawn(run_id, json.loads(Path(args).read_text()))  # args: a local spec file
     elif kind == "cpustudy":
         calls = [cpustudy.spawn(run_id, layer, args) for layer in STUDY_LAYERS]
         call = calls[0]
         extra_calls = [c.object_id for c in calls]
+    elif kind == "splitbench":
+        call = bench.spawn(run_id, args.split(), "arena.expert_split_bench")
     else:
         call = bench.spawn(run_id, args.split() if args else [])
     record = {"run_id": run_id, "kind": f"expert3bit-{kind}", "function_call_id": call.object_id,

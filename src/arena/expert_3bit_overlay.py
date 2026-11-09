@@ -26,7 +26,8 @@ def sha256_file(path):
         return hashlib.file_digest(fh, "sha256").hexdigest()
 
 
-def convert_shard(torch, source, out, group, device):
+def convert_shard(torch, source, out, group, device, int2=None):
+    """``int2``: {layer: expert ids} re-rounded to the int2 grid instead (still an exact int3 / NVFP4 tensor)."""
     from safetensors import safe_open
     from safetensors.torch import save_file
 
@@ -63,12 +64,26 @@ def convert_shard(torch, source, out, group, device):
     s2d = torch.tensor([float(get(k, "down_proj", "weight_scale_2")) for k in keys])
     stats = {}
     new = {}
+    chosen = {int(layer): set(ids) for layer, ids in (int2 or {}).items()}
+    two = [i for i, (prefix, e) in enumerate(keys)
+           if e in chosen.get(int(prefix.split(".layers.")[1].split(".")[0]), ())]
     for label, packed, scales, s2 in (("w13", w13, f13, s13), ("w2", w2, f2, s2d)):
         deq = qm.dequantize(packed.to(device), scales.to(device), s2.to(device))
         n2 = tm.scale2_of(deq, "int3")
         q, sc = tm.rtn(deq, n2, "int3", group, SEARCH)
         p, b = tm.to_nvfp4(q, sc, n2, group)
         stats[label] = qm.relative_error(q, deq)
+        if two:
+            rows = torch.tensor(two, device=deq.device)
+            sub = deq[rows]
+            m2 = tm.scale2_of(sub, "int2")
+            q2, sc2 = tm.rtn(sub, m2, "int2", group, SEARCH)
+            p2_, b2_ = tm.to_nvfp4(q2, sc2, m2, group)
+            p[rows], n2[rows] = p2_, m2
+            b.view(torch.uint8)[rows] = b2_.view(torch.uint8)
+            stats[label + "_int3_of_int2_experts"] = qm.relative_error(q[rows], sub)
+            stats[label + "_int2"] = qm.relative_error(q2, sub)
+            del sub, q2, sc2
         new[label] = (p.cpu(), b.cpu(), n2.float().cpu())
         del deq, q, sc
     for i, k in enumerate(keys):
@@ -91,7 +106,7 @@ def convert_shard(torch, source, out, group, device):
             tensors[name] = scale.reshape(tensors[name].shape).to(tensors[name].dtype).clone()
     save_file(tensors, out + ".tmp", metadata=metadata)
     os.replace(out + ".tmp", out)
-    return {"experts": len(keys), "requant_rel_error": stats}
+    return {"experts": len(keys), "int2_experts": len(two), "requant_rel_error": stats}
 
 
 def verify_shard(torch, source, out, max_rel_error=0.35):

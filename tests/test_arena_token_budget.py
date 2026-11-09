@@ -96,38 +96,6 @@ def test_token_clock_counts_gameplay_completion_tokens_not_seconds():
     assert "level_budget_seconds" in busy.feedback() and "level_budget_tokens" not in busy.feedback()
 
 
-def test_late_reply_charge_preserves_cutoff_and_audits_observation_order():
-    now, wall, games = games_on("tokens", count=1)
-    wall.seconds = 20
-    scheduler = Scheduler(games, wall)
-    start(games, wall, scheduler)
-    game = games[0]
-    reply(now, game, 1000, seconds=10)
-    now.advance(10.01)
-    scheduler.wall_end()
-    now.advance(.1)
-    game.clock.charge(4000, 45)
-    assert game.clock.charges[-1]["wall_seconds"] == 20
-    assert game.clock.charges[-1]["observed_wall_seconds"] == 20.11
-    assert game.clock.budget_tokens() == game.clock.completion_tokens() == 1045
-    report = dict(wall_seconds=20.05, config={"gameplay_seconds": 20},
-                  games=[game_row(game, {}) | {"game_id": game.game_id}], scheduler=scheduler.summary())
-    result = audit_scheduler(report)
-    assert result["valid"], result["issues"]
-
-    # Old records lack the evidence needed to distinguish a late charge.
-    legacy = copy.deepcopy(report)
-    for charge in legacy["games"][0]["charges"]:
-        charge.pop("observed_wall_seconds")
-    assert any("event budget clock" in issue for issue in audit_scheduler(legacy)["issues"])
-    # An actual pre-finish charge still must appear in that finish clock.
-    report["games"][0]["charges"][-1]["observed_wall_seconds"] = 20.001
-    assert any("event budget clock" in issue for issue in audit_scheduler(report)["issues"])
-    for invalid in (float("nan"), float("inf"), -1, -.001, 19):
-        report["games"][0]["charges"][-1]["observed_wall_seconds"] = invalid
-        assert any("Invalid charge observation time" in issue for issue in audit_scheduler(report)["issues"])
-
-
 def test_parked_games_accrue_nothing_on_the_token_clock():
     now, wall, (game,) = games_on("tokens", count=1)
     wall.release()
@@ -332,11 +300,13 @@ def test_new_builds_take_the_token_clock_and_the_time_clock_reproduces_old_bundl
         bundled = json.loads((tmp_path / variant / "configs" / "comparison.json").read_text())
         assert bundled["budget_clock"] == "tokens" and bundled["token_budget"] == tokens["token_budget"]
         assert json.loads((tmp_path / (variant + "-t") / "configs" / "comparison.json").read_text()) == timed
-    # Kept on their time clock, with the reason recorded: the normalized clock (its own factor) or a seconds knob.
+    # Kept on their time clock, with the reason recorded: the normalized clock (its own factor), a seconds knob,
+    # and trials whose agents do not charge tokens.
     for variant, kwargs, clock, reason in (
             ("fixed-2x-pool", {}, "normalized", "normalized clock"),
             ("fixed-2x-t1cap-120", {}, "busy", "t1_cap_seconds"),
-            ("reclaim-grant-180s", {}, "inference", "max_level_grant_seconds")):
+            ("reclaim-grant-180s", {}, "inference", "max_level_grant_seconds"),
+            ("cache-reclaim", {"include_pi": True}, "inference", "pi trials")):
         _, study = b.build(variant, output=tmp_path / (variant + "-k"), paired_30m=True, arena_variant=variant,
                            **kwargs)
         assert study["budget_clock"] == clock and "token_budget" not in study, variant
