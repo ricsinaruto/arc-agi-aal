@@ -1,0 +1,2541 @@
+{
+ "tokenizer": {
+  "exact": true,
+  "path": "~/.cache/huggingface/hub/models--Qwen--Qwen3.6-35B-A3B/snapshots/995ad96eacd98c81ed38be0c5b274b04031597b0/tokenizer.json",
+  "note": "Qwen3.6-35B-A3B tokenizer, Qwen3.6 chat-template rendering"
+ },
+ "image_size_px": [
+  256,
+  256
+ ],
+ "image_tokens": 64,
+ "segment": {
+  "records": 6482,
+  "segments": 393,
+  "prompt": {
+   "p50": 15612,
+   "p90": 42548,
+   "p99": 75958,
+   "n": 6482,
+   "mean": 20423.7,
+   "max": 98687,
+   "sum": 132386448
+  },
+  "prompt_drop": {
+   "p50": 10434,
+   "p90": 22285,
+   "p99": 39208,
+   "n": 6482,
+   "mean": 12492.6,
+   "max": 51120,
+   "sum": 80977097
+  },
+  "target": {
+   "p50": 855,
+   "p90": 3277,
+   "p99": 8323,
+   "n": 6482,
+   "mean": 1437.2,
+   "max": 16389,
+   "sum": 9315926
+  },
+  "reasoning": {
+   "p50": 629,
+   "p90": 3016,
+   "p99": 8017,
+   "n": 6482,
+   "mean": 1210.7,
+   "max": 16388,
+   "sum": 7848069
+  },
+  "rest": {
+   "p50": 179,
+   "p90": 441,
+   "p99": 794,
+   "n": 6482,
+   "mean": 226.5,
+   "max": 1502,
+   "sum": 1467857
+  },
+  "total": {
+   "p50": 17224,
+   "p90": 43994,
+   "p99": 77573,
+   "n": 6482,
+   "mean": 21860.9,
+   "max": 106273,
+   "sum": 141702374
+  },
+  "images": {
+   "p50": 3,
+   "p90": 8,
+   "p99": 19,
+   "n": 6482,
+   "mean": 3.8,
+   "max": 39,
+   "sum": 24609
+  },
+  "total_buckets": {
+   "<=8K": 1175,
+   "<=16K": 3087,
+   "<=32K": 5187,
+   "<=64K": 6329,
+   "<=128K": 6482,
+   ">128K": 0
+  },
+  "train_tokens_per_epoch": 141702374,
+  "train_tokens_per_epoch_drop_history_reasoning": 90293023,
+  "packed": {
+   "sequences": 484,
+   "tokens": 14171869,
+   "buckets": {
+    "<=8K": 6,
+    "<=16K": 114,
+    "<=32K": 334,
+    "<=64K": 465,
+    "<=128K": 484,
+    ">128K": 0
+   }
+  },
+  "target_tokens": 9315926,
+  "per_game_target_tokens": {
+   "ar25": 2549477,
+   "tu93": 2367065,
+   "vc33": 1377447,
+   "r11l": 875082,
+   "cn04": 738510,
+   "lf52": 542572,
+   "tn36": 248413,
+   "wa30": 180427,
+   "ka59": 162208,
+   "m0r0": 135977,
+   "bp35": 73355,
+   "sp80": 65393
+  },
+  "per_game_records": {
+   "ar25": 1978,
+   "tu93": 1255,
+   "vc33": 954,
+   "lf52": 591,
+   "cn04": 559,
+   "r11l": 540,
+   "tn36": 158,
+   "wa30": 130,
+   "m0r0": 110,
+   "ka59": 93,
+   "bp35": 74,
+   "sp80": 40
+  },
+  "per_game_segments": {
+   "ar25": 132,
+   "tu93": 78,
+   "vc33": 76,
+   "r11l": 29,
+   "lf52": 25,
+   "cn04": 24,
+   "tn36": 9,
+   "ka59": 6,
+   "wa30": 6,
+   "m0r0": 4,
+   "bp35": 2,
+   "sp80": 2
+  },
+  "concentration_target_tokens": {
+   "top": [
+    [
+     "ar25",
+     2549477,
+     0.274
+    ],
+    [
+     "tu93",
+     2367065,
+     0.254
+    ],
+    [
+     "vc33",
+     1377447,
+     0.148
+    ]
+   ],
+   "top_share": 0.676
+  },
+  "concentration_segments": {
+   "top": [
+    [
+     "ar25",
+     132,
+     0.336
+    ],
+    [
+     "tu93",
+     78,
+     0.198
+    ],
+    [
+     "vc33",
+     76,
+     0.193
+    ]
+   ],
+   "top_share": 0.728
+  },
+  "per_level_segments_top": [
+   [
+    "ar25 L1",
+    31
+   ],
+   [
+    "ar25 L2",
+    27
+   ],
+   [
+    "vc33 L1",
+    24
+   ],
+   [
+    "vc33 L2",
+    22
+   ],
+   [
+    "ar25 L3",
+    20
+   ],
+   [
+    "vc33 L3",
+    20
+   ],
+   [
+    "lf52 L1",
+    18
+   ],
+   [
+    "r11l L1",
+    18
+   ],
+   [
+    "tu93 L2",
+    18
+   ],
+   [
+    "ar25 L5",
+    14
+   ]
+  ],
+  "levels_covered": 51,
+  "level_hist": {
+   "1": 128,
+   "2": 91,
+   "3": 64,
+   "4": 39,
+   "5": 29,
+   "6": 19,
+   "7": 15,
+   "8": 8
+  },
+  "linked_records": 6482,
+  "finish_reason": {
+   "tool_calls": 6478,
+   "length": 2,
+   "stop": 2
+  },
+  "truncated_target_tokens": 32778,
+  "segments_with_truncated_turn": 2,
+  "py_error_records": 383,
+  "no_tool_call_records": 4,
+  "no_action_records": 3582,
+  "request_classes": {
+   "analysis_only": {
+    "records": 2739,
+    "target_tokens": 3485055,
+    "token_share": 0.374
+   },
+   "effective_action": {
+    "records": 2338,
+    "target_tokens": 3247239,
+    "token_share": 0.349
+   },
+   "error_no_action": {
+    "records": 268,
+    "target_tokens": 432913,
+    "token_share": 0.046
+   },
+   "all_noop": {
+    "records": 55,
+    "target_tokens": 83480,
+    "token_share": 0.009
+   },
+   "dead_end": {
+    "records": 1073,
+    "target_tokens": 2023201,
+    "token_share": 0.217
+   },
+   "all_repeat": {
+    "records": 7,
+    "target_tokens": 11260,
+    "token_share": 0.001
+   },
+   "truncated": {
+    "records": 2,
+    "target_tokens": 32778,
+    "token_share": 0.004
+   }
+  },
+  "actions_linked": 12865,
+  "noop_action_share": 0.025,
+  "border_only_action_share": 0.079,
+  "repeat_action_share": 0.037,
+  "dup_target_records": 4,
+  "segments_with_reset": 73,
+  "near_duplicates": {
+   "threshold": 0.9,
+   "pairs": 102,
+   "segments_with_earlier_near_duplicate": 56
+  },
+  "sequence_copies": {
+   "segments_with_copies": 23,
+   "copies_total": 451
+  },
+  "actions_over_baseline": {
+   "p50": 0.66,
+   "p90": 1.57,
+   "p99": 2.59,
+   "n": 393,
+   "mean": 0.8,
+   "max": 4.0,
+   "sum": 315.12
+  },
+  "segments_at_or_below_baseline": 308,
+  "segments_over_2x_baseline": 16,
+  "variants": {
+   "reclaim-fixed-2x": 122,
+   "fixed-2x-slots-4": 28,
+   "fixed-2x-notes-live": 25,
+   "cache-reclaim": 21,
+   "fixed-2x-pool2-timed-novelty": 17,
+   "null": 14,
+   "fixed-2x-budget-4x": 13,
+   "fixed-2x-stall-open360": 12,
+   "fixed-2x-snapshot": 12,
+   "fixed-2x-budget-1x": 11,
+   "fixed-2x-procedure": 11,
+   "fixed-2x-64k-four": 9,
+   "fixed-2x-slots-8": 9,
+   "fixed-2x-token-budget": 8,
+   "fixed-2x-thompson": 8,
+   "fixed-2x-memory": 8,
+   "reclaim-phase2-four": 7,
+   "fixed-2x-slots-1": 6,
+   "fixed-2x-mtp4": 5,
+   "fixed-2x-explorer": 5,
+   "fixed-2x-pool2-cap": 5,
+   "fixed-2x-reopen-pause": 5,
+   "reclaim-context-64k": 4,
+   "reclaim-grant-2t1": 4,
+   "fixed-2x-80k-three": 4,
+   "reclaim-64k-keep3": 4,
+   "fixed-2x-t1cap-120": 3,
+   "fixed-2x-switch-3": 3,
+   "reclaim-regrant-2x": 3,
+   "fixed-2x-progress": 3,
+   "fixed-2x-pool": 2,
+   "fixed-2x-llm-rank": 1,
+   "fixed-2x-notes": 1
+  },
+  "request_cap": {
+   "None": 166,
+   "12": 227
+  },
+  "cap_hit_groups": 33,
+  "max_model_len": {
+   "131072": 335,
+   "65536": 45,
+   "32768": 9,
+   "81920": 4
+  },
+  "user_source": {
+   "transcript_verified": 196,
+   "simulated": 197
+  },
+  "caveats": {
+   "carried_context_omitted:cross_game_notes": 26,
+   "carried_context_omitted:game_snapshot": 12,
+   "carried_context_omitted:memory_block": 8,
+   "compaction_keeps_3_observations": 4,
+   "compaction_tail_starts_before_segment": 1
+  },
+  "starts_after_compaction": 2,
+  "segments_with_compaction": 79,
+  "records_context_after_compaction": 1552,
+  "reconstructed_over_served_prompt": {
+   "p10": 0.175,
+   "p50": 0.719,
+   "p90": 0.998,
+   "n": 6482,
+   "mean": 0.7,
+   "max": 3.051
+  },
+  "records_reconstructed_below_half_served": 2388,
+  "served_prompt": {
+   "p50": 31891,
+   "p90": 80311,
+   "p99": 98403,
+   "n": 6482,
+   "mean": 38430.8,
+   "max": 102098
+  },
+  "holdout_ids_in_targets": 0,
+  "holdout_ids_in_context": 0,
+  "holdout_id_examples": [],
+  "other_game_ids_in_targets": 0,
+  "cross_game_notes_records": 431,
+  "cross_game_notes_records_mentioning_notes": 2,
+  "records_mentioning_notes_any": 4,
+  "level1_target_tokens": 1581941,
+  "per_variant": {
+   "reclaim-fixed-2x": {
+    "records": 1965,
+    "target": 2895051,
+    "truncated": 2
+   },
+   "fixed-2x-slots-4": {
+    "records": 488,
+    "target": 584497,
+    "truncated": 0
+   },
+   "fixed-2x-notes-live": {
+    "records": 418,
+    "target": 659244,
+    "truncated": 0
+   },
+   "fixed-2x-snapshot": {
+    "records": 335,
+    "target": 466336,
+    "truncated": 0
+   },
+   "cache-reclaim": {
+    "records": 305,
+    "target": 403508,
+    "truncated": 0
+   },
+   "fixed-2x-pool2-timed-novelty": {
+    "records": 241,
+    "target": 302841,
+    "truncated": 0
+   },
+   "fixed-2x-budget-4x": {
+    "records": 218,
+    "target": 263368,
+    "truncated": 0
+   },
+   "fixed-2x-budget-1x": {
+    "records": 215,
+    "target": 312481,
+    "truncated": 0
+   },
+   "fixed-2x-thompson": {
+    "records": 212,
+    "target": 376087,
+    "truncated": 0
+   },
+   "fixed-2x-stall-open360": {
+    "records": 200,
+    "target": 306078,
+    "truncated": 0
+   },
+   "fixed-2x-slots-8": {
+    "records": 189,
+    "target": 233731,
+    "truncated": 0
+   },
+   "None": {
+    "records": 187,
+    "target": 245174,
+    "truncated": 0
+   },
+   "fixed-2x-token-budget": {
+    "records": 162,
+    "target": 286817,
+    "truncated": 0
+   },
+   "fixed-2x-procedure": {
+    "records": 153,
+    "target": 286949,
+    "truncated": 0
+   },
+   "fixed-2x-pool2-cap": {
+    "records": 125,
+    "target": 145465,
+    "truncated": 0
+   },
+   "fixed-2x-memory": {
+    "records": 120,
+    "target": 206904,
+    "truncated": 0
+   },
+   "fixed-2x-reopen-pause": {
+    "records": 103,
+    "target": 153439,
+    "truncated": 0
+   },
+   "fixed-2x-explorer": {
+    "records": 100,
+    "target": 234478,
+    "truncated": 0
+   },
+   "fixed-2x-64k-four": {
+    "records": 98,
+    "target": 115660,
+    "truncated": 0
+   },
+   "reclaim-context-64k": {
+    "records": 75,
+    "target": 111914,
+    "truncated": 0
+   },
+   "reclaim-phase2-four": {
+    "records": 75,
+    "target": 87847,
+    "truncated": 0
+   },
+   "fixed-2x-slots-1": {
+    "records": 75,
+    "target": 86263,
+    "truncated": 0
+   },
+   "fixed-2x-mtp4": {
+    "records": 65,
+    "target": 74884,
+    "truncated": 0
+   },
+   "reclaim-64k-keep3": {
+    "records": 52,
+    "target": 66382,
+    "truncated": 0
+   },
+   "reclaim-grant-2t1": {
+    "records": 51,
+    "target": 41096,
+    "truncated": 0
+   },
+   "fixed-2x-switch-3": {
+    "records": 48,
+    "target": 74942,
+    "truncated": 0
+   },
+   "fixed-2x-t1cap-120": {
+    "records": 46,
+    "target": 55477,
+    "truncated": 0
+   },
+   "fixed-2x-80k-three": {
+    "records": 37,
+    "target": 51448,
+    "truncated": 0
+   },
+   "fixed-2x-pool": {
+    "records": 29,
+    "target": 32228,
+    "truncated": 0
+   },
+   "reclaim-regrant-2x": {
+    "records": 29,
+    "target": 43137,
+    "truncated": 0
+   },
+   "fixed-2x-llm-rank": {
+    "records": 28,
+    "target": 51900,
+    "truncated": 0
+   },
+   "fixed-2x-progress": {
+    "records": 25,
+    "target": 40143,
+    "truncated": 0
+   },
+   "fixed-2x-notes": {
+    "records": 13,
+    "target": 20157,
+    "truncated": 0
+   }
+  }
+ },
+ "teacher": {
+  "records": 461,
+  "segments": 62,
+  "prompt": {
+   "p50": 8040,
+   "p90": 19801,
+   "p99": 42272,
+   "n": 461,
+   "mean": 10395.5,
+   "max": 50741,
+   "sum": 4792346
+  },
+  "prompt_drop": {
+   "p50": 6550,
+   "p90": 10934,
+   "p99": 16113,
+   "n": 461,
+   "mean": 7231.3,
+   "max": 24825,
+   "sum": 3333619
+  },
+  "target": {
+   "p50": 687,
+   "p90": 2261,
+   "p99": 5294,
+   "n": 461,
+   "mean": 1031.9,
+   "max": 10891,
+   "sum": 475716
+  },
+  "reasoning": {
+   "p50": 471,
+   "p90": 2022,
+   "p99": 5080,
+   "n": 461,
+   "mean": 836.1,
+   "max": 10809,
+   "sum": 385454
+  },
+  "rest": {
+   "p50": 145,
+   "p90": 402,
+   "p99": 863,
+   "n": 461,
+   "mean": 195.8,
+   "max": 956,
+   "sum": 90262
+  },
+  "total": {
+   "p50": 9195,
+   "p90": 21593,
+   "p99": 43268,
+   "n": 461,
+   "mean": 11427.5,
+   "max": 51010,
+   "sum": 5268062
+  },
+  "images": {
+   "p50": 2,
+   "p90": 6,
+   "p99": 9,
+   "n": 461,
+   "mean": 2.7,
+   "max": 13,
+   "sum": 1246
+  },
+  "total_buckets": {
+   "<=8K": 204,
+   "<=16K": 379,
+   "<=32K": 448,
+   "<=64K": 461,
+   "<=128K": 461,
+   ">128K": 0
+  },
+  "train_tokens_per_epoch": 5268062,
+  "train_tokens_per_epoch_drop_history_reasoning": 3809335,
+  "packed": {
+   "sequences": 62,
+   "tokens": 861477,
+   "buckets": {
+    "<=8K": 16,
+    "<=16K": 45,
+    "<=32K": 60,
+    "<=64K": 62,
+    "<=128K": 62,
+    ">128K": 0
+   }
+  },
+  "target_tokens": 475716,
+  "per_game_target_tokens": {
+   "q004": 47409,
+   "q008": 42039,
+   "q020": 41301,
+   "q015": 36949,
+   "q009": 33366,
+   "q006": 32756,
+   "q013": 31457,
+   "q002": 30064,
+   "q001": 27069,
+   "q003": 26532,
+   "q016": 26170,
+   "q019": 23560,
+   "q012": 21528,
+   "q011": 20690,
+   "q005": 18719,
+   "q007": 16107
+  },
+  "per_game_records": {
+   "q009": 35,
+   "q013": 35,
+   "q002": 32,
+   "q001": 30,
+   "q003": 30,
+   "q004": 30,
+   "q006": 30,
+   "q012": 30,
+   "q015": 30,
+   "q008": 28,
+   "q005": 27,
+   "q011": 27,
+   "q016": 27,
+   "q020": 26,
+   "q019": 25,
+   "q007": 19
+  },
+  "per_game_segments": {
+   "q003": 5,
+   "q005": 5,
+   "q009": 5,
+   "q011": 5,
+   "q012": 5,
+   "q001": 4,
+   "q002": 4,
+   "q006": 4,
+   "q007": 4,
+   "q008": 4,
+   "q013": 4,
+   "q015": 4,
+   "q016": 3,
+   "q004": 2,
+   "q019": 2,
+   "q020": 2
+  },
+  "concentration_target_tokens": {
+   "top": [
+    [
+     "q004",
+     47409,
+     0.1
+    ],
+    [
+     "q008",
+     42039,
+     0.088
+    ],
+    [
+     "q020",
+     41301,
+     0.087
+    ]
+   ],
+   "top_share": 0.275
+  },
+  "concentration_segments": {
+   "top": [
+    [
+     "q003",
+     5,
+     0.081
+    ],
+    [
+     "q005",
+     5,
+     0.081
+    ],
+    [
+     "q009",
+     5,
+     0.081
+    ]
+   ],
+   "top_share": 0.242
+  },
+  "per_level_segments_top": [
+   [
+    "q001 L1",
+    1
+   ],
+   [
+    "q001 L2",
+    1
+   ],
+   [
+    "q001 L3",
+    1
+   ],
+   [
+    "q001 L4",
+    1
+   ],
+   [
+    "q002 L1",
+    1
+   ],
+   [
+    "q002 L2",
+    1
+   ],
+   [
+    "q002 L3",
+    1
+   ],
+   [
+    "q002 L4",
+    1
+   ],
+   [
+    "q003 L1",
+    1
+   ],
+   [
+    "q003 L2",
+    1
+   ]
+  ],
+  "levels_covered": 62,
+  "level_hist": {
+   "1": 16,
+   "2": 16,
+   "3": 13,
+   "4": 12,
+   "5": 5
+  },
+  "linked_records": 461,
+  "finish_reason": {
+   "tool_calls": 461
+  },
+  "truncated_target_tokens": 0,
+  "segments_with_truncated_turn": 0,
+  "py_error_records": 18,
+  "no_tool_call_records": 0,
+  "no_action_records": 239,
+  "request_classes": {
+   "analysis_only": {
+    "records": 186,
+    "target_tokens": 160168,
+    "token_share": 0.337
+   },
+   "effective_action": {
+    "records": 169,
+    "target_tokens": 192223,
+    "token_share": 0.404
+   },
+   "error_no_action": {
+    "records": 14,
+    "target_tokens": 12281,
+    "token_share": 0.026
+   },
+   "all_noop": {
+    "records": 11,
+    "target_tokens": 14688,
+    "token_share": 0.031
+   },
+   "dead_end": {
+    "records": 81,
+    "target_tokens": 96356,
+    "token_share": 0.203
+   }
+  },
+  "actions_linked": 1001,
+  "noop_action_share": 0.118,
+  "border_only_action_share": 0.0,
+  "repeat_action_share": 0.082,
+  "dup_target_records": 0,
+  "segments_with_reset": 6,
+  "near_duplicates": {
+   "threshold": 0.9,
+   "pairs": 0,
+   "segments_with_earlier_near_duplicate": 0
+  },
+  "sequence_copies": {
+   "segments_with_copies": 0,
+   "copies_total": 62
+  },
+  "actions_over_baseline": {
+   "p50": 1.2,
+   "p90": 2.86,
+   "p99": 7.0,
+   "n": 62,
+   "mean": 1.8,
+   "max": 7.5,
+   "sum": 109.0
+  },
+  "segments_at_or_below_baseline": 25,
+  "segments_over_2x_baseline": 14,
+  "variants": {
+   "reclaim-fixed-2x": 62
+  },
+  "request_cap": {
+   "None": 62
+  },
+  "cap_hit_groups": 0,
+  "max_model_len": {
+   "131072": 62
+  },
+  "user_source": {
+   "transcript_verified": 62
+  },
+  "caveats": {},
+  "starts_after_compaction": 0,
+  "segments_with_compaction": 0,
+  "records_context_after_compaction": 0,
+  "reconstructed_over_served_prompt": {
+   "p10": 0.146,
+   "p50": 0.457,
+   "p90": 0.997,
+   "n": 461,
+   "mean": 0.6,
+   "max": 0.999
+  },
+  "records_reconstructed_below_half_served": 239,
+  "served_prompt": {
+   "p50": 22744,
+   "p90": 41790,
+   "p99": 55208,
+   "n": 461,
+   "mean": 23644.0,
+   "max": 59268
+  },
+  "holdout_ids_in_targets": 0,
+  "holdout_ids_in_context": 0,
+  "holdout_id_examples": [],
+  "other_game_ids_in_targets": 0,
+  "cross_game_notes_records": 0,
+  "cross_game_notes_records_mentioning_notes": 0,
+  "records_mentioning_notes_any": 0,
+  "level1_vs_later_target_tokens": {
+   "level1": 232403,
+   "later": 243313
+  }
+ },
+ "filtered": {
+  "segment_no_cap": {
+   "segments": 336,
+   "records": 4276,
+   "target_tokens": 5499877,
+   "reasoning_tokens": 4621230,
+   "train_tokens": 86436229,
+   "packed_train_tokens": 11816804,
+   "packed_sequences": 415,
+   "games": 12,
+   "concentration_target_tokens": {
+    "top": [
+     [
+      "ar25",
+      1906908,
+      0.347
+     ],
+     [
+      "vc33",
+      1009968,
+      0.184
+     ],
+     [
+      "tu93",
+      919378,
+      0.167
+     ]
+    ],
+    "top_share": 0.698
+   },
+   "total_buckets": {
+    "<=8K": 823,
+    "<=16K": 2166,
+    "<=32K": 3584,
+    "<=64K": 4219,
+    "<=128K": 4276,
+    ">128K": 0
+   }
+  },
+  "segment_cap8": {
+   "segments": 213,
+   "records": 2713,
+   "target_tokens": 3440068,
+   "reasoning_tokens": 2876592,
+   "train_tokens": 56756791,
+   "packed_train_tokens": 7512979,
+   "packed_sequences": 261,
+   "games": 12,
+   "concentration_target_tokens": {
+    "top": [
+     [
+      "ar25",
+      937567,
+      0.273
+     ],
+     [
+      "tu93",
+      640522,
+      0.186
+     ],
+     [
+      "vc33",
+      500726,
+      0.146
+     ]
+    ],
+    "top_share": 0.604
+   },
+   "total_buckets": {
+    "<=8K": 488,
+    "<=16K": 1306,
+    "<=32K": 2228,
+    "<=64K": 2673,
+    "<=128K": 2713,
+    ">128K": 0
+   }
+  },
+  "segment_cap4": {
+   "segments": 135,
+   "records": 1688,
+   "target_tokens": 2154813,
+   "reasoning_tokens": 1790523,
+   "train_tokens": 34532733,
+   "packed_train_tokens": 4772260,
+   "packed_sequences": 170,
+   "games": 12,
+   "concentration_target_tokens": {
+    "top": [
+     [
+      "ar25",
+      362893,
+      0.168
+     ],
+     [
+      "vc33",
+      348454,
+      0.162
+     ],
+     [
+      "tu93",
+      324105,
+      0.15
+     ]
+    ],
+    "top_share": 0.481
+   },
+   "total_buckets": {
+    "<=8K": 313,
+    "<=16K": 829,
+    "<=32K": 1395,
+    "<=64K": 1676,
+    "<=128K": 1688,
+    ">128K": 0
+   }
+  },
+  "teacher_all": {
+   "segments": 62,
+   "records": 355,
+   "target_tokens": 352391,
+   "reasoning_tokens": 284141,
+   "train_tokens": 3742054,
+   "packed_train_tokens": 861477,
+   "packed_sequences": 62,
+   "games": 16,
+   "concentration_target_tokens": {
+    "top": [
+     [
+      "q008",
+      40858,
+      0.116
+     ],
+     [
+      "q020",
+      38325,
+      0.109
+     ],
+     [
+      "q015",
+      36949,
+      0.105
+     ]
+    ],
+    "top_share": 0.33
+   },
+   "total_buckets": {
+    "<=8K": 165,
+    "<=16K": 303,
+    "<=32K": 350,
+    "<=64K": 355,
+    "<=128K": 355,
+    ">128K": 0
+   }
+  },
+  "teacher_minus_eval_mechanics": {
+   "segments": 45,
+   "records": 241,
+   "target_tokens": 235046,
+   "reasoning_tokens": 191287,
+   "train_tokens": 2598840,
+   "packed_train_tokens": 620004,
+   "packed_sequences": 45,
+   "games": 12,
+   "concentration_target_tokens": {
+    "top": [
+     [
+      "q008",
+      40858,
+      0.174
+     ],
+     [
+      "q020",
+      38325,
+      0.163
+     ],
+     [
+      "q002",
+      28771,
+      0.122
+     ]
+    ],
+    "top_share": 0.459
+   },
+   "total_buckets": {
+    "<=8K": 114,
+    "<=16K": 204,
+    "<=32K": 236,
+    "<=64K": 241,
+    "<=128K": 241,
+    ">128K": 0
+   }
+  }
+ },
+ "solver": {
+  "records": 340,
+  "prompt": {
+   "p50": 5565,
+   "p90": 7454,
+   "p99": 8789,
+   "n": 340,
+   "mean": 5758.5,
+   "max": 9080,
+   "sum": 1957904
+  },
+  "prompt_drop": {
+   "p50": 5466,
+   "p90": 7225,
+   "p99": 8587,
+   "n": 340,
+   "mean": 5655.1,
+   "max": 8747,
+   "sum": 1922744
+  },
+  "target": {
+   "p50": 108,
+   "p90": 250,
+   "p99": 308,
+   "n": 340,
+   "mean": 143.2,
+   "max": 308,
+   "sum": 48682
+  },
+  "reasoning": {
+   "p50": 25,
+   "p90": 26,
+   "p99": 26,
+   "n": 340,
+   "mean": 25.1,
+   "max": 26,
+   "sum": 8548
+  },
+  "total": {
+   "p50": 5678,
+   "p90": 7557,
+   "p99": 9096,
+   "n": 340,
+   "mean": 5901.7,
+   "max": 9183,
+   "sum": 2006586
+  },
+  "images": {
+   "p50": 5,
+   "p90": 9,
+   "p99": 13,
+   "n": 340,
+   "mean": 5.1,
+   "max": 14,
+   "sum": 1746
+  },
+  "total_buckets": {
+   "<=8K": 324,
+   "<=16K": 340,
+   "<=32K": 340,
+   "<=64K": 340,
+   "<=128K": 340,
+   ">128K": 0
+  },
+  "train_tokens_per_epoch": 2006586,
+  "target_tokens": 48682,
+  "reasoning_templates": 1,
+  "reasoning_template_examples": [
+   [
+    "Level #, step #: next # solution actions #.",
+    340
+   ]
+  ],
+  "purpose": {
+   "gameplay": 340
+  },
+  "games": 40,
+  "skin_records": 170,
+  "holdout_leaks": 0
+ },
+ "aux": {
+  "tasks": 2100,
+  "holdout_leaks": 0,
+  "games": [
+   "ar25",
+   "bp35",
+   "cn04",
+   "ka59",
+   "lf52",
+   "m0r0",
+   "r11l",
+   "sc25",
+   "sk48",
+   "sp80",
+   "tn36",
+   "tu93",
+   "vc33",
+   "wa30"
+  ],
+  "generated_games": 0,
+  "predict": {
+   "tasks": 700,
+   "prompt": {
+    "p50": 2393,
+    "p90": 2736,
+    "p99": 3076,
+    "n": 700,
+    "mean": 2322.4,
+    "max": 3323,
+    "sum": 1625692
+   },
+   "answer": {
+    "p50": 1151,
+    "p90": 2104,
+    "p99": 2141,
+    "n": 700,
+    "mean": 937.7,
+    "max": 2155,
+    "sum": 656388
+   }
+  },
+  "reach": {
+   "tasks": 700,
+   "prompt": {
+    "p50": 2571,
+    "p90": 3086,
+    "p99": 3708,
+    "n": 700,
+    "mean": 2515.7,
+    "max": 4546,
+    "sum": 1761008
+   },
+   "answer": {
+    "p50": 27,
+    "p90": 106,
+    "p99": 132,
+    "n": 700,
+    "mean": 42.1,
+    "max": 132,
+    "sum": 29471
+   }
+  },
+  "transition": {
+   "tasks": 700,
+   "prompt": {
+    "p50": 8651,
+    "p90": 12957,
+    "p99": 14381,
+    "n": 700,
+    "mean": 8743.9,
+    "max": 15507,
+    "sum": 6120706
+   },
+   "answer": {
+    "p50": 1,
+    "p90": 1,
+    "p99": 1,
+    "n": 700,
+    "mean": 1.0,
+    "max": 1,
+    "sum": 700
+   }
+  },
+  "tokens_total": 10193965,
+  "answer_tokens_total": 686559
+ },
+ "harness": {
+  "segment": {
+   "system_prompts": {
+    "1584feaf63": 393
+   },
+   "tool_schemas": {
+    "86b502a758": 393
+   }
+  },
+  "teacher": {
+   "system_prompts": {
+    "1584feaf63": 62
+   },
+   "tool_schemas": {
+    "86b502a758": 62
+   }
+  },
+  "solver": {
+   "system_prompts": {
+    "1584feaf63": 340
+   },
+   "tool_schemas": {
+    "86b502a758": 340
+   }
+  }
+ },
+ "variant_prompt_lines": {
+  "cache-reclaim": {
+   "lines_not_in_base": 1,
+   "examples": [
+    [
+     "Executed actions: LEFT, LEFT, LEFT, LEFT, LEFT, LEFT.",
+     2
+    ]
+   ]
+  },
+  "fixed-2x-procedure": {
+   "lines_not_in_base": 2,
+   "examples": [
+    [
+     "Before any further action, work through this procedure in your reply:",
+     2
+    ],
+    [
+     "Never repeat an action or code cell that already failed on this board. If the level is bricked, `action(['RESET'])` rest",
+     2
+    ]
+   ]
+  },
+  "fixed-2x-pool2-timed-novelty": {
+   "lines_not_in_base": 2,
+   "examples": [
+    [
+     "Valid actions right now: UP, DOWN, LEFT, RIGHT, SPACE.",
+     4
+    ],
+    [
+     "- Cross-level notes: mirror/mode-toggle mechanic may recur; ignore timer column.",
+     2
+    ]
+   ]
+  }
+ },
+ "examples": {
+  "py_error": [
+   {
+    "id": "segment:kaggle-arena-cache-blocks-r2-20260923:ar25-0c556536:L1:R4",
+    "error": "Traceback (most recent call last):\n  File \"<python_tool>\", line 3, in <module>\nIndexError: list index out of range"
+   },
+   {
+    "id": "segment:kaggle-arena-competition-rerun-rehearsal-v1:k011:L1:R7",
+    "error": "Traceback (most recent call last):\n  File \"<python_tool>\", line 12, in <module>\n  File \"<python_tool>\", line 12, in <genexpr>\nIndexError: string index out of ra"
+   },
+   {
+    "id": "segment:kaggle-arena-duck-30m-fixed2x-64k-four-v1:ar25-0c556536:L1:R3",
+    "error": "Traceback (most recent call last):\n  File \"<python_tool>\", line 7, in <module>\n  File \"<python_tool>\", line 3, in segsum\nIndexError: list index out of range"
+   }
+  ],
+  "truncated": [
+   {
+    "id": "segment:modal-validation/arena-duck-60m-r23-base-v2-modal-20260925:ar25-0c556536:L6:R10",
+    "served_completion": 16384,
+    "reasoning_tail": "11 is fixed.\nLet me count again the total: 64. Available 62. If I skip... hmm, what if b1's move could be 4 DOWN + 6 LEFT = 10 \u2713 already minimal.\nAlternatively,"
+   },
+   {
+    "id": "segment:modal-validation/arena-duck-60m-r23-base-v2-modal-20260925:tu93-0768757b:L4:R13",
+    "served_completion": 16384,
+    "reasoning_tail": "hase.\n\nHonestly, the cleanest theory is still: guard bounces 2\u21948 (or 0\u21948) with period, advancing 1-2 cells per real move, and my \"double advance\" at step 120 is"
+   }
+  ]
+ },
+ "runs": {
+  "ornith-v1 (23 games)": {
+   "dev": {
+    "games": 14,
+    "clears": 2,
+    "mean_game_score": 0.06,
+    "completion_tokens": 1183176,
+    "clears_per_10k_tokens": 0.017,
+    "replies": 521,
+    "tokens_per_reply": 2271,
+    "actions": 940,
+    "tokens_per_action": 1259,
+    "length_share": 0.002,
+    "no_tool_call_share": 0.002,
+    "py_error_share": 0.046,
+    "replies_with_actions_share": 0.478,
+    "noop_action_share": 0.071
+   },
+   "holdout": {
+    "games": 9,
+    "clears": 2,
+    "mean_game_score": 0.47,
+    "completion_tokens": 666067,
+    "clears_per_10k_tokens": 0.03,
+    "replies": 292,
+    "tokens_per_reply": 2281,
+    "actions": 643,
+    "tokens_per_action": 1036,
+    "length_share": 0.003,
+    "no_tool_call_share": 0.003,
+    "py_error_share": 0.045,
+    "replies_with_actions_share": 0.538,
+    "noop_action_share": 0.068
+   },
+   "per_game": {
+    "ar25-0c556536": {
+     "clears": 1,
+     "score": 0.29,
+     "actions": 113,
+     "replies": 39,
+     "completion_tokens": 81222
+    },
+    "bp35-0a0ad940": {
+     "clears": 0,
+     "score": 0,
+     "actions": 32,
+     "replies": 49,
+     "completion_tokens": 92447
+    },
+    "cd82-fb555c5d": {
+     "clears": 0,
+     "score": 0,
+     "actions": 37,
+     "replies": 36,
+     "completion_tokens": 69463
+    },
+    "cn04-2fe56bfb": {
+     "clears": 0,
+     "score": 0,
+     "actions": 65,
+     "replies": 39,
+     "completion_tokens": 88157
+    },
+    "dc22-fdcac232": {
+     "clears": 0,
+     "score": 0,
+     "actions": 127,
+     "replies": 29,
+     "completion_tokens": 72398
+    },
+    "g50t-5849a774": {
+     "clears": 0,
+     "score": 0,
+     "actions": 45,
+     "replies": 33,
+     "completion_tokens": 74815
+    },
+    "ka59-38d34dbb": {
+     "clears": 0,
+     "score": 0,
+     "actions": 117,
+     "replies": 29,
+     "completion_tokens": 84585
+    },
+    "lf52-271a04aa": {
+     "clears": 0,
+     "score": 0,
+     "actions": 105,
+     "replies": 40,
+     "completion_tokens": 87043
+    },
+    "ls20-9607627b": {
+     "clears": 0,
+     "score": 0,
+     "actions": 26,
+     "replies": 31,
+     "completion_tokens": 70100
+    },
+    "m0r0-492f87ba": {
+     "clears": 0,
+     "score": 0,
+     "actions": 94,
+     "replies": 36,
+     "completion_tokens": 84170
+    },
+    "r11l-495a7899": {
+     "clears": 0,
+     "score": 0,
+     "actions": 12,
+     "replies": 29,
+     "completion_tokens": 82285
+    },
+    "re86-8af5384d": {
+     "clears": 0,
+     "score": 0,
+     "actions": 51,
+     "replies": 23,
+     "completion_tokens": 65041
+    },
+    "s5i5-18d95033": {
+     "clears": 0,
+     "score": 0,
+     "actions": 52,
+     "replies": 25,
+     "completion_tokens": 63478
+    },
+    "sb26-7fbdac44": {
+     "clears": 1,
+     "score": 2.78,
+     "actions": 67,
+     "replies": 37,
+     "completion_tokens": 94947
+    },
+    "sc25-635fd71a": {
+     "clears": 0,
+     "score": 0,
+     "actions": 67,
+     "replies": 38,
+     "completion_tokens": 79832
+    },
+    "sk48-d8078629": {
+     "clears": 0,
+     "score": 0,
+     "actions": 74,
+     "replies": 39,
+     "completion_tokens": 75772
+    },
+    "sp80-589a99af": {
+     "clears": 0,
+     "score": 0,
+     "actions": 122,
+     "replies": 41,
+     "completion_tokens": 85690
+    },
+    "su15-1944f8ab": {
+     "clears": 1,
+     "score": 1.48,
+     "actions": 87,
+     "replies": 45,
+     "completion_tokens": 92674
+    },
+    "tn36-ef4dde99": {
+     "clears": 0,
+     "score": 0,
+     "actions": 45,
+     "replies": 41,
+     "completion_tokens": 86239
+    },
+    "tr87-cd924810": {
+     "clears": 0,
+     "score": 0,
+     "actions": 151,
+     "replies": 33,
+     "completion_tokens": 63151
+    },
+    "tu93-0768757b": {
+     "clears": 0,
+     "score": 0,
+     "actions": 5,
+     "replies": 31,
+     "completion_tokens": 82439
+    },
+    "vc33-5430563c": {
+     "clears": 1,
+     "score": 0.48,
+     "actions": 40,
+     "replies": 36,
+     "completion_tokens": 86152
+    },
+    "wa30-ee6fef47": {
+     "clears": 0,
+     "score": 0,
+     "actions": 49,
+     "replies": 34,
+     "completion_tokens": 87143
+    }
+   }
+  },
+  "flash base-v4 (23 games)": {
+   "dev": {
+    "games": 14,
+    "clears": 14,
+    "mean_game_score": 11.36,
+    "completion_tokens": 728810,
+    "clears_per_10k_tokens": 0.192,
+    "replies": 468,
+    "tokens_per_reply": 1557,
+    "actions": 896,
+    "tokens_per_action": 813,
+    "length_share": 0.0,
+    "no_tool_call_share": 0.0,
+    "py_error_share": 0.058,
+    "replies_with_actions_share": 0.541,
+    "noop_action_share": 0.022
+   },
+   "holdout": {
+    "games": 9,
+    "clears": 3,
+    "mean_game_score": 1.23,
+    "completion_tokens": 137927,
+    "clears_per_10k_tokens": 0.218,
+    "replies": 124,
+    "tokens_per_reply": 1112,
+    "actions": 147,
+    "tokens_per_action": 938,
+    "length_share": 0.0,
+    "no_tool_call_share": 0.0,
+    "py_error_share": 0.016,
+    "replies_with_actions_share": 0.508,
+    "noop_action_share": 0.054
+   },
+   "per_game": {
+    "ar25-0c556536": {
+     "clears": 1,
+     "score": 2.78,
+     "actions": 54,
+     "replies": 30,
+     "completion_tokens": 39810
+    },
+    "bp35-0a0ad940": {
+     "clears": 0,
+     "score": 0,
+     "actions": 26,
+     "replies": 19,
+     "completion_tokens": 14978
+    },
+    "cd82-fb555c5d": {
+     "clears": 0,
+     "score": 0,
+     "actions": 11,
+     "replies": 16,
+     "completion_tokens": 19538
+    },
+    "cn04-2fe56bfb": {
+     "clears": 0,
+     "score": 0,
+     "actions": 22,
+     "replies": 18,
+     "completion_tokens": 30540
+    },
+    "dc22-fdcac232": {
+     "clears": 0,
+     "score": 0,
+     "actions": 19,
+     "replies": 14,
+     "completion_tokens": 16893
+    },
+    "g50t-5849a774": {
+     "clears": 0,
+     "score": 0,
+     "actions": 4,
+     "replies": 13,
+     "completion_tokens": 19105
+    },
+    "ka59-38d34dbb": {
+     "clears": 5,
+     "score": 51.46,
+     "actions": 330,
+     "replies": 103,
+     "completion_tokens": 243483
+    },
+    "lf52-271a04aa": {
+     "clears": 0,
+     "score": 0,
+     "actions": 15,
+     "replies": 19,
+     "completion_tokens": 20058
+    },
+    "ls20-9607627b": {
+     "clears": 0,
+     "score": 0,
+     "actions": 4,
+     "replies": 16,
+     "completion_tokens": 11720
+    },
+    "m0r0-492f87ba": {
+     "clears": 0,
+     "score": 0,
+     "actions": 9,
+     "replies": 16,
+     "completion_tokens": 16311
+    },
+    "r11l-495a7899": {
+     "clears": 1,
+     "score": 4.76,
+     "actions": 21,
+     "replies": 49,
+     "completion_tokens": 78958
+    },
+    "re86-8af5384d": {
+     "clears": 2,
+     "score": 8.33,
+     "actions": 65,
+     "replies": 29,
+     "completion_tokens": 28812
+    },
+    "s5i5-18d95033": {
+     "clears": 0,
+     "score": 0,
+     "actions": 4,
+     "replies": 7,
+     "completion_tokens": 3941
+    },
+    "sb26-7fbdac44": {
+     "clears": 1,
+     "score": 2.78,
+     "actions": 33,
+     "replies": 15,
+     "completion_tokens": 31137
+    },
+    "sc25-635fd71a": {
+     "clears": 0,
+     "score": 0,
+     "actions": 17,
+     "replies": 15,
+     "completion_tokens": 14657
+    },
+    "sk48-d8078629": {
+     "clears": 0,
+     "score": 0,
+     "actions": 22,
+     "replies": 20,
+     "completion_tokens": 16076
+    },
+    "sp80-589a99af": {
+     "clears": 0,
+     "score": 0,
+     "actions": 29,
+     "replies": 13,
+     "completion_tokens": 13142
+    },
+    "su15-1944f8ab": {
+     "clears": 0,
+     "score": 0,
+     "actions": 5,
+     "replies": 7,
+     "completion_tokens": 3569
+    },
+    "tn36-ef4dde99": {
+     "clears": 0,
+     "score": 0,
+     "actions": 26,
+     "replies": 16,
+     "completion_tokens": 17065
+    },
+    "tr87-cd924810": {
+     "clears": 0,
+     "score": 0,
+     "actions": 2,
+     "replies": 7,
+     "completion_tokens": 3212
+    },
+    "tu93-0768757b": {
+     "clears": 0,
+     "score": 0,
+     "actions": 5,
+     "replies": 13,
+     "completion_tokens": 11725
+    },
+    "vc33-5430563c": {
+     "clears": 7,
+     "score": 100.0,
+     "actions": 306,
+     "replies": 118,
+     "completion_tokens": 199210
+    },
+    "wa30-ee6fef47": {
+     "clears": 0,
+     "score": 0,
+     "actions": 14,
+     "replies": 19,
+     "completion_tokens": 12797
+    }
+   }
+  },
+  "flash base-v5 (23 games)": {
+   "dev": {
+    "games": 14,
+    "clears": 6,
+    "mean_game_score": 3.59,
+    "completion_tokens": 431272,
+    "clears_per_10k_tokens": 0.139,
+    "replies": 409,
+    "tokens_per_reply": 1054,
+    "actions": 555,
+    "tokens_per_action": 777,
+    "length_share": 0.0,
+    "no_tool_call_share": 0.0,
+    "py_error_share": 0.051,
+    "replies_with_actions_share": 0.408,
+    "noop_action_share": 0.011
+   },
+   "holdout": {
+    "games": 9,
+    "clears": 7,
+    "mean_game_score": 6.79,
+    "completion_tokens": 388624,
+    "clears_per_10k_tokens": 0.18,
+    "replies": 244,
+    "tokens_per_reply": 1593,
+    "actions": 565,
+    "tokens_per_action": 688,
+    "length_share": 0.0,
+    "no_tool_call_share": 0.0,
+    "py_error_share": 0.074,
+    "replies_with_actions_share": 0.332,
+    "noop_action_share": 0.018
+   },
+   "per_game": {
+    "ar25-0c556536": {
+     "clears": 0,
+     "score": 0,
+     "actions": 5,
+     "replies": 9,
+     "completion_tokens": 6285
+    },
+    "bp35-0a0ad940": {
+     "clears": 0,
+     "score": 0,
+     "actions": 4,
+     "replies": 11,
+     "completion_tokens": 5962
+    },
+    "cd82-fb555c5d": {
+     "clears": 0,
+     "score": 0,
+     "actions": 6,
+     "replies": 9,
+     "completion_tokens": 2705
+    },
+    "cn04-2fe56bfb": {
+     "clears": 4,
+     "score": 47.62,
+     "actions": 184,
+     "replies": 149,
+     "completion_tokens": 160727
+    },
+    "dc22-fdcac232": {
+     "clears": 0,
+     "score": 0,
+     "actions": 8,
+     "replies": 9,
+     "completion_tokens": 4218
+    },
+    "g50t-5849a774": {
+     "clears": 0,
+     "score": 0,
+     "actions": 4,
+     "replies": 9,
+     "completion_tokens": 7204
+    },
+    "ka59-38d34dbb": {
+     "clears": 0,
+     "score": 0,
+     "actions": 4,
+     "replies": 9,
+     "completion_tokens": 6522
+    },
+    "lf52-271a04aa": {
+     "clears": 2,
+     "score": 2.63,
+     "actions": 265,
+     "replies": 130,
+     "completion_tokens": 155202
+    },
+    "ls20-9607627b": {
+     "clears": 0,
+     "score": 0,
+     "actions": 2,
+     "replies": 9,
+     "completion_tokens": 7704
+    },
+    "m0r0-492f87ba": {
+     "clears": 0,
+     "score": 0,
+     "actions": 3,
+     "replies": 10,
+     "completion_tokens": 3931
+    },
+    "r11l-495a7899": {
+     "clears": 0,
+     "score": 0,
+     "actions": 4,
+     "replies": 9,
+     "completion_tokens": 16304
+    },
+    "re86-8af5384d": {
+     "clears": 6,
+     "score": 58.33,
+     "actions": 505,
+     "replies": 163,
+     "completion_tokens": 334513
+    },
+    "s5i5-18d95033": {
+     "clears": 0,
+     "score": 0,
+     "actions": 7,
+     "replies": 9,
+     "completion_tokens": 5173
+    },
+    "sb26-7fbdac44": {
+     "clears": 1,
+     "score": 2.78,
+     "actions": 27,
+     "replies": 18,
+     "completion_tokens": 17304
+    },
+    "sc25-635fd71a": {
+     "clears": 0,
+     "score": 0,
+     "actions": 11,
+     "replies": 10,
+     "completion_tokens": 6706
+    },
+    "sk48-d8078629": {
+     "clears": 0,
+     "score": 0,
+     "actions": 5,
+     "replies": 9,
+     "completion_tokens": 5693
+    },
+    "sp80-589a99af": {
+     "clears": 0,
+     "score": 0,
+     "actions": 16,
+     "replies": 11,
+     "completion_tokens": 7135
+    },
+    "su15-1944f8ab": {
+     "clears": 0,
+     "score": 0,
+     "actions": 5,
+     "replies": 9,
+     "completion_tokens": 4366
+    },
+    "tn36-ef4dde99": {
+     "clears": 0,
+     "score": 0,
+     "actions": 31,
+     "replies": 22,
+     "completion_tokens": 27081
+    },
+    "tr87-cd924810": {
+     "clears": 0,
+     "score": 0,
+     "actions": 1,
+     "replies": 9,
+     "completion_tokens": 5437
+    },
+    "tu93-0768757b": {
+     "clears": 0,
+     "score": 0,
+     "actions": 2,
+     "replies": 10,
+     "completion_tokens": 8810
+    },
+    "vc33-5430563c": {
+     "clears": 0,
+     "score": 0,
+     "actions": 13,
+     "replies": 9,
+     "completion_tokens": 10309
+    },
+    "wa30-ee6fef47": {
+     "clears": 0,
+     "score": 0,
+     "actions": 8,
+     "replies": 11,
+     "completion_tokens": 10605
+    }
+   }
+  },
+  "flash base-v2 modal (23 games)": {
+   "dev": {
+    "games": 14,
+    "clears": 16,
+    "mean_game_score": 9.63,
+    "completion_tokens": 768589,
+    "clears_per_10k_tokens": 0.208,
+    "replies": 448,
+    "tokens_per_reply": 1716,
+    "actions": 733,
+    "tokens_per_action": 1049,
+    "length_share": 0.007,
+    "no_tool_call_share": 0.007,
+    "py_error_share": 0.049,
+    "replies_with_actions_share": 0.397,
+    "noop_action_share": 0.023
+   },
+   "holdout": {
+    "games": 9,
+    "clears": 1,
+    "mean_game_score": 0.31,
+    "completion_tokens": 59939,
+    "clears_per_10k_tokens": 0.167,
+    "replies": 85,
+    "tokens_per_reply": 705,
+    "actions": 75,
+    "tokens_per_action": 799,
+    "length_share": 0.0,
+    "no_tool_call_share": 0.0,
+    "py_error_share": 0.024,
+    "replies_with_actions_share": 0.447,
+    "noop_action_share": 0.067
+   },
+   "per_game": {
+    "ar25-0c556536": {
+     "clears": 7,
+     "score": 77.78,
+     "actions": 265,
+     "replies": 102,
+     "completion_tokens": 157084
+    },
+    "bp35-0a0ad940": {
+     "clears": 0,
+     "score": 0,
+     "actions": 17,
+     "replies": 20,
+     "completion_tokens": 15035
+    },
+    "cd82-fb555c5d": {
+     "clears": 0,
+     "score": 0,
+     "actions": 6,
+     "replies": 9,
+     "completion_tokens": 3239
+    },
+    "cn04-2fe56bfb": {
+     "clears": 0,
+     "score": 0,
+     "actions": 14,
+     "replies": 24,
+     "completion_tokens": 55263
+    },
+    "dc22-fdcac232": {
+     "clears": 0,
+     "score": 0,
+     "actions": 9,
+     "replies": 9,
+     "completion_tokens": 7292
+    },
+    "g50t-5849a774": {
+     "clears": 0,
+     "score": 0,
+     "actions": 5,
+     "replies": 9,
+     "completion_tokens": 6022
+    },
+    "ka59-38d34dbb": {
+     "clears": 0,
+     "score": 0,
+     "actions": 5,
+     "replies": 9,
+     "completion_tokens": 5821
+    },
+    "lf52-271a04aa": {
+     "clears": 0,
+     "score": 0,
+     "actions": 14,
+     "replies": 18,
+     "completion_tokens": 14908
+    },
+    "ls20-9607627b": {
+     "clears": 0,
+     "score": 0,
+     "actions": 3,
+     "replies": 9,
+     "completion_tokens": 9082
+    },
+    "m0r0-492f87ba": {
+     "clears": 0,
+     "score": 0,
+     "actions": 7,
+     "replies": 12,
+     "completion_tokens": 13381
+    },
+    "r11l-495a7899": {
+     "clears": 1,
+     "score": 4.76,
+     "actions": 16,
+     "replies": 45,
+     "completion_tokens": 100691
+    },
+    "re86-8af5384d": {
+     "clears": 0,
+     "score": 0,
+     "actions": 9,
+     "replies": 9,
+     "completion_tokens": 5663
+    },
+    "s5i5-18d95033": {
+     "clears": 0,
+     "score": 0,
+     "actions": 11,
+     "replies": 9,
+     "completion_tokens": 6353
+    },
+    "sb26-7fbdac44": {
+     "clears": 1,
+     "score": 2.78,
+     "actions": 26,
+     "replies": 14,
+     "completion_tokens": 13212
+    },
+    "sc25-635fd71a": {
+     "clears": 0,
+     "score": 0,
+     "actions": 10,
+     "replies": 9,
+     "completion_tokens": 8751
+    },
+    "sk48-d8078629": {
+     "clears": 0,
+     "score": 0,
+     "actions": 7,
+     "replies": 9,
+     "completion_tokens": 5665
+    },
+    "sp80-589a99af": {
+     "clears": 0,
+     "score": 0,
+     "actions": 43,
+     "replies": 17,
+     "completion_tokens": 14966
+    },
+    "su15-1944f8ab": {
+     "clears": 0,
+     "score": 0,
+     "actions": 5,
+     "replies": 9,
+     "completion_tokens": 4648
+    },
+    "tn36-ef4dde99": {
+     "clears": 0,
+     "score": 0,
+     "actions": 29,
+     "replies": 15,
+     "completion_tokens": 19389
+    },
+    "tr87-cd924810": {
+     "clears": 0,
+     "score": 0,
+     "actions": 1,
+     "replies": 8,
+     "completion_tokens": 4428
+    },
+    "tu93-0768757b": {
+     "clears": 5,
+     "score": 30.87,
+     "actions": 203,
+     "replies": 98,
+     "completion_tokens": 195007
+    },
+    "vc33-5430563c": {
+     "clears": 3,
+     "score": 21.43,
+     "actions": 91,
+     "replies": 53,
+     "completion_tokens": 149387
+    },
+    "wa30-ee6fef47": {
+     "clears": 0,
+     "score": 0,
+     "actions": 12,
+     "replies": 17,
+     "completion_tokens": 13241
+    }
+   }
+  },
+  "flash base-v3 modal (23 games)": {
+   "dev": {
+    "games": 14,
+    "clears": 20,
+    "mean_game_score": 13.58,
+    "completion_tokens": 746388,
+    "clears_per_10k_tokens": 0.268,
+    "replies": 553,
+    "tokens_per_reply": 1350,
+    "actions": 981,
+    "tokens_per_action": 761,
+    "length_share": 0.0,
+    "no_tool_call_share": 0.0,
+    "py_error_share": 0.056,
+    "replies_with_actions_share": 0.42,
+    "noop_action_share": 0.011
+   },
+   "holdout": {
+    "games": 9,
+    "clears": 1,
+    "mean_game_score": 0.31,
+    "completion_tokens": 51845,
+    "clears_per_10k_tokens": 0.193,
+    "replies": 70,
+    "tokens_per_reply": 741,
+    "actions": 64,
+    "tokens_per_action": 810,
+    "length_share": 0.0,
+    "no_tool_call_share": 0.0,
+    "py_error_share": 0.029,
+    "replies_with_actions_share": 0.429,
+    "noop_action_share": 0.031
+   },
+   "per_game": {
+    "ar25-0c556536": {
+     "clears": 8,
+     "score": 100.0,
+     "actions": 331,
+     "replies": 144,
+     "completion_tokens": 158252
+    },
+    "bp35-0a0ad940": {
+     "clears": 0,
+     "score": 0,
+     "actions": 11,
+     "replies": 18,
+     "completion_tokens": 18450
+    },
+    "cd82-fb555c5d": {
+     "clears": 0,
+     "score": 0,
+     "actions": 7,
+     "replies": 9,
+     "completion_tokens": 4546
+    },
+    "cn04-2fe56bfb": {
+     "clears": 4,
+     "score": 47.62,
+     "actions": 223,
+     "replies": 114,
+     "completion_tokens": 189629
+    },
+    "dc22-fdcac232": {
+     "clears": 0,
+     "score": 0,
+     "actions": 6,
+     "replies": 7,
+     "completion_tokens": 6335
+    },
+    "g50t-5849a774": {
+     "clears": 0,
+     "score": 0,
+     "actions": 1,
+     "replies": 7,
+     "completion_tokens": 6167
+    },
+    "ka59-38d34dbb": {
+     "clears": 0,
+     "score": 0,
+     "actions": 6,
+     "replies": 6,
+     "completion_tokens": 8499
+    },
+    "lf52-271a04aa": {
+     "clears": 2,
+     "score": 4.43,
+     "actions": 162,
+     "replies": 94,
+     "completion_tokens": 136388
+    },
+    "ls20-9607627b": {
+     "clears": 0,
+     "score": 0,
+     "actions": 5,
+     "replies": 8,
+     "completion_tokens": 4482
+    },
+    "m0r0-492f87ba": {
+     "clears": 0,
+     "score": 0,
+     "actions": 2,
+     "replies": 9,
+     "completion_tokens": 5978
+    },
+    "r11l-495a7899": {
+     "clears": 1,
+     "score": 4.76,
+     "actions": 7,
+     "replies": 13,
+     "completion_tokens": 19890
+    },
+    "re86-8af5384d": {
+     "clears": 0,
+     "score": 0,
+     "actions": 3,
+     "replies": 6,
+     "completion_tokens": 6498
+    },
+    "s5i5-18d95033": {
+     "clears": 0,
+     "score": 0,
+     "actions": 2,
+     "replies": 7,
+     "completion_tokens": 4359
+    },
+    "sb26-7fbdac44": {
+     "clears": 1,
+     "score": 2.78,
+     "actions": 36,
+     "replies": 12,
+     "completion_tokens": 11647
+    },
+    "sc25-635fd71a": {
+     "clears": 0,
+     "score": 0,
+     "actions": 7,
+     "replies": 9,
+     "completion_tokens": 3657
+    },
+    "sk48-d8078629": {
+     "clears": 0,
+     "score": 0,
+     "actions": 7,
+     "replies": 6,
+     "completion_tokens": 5637
+    },
+    "sp80-589a99af": {
+     "clears": 0,
+     "score": 0,
+     "actions": 9,
+     "replies": 9,
+     "completion_tokens": 5673
+    },
+    "su15-1944f8ab": {
+     "clears": 0,
+     "score": 0,
+     "actions": 3,
+     "replies": 8,
+     "completion_tokens": 3286
+    },
+    "tn36-ef4dde99": {
+     "clears": 0,
+     "score": 0,
+     "actions": 36,
+     "replies": 16,
+     "completion_tokens": 19669
+    },
+    "tr87-cd924810": {
+     "clears": 0,
+     "score": 0,
+     "actions": 1,
+     "replies": 6,
+     "completion_tokens": 4525
+    },
+    "tu93-0768757b": {
+     "clears": 5,
+     "score": 33.33,
+     "actions": 159,
+     "replies": 86,
+     "completion_tokens": 160126
+    },
+    "vc33-5430563c": {
+     "clears": 0,
+     "score": 0,
+     "actions": 5,
+     "replies": 7,
+     "completion_tokens": 7836
+    },
+    "wa30-ee6fef47": {
+     "clears": 0,
+     "score": 0,
+     "actions": 16,
+     "replies": 22,
+     "completion_tokens": 6704
+    }
+   }
+  },
+  "flash evolve-v4 holdout-baseline (9 holdout games)": {
+   "holdout": {
+    "games": 9,
+    "clears": 12,
+    "mean_game_score": 7.43,
+    "completion_tokens": 834466,
+    "clears_per_10k_tokens": 0.144,
+    "replies": 452,
+    "tokens_per_reply": 1846,
+    "actions": 1049,
+    "tokens_per_action": 795,
+    "length_share": 0.011,
+    "no_tool_call_share": 0.011,
+    "py_error_share": 0.042,
+    "replies_with_actions_share": 0.471,
+    "noop_action_share": 0.032
+   },
+   "per_game": {
+    "cd82-fb555c5d": {
+     "clears": 0,
+     "score": 0,
+     "actions": 16,
+     "replies": 15,
+     "completion_tokens": 15160
+    },
+    "dc22-fdcac232": {
+     "clears": 0,
+     "score": 0,
+     "actions": 14,
+     "replies": 17,
+     "completion_tokens": 12950
+    },
+    "g50t-5849a774": {
+     "clears": 0,
+     "score": 0,
+     "actions": 10,
+     "replies": 19,
+     "completion_tokens": 18384
+    },
+    "ls20-9607627b": {
+     "clears": 2,
+     "score": 7.94,
+     "actions": 278,
+     "replies": 78,
+     "completion_tokens": 133957
+    },
+    "re86-8af5384d": {
+     "clears": 5,
+     "score": 41.67,
+     "actions": 459,
+     "replies": 138,
+     "completion_tokens": 279794
+    },
+    "s5i5-18d95033": {
+     "clears": 1,
+     "score": 2.78,
+     "actions": 56,
+     "replies": 47,
+     "completion_tokens": 170117
+    },
+    "sb26-7fbdac44": {
+     "clears": 1,
+     "score": 2.78,
+     "actions": 67,
+     "replies": 27,
+     "completion_tokens": 41150
+    },
+    "su15-1944f8ab": {
+     "clears": 3,
+     "score": 11.75,
+     "actions": 147,
+     "replies": 95,
+     "completion_tokens": 152007
+    },
+    "tr87-cd924810": {
+     "clears": 0,
+     "score": 0,
+     "actions": 2,
+     "replies": 16,
+     "completion_tokens": 10947
+    }
+   }
+  },
+  "flash evolve-v4 round-00 (14 dev games)": {
+   "dev": {
+    "games": 14,
+    "clears": 18,
+    "mean_game_score": 11.94,
+    "completion_tokens": 823688,
+    "clears_per_10k_tokens": 0.219,
+    "replies": 574,
+    "tokens_per_reply": 1435,
+    "actions": 884,
+    "tokens_per_action": 932,
+    "length_share": 0.002,
+    "no_tool_call_share": 0.003,
+    "py_error_share": 0.096,
+    "replies_with_actions_share": 0.395,
+    "noop_action_share": 0.029
+   },
+   "per_game": {
+    "ar25-0c556536": {
+     "clears": 1,
+     "score": 2.78,
+     "actions": 118,
+     "replies": 53,
+     "completion_tokens": 70775
+    },
+    "bp35-0a0ad940": {
+     "clears": 0,
+     "score": 0,
+     "actions": 5,
+     "replies": 12,
+     "completion_tokens": 8624
+    },
+    "cn04-2fe56bfb": {
+     "clears": 0,
+     "score": 0,
+     "actions": 19,
+     "replies": 11,
+     "completion_tokens": 8990
+    },
+    "ka59-38d34dbb": {
+     "clears": 0,
+     "score": 0,
+     "actions": 7,
+     "replies": 12,
+     "completion_tokens": 7370
+    },
+    "lf52-271a04aa": {
+     "clears": 0,
+     "score": 0,
+     "actions": 5,
+     "replies": 12,
+     "completion_tokens": 9010
+    },
+    "m0r0-492f87ba": {
+     "clears": 0,
+     "score": 0,
+     "actions": 11,
+     "replies": 11,
+     "completion_tokens": 8775
+    },
+    "r11l-495a7899": {
+     "clears": 0,
+     "score": 0,
+     "actions": 5,
+     "replies": 12,
+     "completion_tokens": 13598
+    },
+    "sc25-635fd71a": {
+     "clears": 0,
+     "score": 0,
+     "actions": 14,
+     "replies": 10,
+     "completion_tokens": 9257
+    },
+    "sk48-d8078629": {
+     "clears": 0,
+     "score": 0,
+     "actions": 8,
+     "replies": 10,
+     "completion_tokens": 9388
+    },
+    "sp80-589a99af": {
+     "clears": 0,
+     "score": 0,
+     "actions": 23,
+     "replies": 11,
+     "completion_tokens": 9120
+    },
+    "tn36-ef4dde99": {
+     "clears": 2,
+     "score": 10.71,
+     "actions": 99,
+     "replies": 32,
+     "completion_tokens": 59457
+    },
+    "tu93-0768757b": {
+     "clears": 8,
+     "score": 53.67,
+     "actions": 315,
+     "replies": 247,
+     "completion_tokens": 361376
+    },
+    "vc33-5430563c": {
+     "clears": 7,
+     "score": 100.0,
+     "actions": 240,
+     "replies": 115,
+     "completion_tokens": 226565
+    },
+    "wa30-ee6fef47": {
+     "clears": 0,
+     "score": 0,
+     "actions": 15,
+     "replies": 26,
+     "completion_tokens": 21383
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,6 @@
+{
+ "argv": ["node", "/opt/rsi-runtime/prime-agent/packages/coding-agent/dist/bundle/cli.js", "--mode", "rpc",
+          "--autonomous", "--provider", "rsi", "--model", "flash", "--thinking", "xhigh"],
+ "env": {"PRIME_AGENT_KERNEL_PYTHON": "/opt/rsi-runtime/propkernel/bin/python", "PI_OFFLINE": "1",
+         "PRIME_AGENT_INTERNAL_LEGACY_OWNED_WORKER_FRONTEND": "1"}
+}

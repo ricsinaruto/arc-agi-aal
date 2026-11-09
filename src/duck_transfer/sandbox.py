@@ -818,14 +818,6 @@ class StatefulSandbox:
                     raw = reply.get("action_result") or {}
                     if isinstance(raw, dict):
                         results.append(dict(raw))
-                    if (self.interrupt_on_timeout and interrupted_at is None and time.monotonic() >= deadline
-                            and self.process is not None and self.process.poll() is None):
-                        # The timeout passed inside this action: signal before the reply, so the interrupt lands while
-                        # the child's ``action`` is disarmed and raises right after it (not after a racing next action).
-                        interrupted_at = time.monotonic()
-                        deadline = interrupted_at + self.interrupt_grace
-                        self._interrupt()
-                        self._event("duck_python_interrupt", timeout=timeout_seconds)
                     self._send(
                         {
                             "type": "action_result",

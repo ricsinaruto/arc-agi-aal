@@ -5,7 +5,7 @@
   "service_account_id": "serviceaccount-e001k57pbql85axy9a",
   "bucket": "arc-runs-bucket",
   "s3_secret_id": "<id of the secret that holds the bucket key; never the key itself>",
-  "profile": "arc-sa",
+  "profile": "arc",
   "rclone_remote": "nebius-arc",
   "ssh_user": "arc",
   "ssh_public_key": "<your ssh public key>",

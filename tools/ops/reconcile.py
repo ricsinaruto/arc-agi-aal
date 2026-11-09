@@ -3,7 +3,7 @@ Nebius: every arc-<run id> VM that is up is a live row (made from its launch rec
 is dropped (its ledger row settles through `nebius_validation.py status`, as before). Modal: launch records modal-<run>.json
 (docs/ and worktrees) whose ledger row is still "reserved": the call graph and the end marker on the volume decide.
 Rows keep their hand-written "what"; queued rows that have not started are never dropped. Written back under flock only on change."""
-import datetime, glob, json, os, pathlib, re, subprocess, sys, time
+import datetime, fcntl, glob, json, os, pathlib, re, subprocess, sys, time
 import paths
 ROOT = paths.ROOT_PATH; Q = ROOT / "docs/modal-queue.json"; REC = ROOT / "docs/validation-nebius"
 PY = str(ROOT / ".venv/bin/python") if (ROOT / ".venv/bin/python").exists() else sys.executable
@@ -40,21 +40,11 @@ def receipts():
     """{run id lowercased: path} of the Nebius launch receipts."""
     return {p.name[7:-5].lower(): p for p in REC.glob("nebius-*.json")}
 
-def ledger_states(recs=None):
-    """{id: state}: every ledger row by its run_id, and each record's run id by its CURRENT attempt (latest row), so a
-    relaunch under the same id (row "<run>/attempt-2") is not read as attempt 1's settled row (RL 26 Oct)."""
-    if recs is None:
-        sys.path.insert(0, str(ROOT / "src"))
-        from arc_infra.runops import records
-        recs = records.records()
-    out = {}
-    for r in recs:
-        rows = [e["row"] for e in r.get("ledger") or []]
-        for row in rows:
-            out[str(row.get("run_id") or r["run"])] = row.get("state")
-        if rows:
-            out[str(r["run"])] = rows[-1].get("state")
-    return out
+def ledger_states():
+    d = json.loads((ROOT / "docs/spend.json").read_text()); rows = list(d.get("runs") or [])
+    for v in d.values():
+        if isinstance(v, dict) and isinstance(v.get("runs"), list): rows += v["runs"]
+    return {str(r.get("run_id") or r.get("run")): r.get("state") for r in rows if isinstance(r, dict)}
 
 MODAL_OK = True
 
@@ -70,11 +60,7 @@ def modal_jobs(now):
         try: j = json.loads(pathlib.Path(p).read_text()); mt = os.path.getmtime(p)
         except Exception: continue
         if not j.get("function_call_id"): continue
-        start = j.get("launched_epoch") or j.get("started_epoch")
-        if not start:  # never the file mtime: git checkouts and merges reset it, which revived 3-day-old rows as live (19 Oct)
-            d = re.search(r"(20\d{6})", run)
-            if not d: continue
-            start = datetime.datetime.strptime(d.group(1), "%Y%m%d").replace(tzinfo=datetime.timezone.utc).timestamp()
+        start = j.get("launched_epoch") or j.get("started_epoch") or mt
         if now - start > (j.get("timeout_seconds") or 86400) + 3 * 3600: continue  # stale reservation
         if run not in recs or start > recs[run]["start"]:
             recs[run] = {"start": start, "timeout": j.get("timeout_seconds") or 0, "fc": j["function_call_id"], "gpu": j.get("gpu"), "output": j.get("output"), "ended": None}
@@ -86,10 +72,8 @@ def modal_jobs(now):
     try:
         r = subprocess.run([PY, "-c", code, *[v["fc"] for v in todo.values()]], capture_output=True, text=True, timeout=120)
         st = json.loads(r.stdout.strip().splitlines()[-1]) if r.returncode == 0 else {}
-        listed = paths.modal_apps(modal)
-        if listed is None:
-            raise RuntimeError("Modal app listing unknown")  # carry last known states below, never "ended"
-        apps = [(ts(a["created_at"]), a["app_id"]) for a in listed if a.get("state") != "stopped"]
+        apps = [(ts(a["created_at"]), a["app_id"]) for a in json.loads(subprocess.run([modal, "app", "list", "--json"], capture_output=True, text=True, timeout=60).stdout)
+                if a.get("state") != "stopped"]
         boxes = {}
         for c in json.loads(subprocess.run([modal, "container", "list", "--json"], capture_output=True, text=True, timeout=60).stdout):
             boxes[c["app_id"]] = min(boxes.get(c["app_id"], 1e18), ts(c["start_time"]))
@@ -140,8 +124,9 @@ def ended_in_bucket(run):
     return d.returncode == 0 and "execution.json" in d.stdout
 
 def arm_of(run, rules):
-    hits = [k for k in rules if run.lower().startswith(k.lower())]  # longest prefix: "b2-mfu" beats "b2-"
-    return rules[max(hits, key=len)] if hits else "other"
+    for k, v in rules.items():
+        if run.lower().startswith(k.lower()): return v
+    return "other"
 
 def what_of(run, arm, q, labels):
     """Text for a new row: the queue's description, else the arm log's Now line that names the run, else its label."""
@@ -153,18 +138,6 @@ def what_of(run, arm, q, labels):
         for line in re.split(r"\n(?=\s*[-*] )", now):
             if short in line: return re.sub(r"\s+", " ", re.sub(r"[`*]", "", re.sub(r"^\s*[-*]\s+", "", line))).strip()[:400]
     return next((v for k, v in labels.items() if run.startswith(k)), "")
-
-END = ("complete", "completed", "done", "finished", "stopped", "failed", "cancelled", "canceled", "ended")
-
-
-def app_ended(app_id, _c={}):
-    """True when Modal no longer lists the app as running (listed once per pass; False when the listing fails)."""
-    if "s" not in _c:
-        listed = paths.modal_apps(str(ROOT / ".venv/bin/modal"))  # None: unknown (failed or empty listing)
-        _c["s"] = None if listed is None else {a["app_id"] for a in listed if a.get("state") != "stopped"}
-    # only real app ids: a launcher's placeholder ("pending", None) is not an ended app
-    return str(app_id or "").startswith("ap-") and _c["s"] is not None and app_id not in _c["s"]
-
 
 def plan(q, vms, modal, now, st):
     """Edits as (op, run, fields): set (live row times), move (queued -> live), add, drop (from live or queued)."""
@@ -183,8 +156,6 @@ def plan(q, vms, modal, now, st):
         path = rec.get(low); r = json.loads(path.read_text()) if path else {}
         run = r.get("run_id") or (rows.get(low) or (0, {}))[1].get("run") or low
         dur = ((r.get("spec") or {}).get("timeout") or r.get("play_seconds") or 0)
-        if dur >= 86400 and "24h" not in low:  # the launcher's default 24 h VM timeout is a backstop, not the plan
-            dur = (r.get("play_seconds") or 0) + 1200 if r.get("play_seconds") else 7200
         run_now[low] = {"run": run, "platform": "nebius", "gpu": "RTX PRO 6000", "start": r.get("first_created_epoch") or v["created"], "dur": dur,
                         "state": "running", "first": r.get("first_created_epoch") or v["created"], "since": v["created"]}
     for run, v in modal.items():
@@ -227,15 +198,23 @@ def plan(q, vms, modal, now, st):
                     continue
                 if vms is not None: ops.append(("drop", e["run"], {"nebius": True}))
                 elif where == "live" and ended_in_bucket(r.get("run_id") or e["run"]): ops.append(("drop", e["run"], {}))  # listing failed: the end marker
-            elif e.get("platform") == "nebius" and where == "live" and vms is not None and e.get("auto"):
-                ops.append(("drop", e["run"], {}))  # loop-added row (e.g. a collaborator VM) with no receipt: its machine is gone
-            elif e.get("platform") == "kaggle" and where == "live" and now > (e.get("end_epoch") or now) + 2 * 3600:
-                ops.append(("drop", e["run"], {}))  # Kaggle save run: no machine listing; gone 2 h past its planned end
-            elif e.get("platform") != "nebius" and (modal.get(e["run"], {}).get("ended") or str(e.get("state", "")).lower() in END
-                                                     or (where == "live" and app_ended(e.get("app_id")))):
-                ops.append(("drop", e["run"], {}))  # Modal job or its own app ended, or the arm marked its row finished
+            elif e.get("platform") != "nebius" and modal.get(e["run"], {}).get("ended"): ops.append(("drop", e["run"], {}))
     info = {**starting, **{x["run"]: {k: x.get(k) for k in ("state", "first", "since")} for x in run_now.values()}}
     return ops, info
+
+def apply(q, ops):
+    live, queued = q.setdefault("live", []), q.setdefault("queued", [])
+    for op, run, f in ops:
+        if op == "set":
+            for e in live:
+                if e["run"] == run: e.update(f)
+        elif op == "move":
+            e = next((e for e in queued if e["run"] == run), None)
+            if e: queued.remove(e); live.append({**e, **f})
+        elif op == "add" and not any(e["run"].lower() == run.lower() for e in live + queued): live.append(f)
+        elif op == "drop":
+            q["live"] = live = [e for e in live if e["run"] != run]; q["queued"] = queued = [e for e in queued if e["run"] != run]
+    return q
 
 def run(st, log=print):
     """One pass: returns the ops applied. Settles the ledger row of each dropped Nebius run (the launcher's status call)."""
@@ -248,18 +227,6 @@ def run(st, log=print):
     ops, info = plan(q, vms, modal, now, st)
     (paths.SCRATCH / "mon").mkdir(parents=True, exist_ok=True)
     (paths.SCRATCH / "mon/state.json").write_text(json.dumps({"t": now, "nebius_ok": vms is not None, "modal_ok": MODAL_OK, "runs": info}))
-    if vms is not None and MODAL_OK:  # records nothing runs behind (reserve rows left open): closed once both listings worked
-        try:
-            sys.path.insert(0, str(ROOT / "src"))
-            from arc_infra.runops import records
-            listed = paths.modal_apps(str(ROOT / ".venv/bin/modal"))
-            if listed is not None:
-                live = set(vms) | {e["run"].lower() for e in q.get("live", []) + q.get("queued", [])}
-                stale = records.stale_open(records.records(), live_runs=live,
-                                           live_apps={a["app_id"] for a in listed if a.get("state") != "stopped"}, now=now)
-                records.close_stale(stale, note="reconcile: no app/VM listed past the reservation")
-                for r in stale: log("records: closed stale", r)
-        except Exception as exc: log("stale sweep failed:", exc)
     if not ops: return info
     try: cards = json.loads((paths.SCRATCH / "mon/cards.json").read_text())
     except Exception: cards = {}
@@ -268,9 +235,10 @@ def run(st, log=print):
             if op == "drop":
                 e = next((x for x in q.get("live", []) if x["run"] == run_id), None)
                 if e: g.write(json.dumps({"run": run_id, "arm": e.get("arm"), "t": now, "final": cards.get(run_id, "")}) + "\n")
-    sys.path.insert(0, str(ROOT / "src"))
-    from arc_infra.runops import records  # the run records are the source; the queue file is their view (infra, 24 Oct)
-    records.apply_queue_ops(ops)
+    with open(Q, "r+") as f:
+        fcntl.flock(f, fcntl.LOCK_EX); cur = json.load(f); new = apply(json.loads(json.dumps(cur)), ops)
+        if new != cur:
+            s = json.dumps(new, indent=1); f.seek(0); f.write(s); f.truncate()
     env = {**os.environ, "ARC_NEBIUS_CONFIG": str(paths.NEBIUS_CONFIG), "ARC_VALIDATION_ROOT": str(ROOT), "ARC_VALIDATION_KIND": "arena"}
     for op, run_id, f in ops:
         log("queue:", op, run_id, {k: v for k, v in f.items() if k in ("start", "end", "arm")})

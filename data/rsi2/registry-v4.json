@@ -1,0 +1,8656 @@
+{
+ "schema": 1,
+ "sources": {
+  "felix": "a0593815551414b0665c82accc50a0269cd9a2bc",
+  "witness": "097b866d04861de68c0b15bf2c133c847155903f"
+ },
+ "rules": {
+  "witness_pool_levels": 8,
+  "witness_practice_levels": 8,
+  "reference": "recorded solved attempt per level (Felix561) / solution_actions (Witness)",
+  "excluded_everywhere": "anything derived from the public 25"
+ },
+ "games": [
+  {
+   "game_id": "sg01-4ac0337b8857411e",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    6,
+    38,
+    51,
+    53,
+    40,
+    81,
+    86
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg01/4ac0337b8857411e",
+   "files_sha256": {
+    "metadata.json": "080d92d21c0177f9a6306c53ddf0286a8494b34bba47d38cbd079e26043c4fee",
+    "sg01.py": "ab8dcf75ad997f78630ec66de05bb5fb48fff65c3e58eb250a8a03a86cc67a29"
+   },
+   "vet": {
+    "game_id": "sg01-4ac0337b8857411e",
+    "ok": true,
+    "board_hash": "d20151fcea3c97f12d228bf0",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 6,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 38,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 51,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 53,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 40,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 81,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 86,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 2,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "d20151fcea3c97f12d228bf0"
+  },
+  {
+   "game_id": "sg02-a882427e821f494d",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    2,
+    4,
+    24,
+    8,
+    3,
+    16,
+    26
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg02/a882427e821f494d",
+   "files_sha256": {
+    "metadata.json": "5886450e752f78c10625480473a837818d1532c6a4e2e1ad55cf0b9f39cf9fb4",
+    "sg02.py": "46a58d7b3a325bd312509a3fabba6eba2d8eead167eb0bf13e3e7036f8776682"
+   },
+   "vet": {
+    "game_id": "sg02-a882427e821f494d",
+    "ok": true,
+    "board_hash": "87f792ad2e1f64263cb89c71",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 2,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 4,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 24,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 8,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 3,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 16,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 26,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "87f792ad2e1f64263cb89c71"
+  },
+  {
+   "game_id": "sg03-94fea60caf164173",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    1,
+    2,
+    2,
+    2,
+    3,
+    4,
+    5
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg03/94fea60caf164173",
+   "files_sha256": {
+    "metadata.json": "7dffd3f3ce8243aee8bd4c836218a59abf68769352234c49bfeeda3f6b4d1c38",
+    "sg03.py": "2cac54cc87c60ff842e2929df6ce1f54b8bd68006bd8677a424d248b3a8148dc"
+   },
+   "vet": {
+    "game_id": "sg03-94fea60caf164173",
+    "ok": true,
+    "board_hash": "f4fbcfba557bcc2082e3bf0e",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 1,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 2,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 2,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 2,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 3,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 4,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 5,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "f4fbcfba557bcc2082e3bf0e"
+  },
+  {
+   "game_id": "sg04-e137c80d4e4d4034",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    2,
+    4,
+    2,
+    2,
+    7,
+    9,
+    14
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg04/e137c80d4e4d4034",
+   "files_sha256": {
+    "metadata.json": "f3b28da974a448b12f41a88721e2200f095d5e547b17cae5ce239db750b884c6",
+    "sg04.py": "db797e69706b9bddadf2ddf9882a1bec47c0b7714d214e992a00eaf75d50d998"
+   },
+   "vet": {
+    "game_id": "sg04-e137c80d4e4d4034",
+    "ok": true,
+    "board_hash": "4b7a6d070fd3f764e7c9cef6",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 2,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 4,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 2,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 2,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 7,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 9,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 14,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "4b7a6d070fd3f764e7c9cef6"
+  },
+  {
+   "game_id": "sg05-60ba78a9efe1498a",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    2,
+    3,
+    2,
+    4,
+    3,
+    4,
+    5
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg05/60ba78a9efe1498a",
+   "files_sha256": {
+    "metadata.json": "983f4cc54b959fa0b5294d7c9718c2752e3778461dcc171ca9a832fb48dac046",
+    "sg05.py": "35917d57afb39d20bfa8d918d712351147cba493b03f913363fe190e1488f9c8"
+   },
+   "vet": {
+    "game_id": "sg05-60ba78a9efe1498a",
+    "ok": true,
+    "board_hash": "d6cb469d4cc6eef083e00261",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 2,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 3,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 2,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 4,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 3,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 4,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 5,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "d6cb469d4cc6eef083e00261"
+  },
+  {
+   "game_id": "sg06-28c20e5036544f64",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    4,
+    4,
+    4,
+    4,
+    8,
+    8,
+    7
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg06/28c20e5036544f64",
+   "files_sha256": {
+    "metadata.json": "c9b8f7c2df67624808f0f9ae62aff18c465f4b64be34624f6e29218f8162836a",
+    "sg06.py": "739ce27b4ee118222d1b13c7f1ddbf0a7da264b33c7ff2652b843dd5721b3606"
+   },
+   "vet": {
+    "game_id": "sg06-28c20e5036544f64",
+    "ok": true,
+    "board_hash": "9241d022aed82bd112fe4b9c",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 4,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 4,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 4,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 4,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 8,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 8,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 7,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "9241d022aed82bd112fe4b9c"
+  },
+  {
+   "game_id": "sg07-2ddb082daf9c4b50",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    1,
+    9,
+    5,
+    8,
+    8,
+    17,
+    20
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg07/2ddb082daf9c4b50",
+   "files_sha256": {
+    "metadata.json": "8312beb6e73b29ec1cc5196d3d65bfc5867c9a109d8882631ee54bc49f23e2f0",
+    "sg07.py": "1fa81f344810d037dbed07c2bf5f7ee36be91707d6f9d3291e22431986ce9cb9"
+   },
+   "vet": {
+    "game_id": "sg07-2ddb082daf9c4b50",
+    "ok": true,
+    "board_hash": "37b814dca640df33ee5422c8",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 1,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 9,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 5,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 8,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 8,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 17,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 20,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 1,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "37b814dca640df33ee5422c8"
+  },
+  {
+   "game_id": "sg08-4a1496ac8a7c47e3",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    1,
+    4,
+    9,
+    10,
+    12,
+    12,
+    15
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg08/4a1496ac8a7c47e3",
+   "files_sha256": {
+    "metadata.json": "a7528b6a7b01bc697d4e0cd5212c8873bef1d68286f832d56368065e13064a15",
+    "sg08.py": "b05060bde43be10f70e923ba74b2c0ec80a1ca0ea96569b4e92865b8412c555d"
+   },
+   "vet": {
+    "game_id": "sg08-4a1496ac8a7c47e3",
+    "ok": true,
+    "board_hash": "51db0fb9d6c4443489dee09b",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 1,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 4,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 9,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 10,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 12,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 12,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 15,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "51db0fb9d6c4443489dee09b"
+  },
+  {
+   "game_id": "sg09-bf0d447a5c554cdc",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    6,
+    22,
+    31,
+    37,
+    36,
+    38,
+    19
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg09/bf0d447a5c554cdc",
+   "files_sha256": {
+    "metadata.json": "e4f658c1189ffb73665b4d20940c2434a7169acbdfc59f5f3179f8cf615946a0",
+    "sg09.py": "ec953b497bb3d405fd926c47e1478de0e51ad99fde3a95dc4f3496d421cbd188"
+   },
+   "vet": {
+    "game_id": "sg09-bf0d447a5c554cdc",
+    "ok": true,
+    "board_hash": "8feabdb29f5c2e3f2ad140a3",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 6,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 22,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 31,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 37,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 36,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 38,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 19,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "8feabdb29f5c2e3f2ad140a3"
+  },
+  {
+   "game_id": "sg10-7b32ef91e45147d7",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    2,
+    4,
+    4,
+    11,
+    10,
+    14,
+    15
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg10/7b32ef91e45147d7",
+   "files_sha256": {
+    "metadata.json": "e44e76cc51b2983dd27ab30520c90855859d6ba88f5a441b652dc20ccc7cf32e",
+    "sg10.py": "fd3b24d64ffdcc646ab22caf4bfb57c6c8f6a445c5f6cd74575e064a7bd95625"
+   },
+   "vet": {
+    "game_id": "sg10-7b32ef91e45147d7",
+    "ok": true,
+    "board_hash": "a86900344dc04db0a1c0cf4f",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 2,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 4,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 4,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 11,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 10,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 14,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 15,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "a86900344dc04db0a1c0cf4f"
+  },
+  {
+   "game_id": "sg11-106d370a94b94f84",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    2,
+    4,
+    6,
+    9,
+    11,
+    17,
+    18
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg11/106d370a94b94f84",
+   "files_sha256": {
+    "metadata.json": "871aa9e6b9eb01c09b82e1389e210a1e1c609af9756a6e347a27caf2a46f7649",
+    "sg11.py": "824e1f63150ecb1c5bb2436fd982a20ae7a614da4a2e36dda946da05070d5c01"
+   },
+   "vet": {
+    "game_id": "sg11-106d370a94b94f84",
+    "ok": true,
+    "board_hash": "6b79ca4f134262e177f627b6",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 2,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 4,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 6,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 9,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 11,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 17,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 18,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "6b79ca4f134262e177f627b6"
+  },
+  {
+   "game_id": "sg12-d5101b0e3113467e",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    6,
+    6,
+    8,
+    10,
+    17,
+    15,
+    19
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg12/d5101b0e3113467e",
+   "files_sha256": {
+    "metadata.json": "31f08903367be5058cdabbdf957a3ecb6c54ed1aca6a19d7843994c787a521f3",
+    "sg12.py": "4488e1480c00e3f498e192ddd6c03997351cb3533d4c464b97d88324b0111d96"
+   },
+   "vet": {
+    "game_id": "sg12-d5101b0e3113467e",
+    "ok": true,
+    "board_hash": "78ebb695eddf44d1e39cdeed",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 6,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 6,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 8,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 10,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 17,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 15,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 19,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "78ebb695eddf44d1e39cdeed"
+  },
+  {
+   "game_id": "sg13-3c8c8fdc6c6649c2",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    2,
+    2,
+    8,
+    16,
+    22,
+    38,
+    32
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg13/3c8c8fdc6c6649c2",
+   "files_sha256": {
+    "metadata.json": "e16e328ce7bb51c22358faad1628de8d5bf4291113a72db7a7788694c340f312",
+    "sg13.py": "541c9ce80e9a5fa02588b7298ced32b84368aca578299909f009d87af0fda001"
+   },
+   "vet": {
+    "game_id": "sg13-3c8c8fdc6c6649c2",
+    "ok": true,
+    "board_hash": "b8c760dbad82845862f6e4d8",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 2,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 2,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 8,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 16,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 22,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 38,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 32,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "b8c760dbad82845862f6e4d8"
+  },
+  {
+   "game_id": "sg14-c58da490e7e443bd",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    2,
+    7,
+    28,
+    13,
+    17,
+    38,
+    49
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg14/c58da490e7e443bd",
+   "files_sha256": {
+    "metadata.json": "c389aff66cdd518c94a56ffddb5c089c7871ebdc75f07964f4bd706dd7505dac",
+    "sg14.py": "df7ca4a13e779cfeb193882315a1ea71eaaa6454f9b2174b673bf32c8fbfcf4d"
+   },
+   "vet": {
+    "game_id": "sg14-c58da490e7e443bd",
+    "ok": true,
+    "board_hash": "dcd2821aa7cfe88f9412a4c5",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 2,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 7,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 28,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 13,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 17,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 38,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 49,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "dcd2821aa7cfe88f9412a4c5"
+  },
+  {
+   "game_id": "sg15-b1f511b9708042eb",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    8
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg15/b1f511b9708042eb",
+   "files_sha256": {
+    "metadata.json": "c80e88a0efa7dcbf21dbc7075247c86057618618ceb70958329c9eb61195dc31",
+    "sg15.py": "b0cb3de526ee5424f7d09c3f5613812d2dd09e49615013096d0db9b139ad4c80"
+   },
+   "vet": {
+    "game_id": "sg15-b1f511b9708042eb",
+    "ok": true,
+    "board_hash": "1fec9e05d1c86c12261fb830",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 1,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 2,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 3,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 4,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 5,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 6,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 8,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "1fec9e05d1c86c12261fb830"
+  },
+  {
+   "game_id": "sg16-a9e5cdf05c8e4859",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    1,
+    2,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg16/a9e5cdf05c8e4859",
+   "files_sha256": {
+    "metadata.json": "efdc1701026af1989773241c0a9c43093f2c3f9e04cd73a3ffbb1f770939b214",
+    "sg16.py": "04430b31504d2b36d6beacebfb929e68c6f709638dcf896ca452f5507bc9252c"
+   },
+   "vet": {
+    "game_id": "sg16-a9e5cdf05c8e4859",
+    "ok": true,
+    "board_hash": "c426d89d8b8009a90e1191f6",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 1,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 2,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 2,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 3,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 4,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 5,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 6,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "c426d89d8b8009a90e1191f6"
+  },
+  {
+   "game_id": "sg17-fb94f8992a9540b1",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    2,
+    5,
+    5,
+    12,
+    20,
+    22,
+    34
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg17/fb94f8992a9540b1",
+   "files_sha256": {
+    "metadata.json": "37538ec5dcdcbb2835cfbcb8847e4ce4e5fc9904029683f3bb12efe54d37ee60",
+    "sg17.py": "4de9fba51261ddc8292b5225da2686e56f17104b9326690d3be4422029187f34"
+   },
+   "vet": {
+    "game_id": "sg17-fb94f8992a9540b1",
+    "ok": true,
+    "board_hash": "2da6ccb082bae49c0dae74a6",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 2,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 5,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 5,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 12,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 20,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 22,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 34,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "2da6ccb082bae49c0dae74a6"
+  },
+  {
+   "game_id": "sg18-af8d11e58ac94cd7",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    1,
+    2,
+    4,
+    7,
+    29,
+    30,
+    33
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg18/af8d11e58ac94cd7",
+   "files_sha256": {
+    "metadata.json": "a4bb50163ee4dab888777d910a908ec9f415229c1424e9176a55def5053b5765",
+    "sg18.py": "dc44b30824497f2b19b521c421ab92a3b8bf80e503bdb5129215f1d849b69327"
+   },
+   "vet": {
+    "game_id": "sg18-af8d11e58ac94cd7",
+    "ok": true,
+    "board_hash": "76e74ad79028167abbd1e366",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 1,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 2,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 4,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 7,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 29,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 30,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 33,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "76e74ad79028167abbd1e366"
+  },
+  {
+   "game_id": "sg19-25a14e907e1c463d",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    1,
+    2,
+    5,
+    4,
+    14,
+    10,
+    8
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg19/25a14e907e1c463d",
+   "files_sha256": {
+    "metadata.json": "35b4847cf53b527adefcf623bf8ca058dcf208f7e9bec2fbecd2ac712ed0e2a3",
+    "sg19.py": "766fa80528b63570be810f5a4d142a5ab983952fbbe34f57beb093ff0ad8f777"
+   },
+   "vet": {
+    "game_id": "sg19-25a14e907e1c463d",
+    "ok": true,
+    "board_hash": "f80df26d881e24cbbdc95183",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 1,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 2,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 5,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 4,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 14,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 10,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 8,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "f80df26d881e24cbbdc95183"
+  },
+  {
+   "game_id": "sg20-a3b73a0fda9e4006",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    1,
+    1,
+    5,
+    7,
+    8,
+    14,
+    16
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg20/a3b73a0fda9e4006",
+   "files_sha256": {
+    "metadata.json": "1a924dd66c1d9a2334ca4b5d49fadff27147af65838e2c9ed9a2fef43f47300b",
+    "sg20.py": "e51e6350813a2de1b5801081ce55da733b2bd976e62ccae8cc46c6cbe5fc3fd1"
+   },
+   "vet": {
+    "game_id": "sg20-a3b73a0fda9e4006",
+    "ok": true,
+    "board_hash": "4492fbd36d84ad67eef8fa6e",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 1,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 1,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 5,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 7,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 8,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 14,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 16,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "4492fbd36d84ad67eef8fa6e"
+  },
+  {
+   "game_id": "sg21-809cfa39d3fa4757",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    1,
+    2,
+    3,
+    6,
+    7,
+    8,
+    8
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg21/809cfa39d3fa4757",
+   "files_sha256": {
+    "metadata.json": "2bc7cddafcd524d21255dc0af42f8be4789058744115a7869a5772d52bf027c8",
+    "sg21.py": "f93a09e7105a7ec032f90c891cb6c55d2496c740069be1b59a29fcbdf8a73c8c"
+   },
+   "vet": {
+    "game_id": "sg21-809cfa39d3fa4757",
+    "ok": true,
+    "board_hash": "67dd00f87c9aac2de002b7f1",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 1,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 2,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 3,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 6,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 7,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 8,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 8,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "67dd00f87c9aac2de002b7f1"
+  },
+  {
+   "game_id": "sg22-a911173626904645",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    1,
+    4,
+    7,
+    6,
+    9,
+    10,
+    16
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg22/a911173626904645",
+   "files_sha256": {
+    "metadata.json": "84ee84c87ad11eace6c3c8c189d98073feb5ae17bf5e640c674982bf3274199b",
+    "sg22.py": "79ef1cab3b7ba0e6ba04e2be7ff756b427e6e9bc1d9ebcac20e6e6ae9f8b9cb2"
+   },
+   "vet": {
+    "game_id": "sg22-a911173626904645",
+    "ok": true,
+    "board_hash": "d68a76d11acdece03072f913",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 1,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 4,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 7,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 6,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 9,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 10,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 16,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 2,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "d68a76d11acdece03072f913"
+  },
+  {
+   "game_id": "sg23-bb0b94dd75ad4169",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    8,
+    8
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg23/bb0b94dd75ad4169",
+   "files_sha256": {
+    "metadata.json": "b4bd0cec3462383cc30a74acfa48e8c83f5dac8c989dc87e2ed3ae75f84fde73",
+    "sg23.py": "f88cf614aa289cefc2a4e3c421c529f9cd54ffc956531252d84a21c58f9fbca1"
+   },
+   "vet": {
+    "game_id": "sg23-bb0b94dd75ad4169",
+    "ok": true,
+    "board_hash": "64c8141a6b60fcbfa72c5f93",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 1,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 2,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 3,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 4,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 5,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 8,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 8,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "64c8141a6b60fcbfa72c5f93"
+  },
+  {
+   "game_id": "sg24-c5553d90bc44437d",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    12,
+    13,
+    33,
+    31,
+    44,
+    28,
+    38
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg24/c5553d90bc44437d",
+   "files_sha256": {
+    "metadata.json": "244b079a1c55b6a269c8565a10f4f7ea57cc3fb161f728a7719e425ef9e0ba45",
+    "sg24.py": "c97be0de216baf714e36548e2205f95ab570d6ccf62ccbbe84dab5f4c844d49b"
+   },
+   "vet": {
+    "game_id": "sg24-c5553d90bc44437d",
+    "ok": true,
+    "board_hash": "9e522ae38225c81b8542f4c0",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 12,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 13,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 33,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 31,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 44,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 28,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 38,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "9e522ae38225c81b8542f4c0"
+  },
+  {
+   "game_id": "sg25-1ec41211c870430e",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    1,
+    2,
+    2,
+    4,
+    7,
+    21,
+    16
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg25/1ec41211c870430e",
+   "files_sha256": {
+    "metadata.json": "5c0e7160f20742caac1bce573bfa0fcc79d28625fa8805635f5ce2db654569ca",
+    "sg25.py": "5603b3f31196a0318e50df87c5f56e13a260ff4d4029624fd468b61e5379db1d"
+   },
+   "vet": {
+    "game_id": "sg25-1ec41211c870430e",
+    "ok": true,
+    "board_hash": "613395e6c070f7b604d20b4b",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 1,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 2,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 2,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 4,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 7,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 21,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 16,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "613395e6c070f7b604d20b4b"
+  },
+  {
+   "game_id": "sg26-552d5d2ce2b44fe2",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    8
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg26/552d5d2ce2b44fe2",
+   "files_sha256": {
+    "metadata.json": "9caccb8ef37fc4658b94ffd59f047e32fca9db9092eea520341dce89e40a9391",
+    "sg26.py": "daf596bd4dbf7d4ce82da19cd03bf3c4d319efa1e78894a00eab07d54f41ddb5"
+   },
+   "vet": {
+    "game_id": "sg26-552d5d2ce2b44fe2",
+    "ok": true,
+    "board_hash": "0aff03b37e16f3c91f044d06",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 1,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 2,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 3,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 4,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 5,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 6,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 8,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "0aff03b37e16f3c91f044d06"
+  },
+  {
+   "game_id": "sg27-1b5a0ff3fa874c96",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    2,
+    2,
+    4,
+    8,
+    18,
+    25,
+    25
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg27/1b5a0ff3fa874c96",
+   "files_sha256": {
+    "metadata.json": "f54b7afa143fd6e742f6ab6da6f4e64ed18705f14d7d10a053d6a7df9f9cde3a",
+    "sg27.py": "a36837ec304b2d97d0a3dd3c6de199e85f3353b84b84275bba08615754d0e8c2"
+   },
+   "vet": {
+    "game_id": "sg27-1b5a0ff3fa874c96",
+    "ok": true,
+    "board_hash": "b8955f6889f3a06ea914a4c2",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 2,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 2,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 4,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 8,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 18,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 25,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 25,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "b8955f6889f3a06ea914a4c2"
+  },
+  {
+   "game_id": "sg28-c27ff0a54fbd4413",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    2,
+    2,
+    3,
+    5,
+    7,
+    10,
+    26
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg28/c27ff0a54fbd4413",
+   "files_sha256": {
+    "metadata.json": "d5bfa5ecc59b03528aca7bea087c87dd6cba601e21df4068f4317b2974572352",
+    "sg28.py": "bd44e3e66ef1391934e2f07c4bb39ff38a4912c4f2ab726764108425aabac9d5"
+   },
+   "vet": {
+    "game_id": "sg28-c27ff0a54fbd4413",
+    "ok": true,
+    "board_hash": "4a21812b5eed4a856e2f1cec",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 2,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 2,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 3,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 5,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 7,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 10,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 26,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "4a21812b5eed4a856e2f1cec"
+  },
+  {
+   "game_id": "sg29-2ece60f659c04e37",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    3,
+    4,
+    7,
+    6,
+    13,
+    19,
+    14
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg29/2ece60f659c04e37",
+   "files_sha256": {
+    "metadata.json": "35317fcbeba1fcdfc06b5567757327e734d07baeec578223f940de3676fe7a14",
+    "sg29.py": "5126ff18b2f27f89464155b130b5adbe62afebd534d3ed09017bdd8b44cfc216"
+   },
+   "vet": {
+    "game_id": "sg29-2ece60f659c04e37",
+    "ok": true,
+    "board_hash": "b64df25182e945022cd4f71a",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 3,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 4,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 7,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 6,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 13,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 19,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 14,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "b64df25182e945022cd4f71a"
+  },
+  {
+   "game_id": "sg30-8570298dc9744ad3",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    1,
+    1,
+    3,
+    4,
+    3,
+    5,
+    7
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/sg30/8570298dc9744ad3",
+   "files_sha256": {
+    "metadata.json": "380ecf24a66cfb16a3575a72256527c46ea666d68970a48c557a7fa7ee0f7390",
+    "sg30.py": "fb746cce3ae367ab6989fb834ec0ee53e5db0cb498b8108d3230f253f243e093"
+   },
+   "vet": {
+    "game_id": "sg30-8570298dc9744ad3",
+    "ok": true,
+    "board_hash": "19d97bb9c1bf9eeea0764375",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 1,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 1,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 3,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 4,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 3,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 5,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 7,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "19d97bb9c1bf9eeea0764375"
+  },
+  {
+   "game_id": "v201-cfc991ce88285249",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio_v2",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    3,
+    4,
+    4,
+    5,
+    4,
+    6,
+    9
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/v201/cfc991ce88285249",
+   "files_sha256": {
+    "metadata.json": "29d8f628c56ba8b0d73e4792d1918fa53e2fc037af91522d436f48e4b7c11136",
+    "v201.py": "0e214a52baa6db328695e2fd7fda36527c0970c28f0f7ebd209b4b1e5834c862"
+   },
+   "vet": {
+    "game_id": "v201-cfc991ce88285249",
+    "ok": true,
+    "board_hash": "72d74839a41634d3bcd0e35e",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 3,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 4,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 4,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 5,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 4,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 6,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 9,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "72d74839a41634d3bcd0e35e"
+  },
+  {
+   "game_id": "v202-8bd6f7992e9f615f",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio_v2",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    2,
+    3,
+    5,
+    7,
+    4,
+    6,
+    9
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/v202/8bd6f7992e9f615f",
+   "files_sha256": {
+    "metadata.json": "22fdab6872295be38b9bd373a0d2d08371e6bc0703acb46025f4889576b2e7a3",
+    "v202.py": "828b3a6355659715151b2b9833ae407013a2143567a25fa2fa932884aa28c048"
+   },
+   "vet": {
+    "game_id": "v202-8bd6f7992e9f615f",
+    "ok": true,
+    "board_hash": "606da386d379c6c13eea41a8",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 2,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 3,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 5,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 7,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 4,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 6,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 9,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "606da386d379c6c13eea41a8"
+  },
+  {
+   "game_id": "v203-a4d822d4642c9bb3",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio_v2",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    3,
+    3,
+    4,
+    3,
+    6,
+    6,
+    10
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/v203/a4d822d4642c9bb3",
+   "files_sha256": {
+    "metadata.json": "2cc0554ca215577309c69cda68d76f2e803b77f34c5c9c50ebcf3147c9cb3039",
+    "v203.py": "6ef95fea70a816092ef665caff2f016821d78d3eb8bf15384c9a5a98887a6eea"
+   },
+   "vet": {
+    "game_id": "v203-a4d822d4642c9bb3",
+    "ok": true,
+    "board_hash": "b91833576234a69bb9c468ae",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 3,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 3,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 4,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 3,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 6,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 6,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 10,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "b91833576234a69bb9c468ae"
+  },
+  {
+   "game_id": "v204-35c950ebf6c450f8",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio_v2",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    3,
+    7,
+    12,
+    21,
+    29,
+    42,
+    48
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/v204/35c950ebf6c450f8",
+   "files_sha256": {
+    "metadata.json": "15fba8c7a87320ee068d1f2f161cfddb49dbc56ec0e53858e4c7568fc9b4a2d0",
+    "v204.py": "6e47f0bdb1462afee67b3940e6ffbf79507bb26a8210822ac9c814926cd7a937"
+   },
+   "vet": {
+    "game_id": "v204-35c950ebf6c450f8",
+    "ok": true,
+    "board_hash": "9ca3c1b3e63cc48f5644dd5d",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 3,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 7,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 12,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 21,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 29,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 42,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 48,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "9ca3c1b3e63cc48f5644dd5d"
+  },
+  {
+   "game_id": "v205-4aa913d479f6ec63",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio_v2",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    4,
+    4,
+    16,
+    21,
+    23,
+    41,
+    45
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/v205/4aa913d479f6ec63",
+   "files_sha256": {
+    "metadata.json": "1db56e9c23ab0f85185a6c2fe4cb4b57707db89232454825761993304f9e5845",
+    "v205.py": "0b1e0e32f197c0462c81eff899ebe08fb720de21e010e39c087051bffccb1043"
+   },
+   "vet": {
+    "game_id": "v205-4aa913d479f6ec63",
+    "ok": true,
+    "board_hash": "7e3819d3672ed9ca7ac4c90f",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 4,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 4,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 16,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 21,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 23,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 41,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 45,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "7e3819d3672ed9ca7ac4c90f"
+  },
+  {
+   "game_id": "v206-18dc82ebc9e7b826",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio_v2",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    1,
+    2,
+    6,
+    9,
+    8,
+    10,
+    9
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/v206/18dc82ebc9e7b826",
+   "files_sha256": {
+    "metadata.json": "3ad3814fd3312b7e4139dc335587b4bf9438fc56239b969371c8ee206b779d86",
+    "v206.py": "4d9d4cb0a35dc6c34753042c38d113c798cf507bb86737deccf11ee28f00fc0a"
+   },
+   "vet": {
+    "game_id": "v206-18dc82ebc9e7b826",
+    "ok": true,
+    "board_hash": "a3ea74fed53b37c815c57a9f",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 1,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 2,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 6,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 9,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 8,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 10,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 9,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 1,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "a3ea74fed53b37c815c57a9f"
+  },
+  {
+   "game_id": "v207-a8b53bd94a9471c7",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio_v2",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    2,
+    2,
+    3,
+    6,
+    4,
+    5,
+    7
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/v207/a8b53bd94a9471c7",
+   "files_sha256": {
+    "metadata.json": "feebb82ef070cee02e014489ffa1328fd6cf1d5bdbb3f99af57ebb5445455bfb",
+    "v207.py": "49855f0d737ee4bfd1431d0110a6589b7244d7813b72535cca173c2b403b2ed1"
+   },
+   "vet": {
+    "game_id": "v207-a8b53bd94a9471c7",
+    "ok": true,
+    "board_hash": "dc4ab71673f80097e794d4ba",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 2,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 2,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 3,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 6,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 4,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 5,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 7,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 2,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "dc4ab71673f80097e794d4ba"
+  },
+  {
+   "game_id": "v208-92ef1a3ddcf74643",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio_v2",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    1,
+    5,
+    4,
+    7,
+    17,
+    7,
+    17
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/v208/92ef1a3ddcf74643",
+   "files_sha256": {
+    "metadata.json": "4c73893270f7065c6ebbe5852c5932936a5482fbc4bd27fd397d10d4a289642c",
+    "v208.py": "58d0599f710bef66977242b3c62f5d0a6a0930856366561864402053e1d83d59"
+   },
+   "vet": {
+    "game_id": "v208-92ef1a3ddcf74643",
+    "ok": true,
+    "board_hash": "3d35e65fb11ea6b5ecad06a5",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 1,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 5,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 4,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 7,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 17,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 7,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 17,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "3d35e65fb11ea6b5ecad06a5"
+  },
+  {
+   "game_id": "v209-e5d0d0141696c8b8",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio_v2",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    2,
+    2,
+    4,
+    6,
+    5,
+    3,
+    7
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/v209/e5d0d0141696c8b8",
+   "files_sha256": {
+    "metadata.json": "07090fce0ac082267433bab559d9c8fe1f2938ee7c952bf292969ef78fcdfff6",
+    "v209.py": "dc640c6ad4c5065a58cae95e26a85444661f4d3902c59f9e24f8ac20523625e8"
+   },
+   "vet": {
+    "game_id": "v209-e5d0d0141696c8b8",
+    "ok": true,
+    "board_hash": "118b3f27f7b787efcbc624bb",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 2,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 2,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 4,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 6,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 5,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 3,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 7,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "118b3f27f7b787efcbc624bb"
+  },
+  {
+   "game_id": "v210-9b64f56f893bc6d5",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio_v2",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    2,
+    2,
+    3,
+    5,
+    5,
+    8,
+    10
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/v210/9b64f56f893bc6d5",
+   "files_sha256": {
+    "metadata.json": "d492cf2df2ff3a646a5203c0bab19a22addefb046764a50e2311d698b4040703",
+    "v210.py": "34565732fdb9a1a7490c6f0cfe5000052a649f6c0ee07d8d5d0fa2b308361269"
+   },
+   "vet": {
+    "game_id": "v210-9b64f56f893bc6d5",
+    "ok": true,
+    "board_hash": "912b7a90c37a871680ee6257",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 2,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 2,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 3,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 5,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 5,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 8,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 10,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "912b7a90c37a871680ee6257"
+  },
+  {
+   "game_id": "v211-81d4dbeea8d1234c",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio_v2",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    1,
+    1,
+    3,
+    1,
+    1,
+    6,
+    3
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/v211/81d4dbeea8d1234c",
+   "files_sha256": {
+    "metadata.json": "e18313494f3f26f58dc9834f2c2d006d75b697c0409faf238916d5403692648a",
+    "v211.py": "a9b5b4ffbac693a6371e17a792df1cb46e401ee69f4a91dec89b205b6747b11b"
+   },
+   "vet": {
+    "game_id": "v211-81d4dbeea8d1234c",
+    "ok": true,
+    "board_hash": "5b0877846ba1a4bd74cb9fd4",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 1,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 1,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 3,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 1,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 1,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 6,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 3,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "5b0877846ba1a4bd74cb9fd4"
+  },
+  {
+   "game_id": "v212-1dca7a35e8744295",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio_v2",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    3,
+    3,
+    3,
+    6,
+    6,
+    3,
+    9
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/v212/1dca7a35e8744295",
+   "files_sha256": {
+    "metadata.json": "612836d9beb6fc31528b701ef790bb25642bf6bf572861fe47b1fd69c4304451",
+    "v212.py": "2dab25074411b706d4f45965478001b07f9d01cafdeb048d293cd50e7b2c6a09"
+   },
+   "vet": {
+    "game_id": "v212-1dca7a35e8744295",
+    "ok": true,
+    "board_hash": "8a387d48d4625f2d72f9a937",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 3,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 3,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 3,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 6,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 6,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 3,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 9,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 1,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "8a387d48d4625f2d72f9a937"
+  },
+  {
+   "game_id": "v213-d61ceee87815a21b",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio_v2",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    3,
+    3,
+    3,
+    8,
+    5,
+    6,
+    6
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/v213/d61ceee87815a21b",
+   "files_sha256": {
+    "metadata.json": "fd2a106fa3971f612835fd035f39b614c01c8d6ef6b62eda7674143653ca4a39",
+    "v213.py": "01b9afdc3d8fe5af1ebbdadd97b6ee325794e67199f8d6c90f4be529e80fbc2b"
+   },
+   "vet": {
+    "game_id": "v213-d61ceee87815a21b",
+    "ok": true,
+    "board_hash": "ca971e27ec0ca9165aaf161c",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 3,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 3,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 3,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 8,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 5,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 6,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 6,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "ca971e27ec0ca9165aaf161c"
+  },
+  {
+   "game_id": "v214-40ec64554cdecd22",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio_v2",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    2,
+    4,
+    16,
+    10,
+    17,
+    19,
+    21
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/v214/40ec64554cdecd22",
+   "files_sha256": {
+    "metadata.json": "b473641aff661dcb3b893f2af4d11c268a6bf239072498e4e204be3908052bb7",
+    "v214.py": "e4c0f30aa0ca3ddfaa15fc3714dc76c7d08b91bfb431bc78edcdfa8f6af3a44d"
+   },
+   "vet": {
+    "game_id": "v214-40ec64554cdecd22",
+    "ok": true,
+    "board_hash": "0b201df6b9ca24c8df675306",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 2,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 4,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 16,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 10,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 17,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 19,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 21,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "0b201df6b9ca24c8df675306"
+  },
+  {
+   "game_id": "v215-b78be6f260e52882",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio_v2",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    4,
+    4,
+    6,
+    12,
+    23,
+    16,
+    40
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/v215/b78be6f260e52882",
+   "files_sha256": {
+    "metadata.json": "c559f3c000f874d79b72386cb11d30732a798b31053f0d346658bc7d93cb1712",
+    "v215.py": "d4f9956f5851e33090b0d5ace3861557119723f4cd74ae0fe1cf2f27c60ad236"
+   },
+   "vet": {
+    "game_id": "v215-b78be6f260e52882",
+    "ok": true,
+    "board_hash": "7dca39e52a3b83f52384a2e6",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 4,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 4,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 6,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 12,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 23,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 16,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 40,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "7dca39e52a3b83f52384a2e6"
+  },
+  {
+   "game_id": "v216-e4a6cfdb4f260e3c",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio_v2",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    1,
+    3,
+    8,
+    22,
+    20,
+    17,
+    38
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/v216/e4a6cfdb4f260e3c",
+   "files_sha256": {
+    "metadata.json": "97c659859d7b3696a5ffc115000588030f8e91e7d1e351216e47cfee935e2d85",
+    "v216.py": "3e7500c53c0780104377a56d945f3ac115ff2682556fb184618fb838251a9976"
+   },
+   "vet": {
+    "game_id": "v216-e4a6cfdb4f260e3c",
+    "ok": true,
+    "board_hash": "00b27a843708f86010391ebf",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 1,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 3,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 8,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 22,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 20,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 17,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 38,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "00b27a843708f86010391ebf"
+  },
+  {
+   "game_id": "v217-4ff1a625cf806e7e",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio_v2",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    4,
+    7,
+    28,
+    26,
+    23,
+    17,
+    28
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/v217/4ff1a625cf806e7e",
+   "files_sha256": {
+    "metadata.json": "f8bfe60bc8e4f9c95c9547532fef7b4efe8b598fb1f15e28b536c9ecdb575007",
+    "v217.py": "8d1f8db7dd2b696479311d2f24bc6be75628f719d89a797932af2bcc36e43856"
+   },
+   "vet": {
+    "game_id": "v217-4ff1a625cf806e7e",
+    "ok": true,
+    "board_hash": "33080ffefecc93cb23fcc305",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 4,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 7,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 28,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 26,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 23,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 17,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 28,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "33080ffefecc93cb23fcc305"
+  },
+  {
+   "game_id": "v218-917a3aaf08b0e772",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio_v2",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    3,
+    6,
+    20,
+    31,
+    32,
+    47,
+    42
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/v218/917a3aaf08b0e772",
+   "files_sha256": {
+    "metadata.json": "7347b5291967141369556bdcd0f2893295e0900e073b26063ef03574f39b1cc9",
+    "v218.py": "e2bc3a36b4a4adb6b0924456655c00318580acdd93de44f2fc2b41170bdf8e78"
+   },
+   "vet": {
+    "game_id": "v218-917a3aaf08b0e772",
+    "ok": true,
+    "board_hash": "fc0007107ce80024f8c5356c",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 3,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 6,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 20,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 31,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 32,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 47,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 42,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 2,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "fc0007107ce80024f8c5356c"
+  },
+  {
+   "game_id": "v219-f70869827a8dd010",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio_v2",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    6,
+    6,
+    13,
+    23,
+    16,
+    39,
+    49
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/v219/f70869827a8dd010",
+   "files_sha256": {
+    "metadata.json": "d1752e272d0b4ec206ee84cdb3952316a404e1d0cd522584a0037e8d3adc1c9d",
+    "v219.py": "3d3acf558009360900ff18676f2e19cc86074265f6eb98068df94b4a75ed885e"
+   },
+   "vet": {
+    "game_id": "v219-f70869827a8dd010",
+    "ok": true,
+    "board_hash": "a38429a4ec6b9251d8b60eee",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 6,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 6,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 13,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 23,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 16,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 39,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 49,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 1,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "a38429a4ec6b9251d8b60eee"
+  },
+  {
+   "game_id": "v220-357dafa509cf0402",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:studio_v2",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "MIT",
+   "total_levels": 7,
+   "reference_actions": [
+    2,
+    2,
+    7,
+    9,
+    9,
+    166,
+    75
+   ],
+   "source_baseline_actions": null,
+   "mechanics_text_withheld": true,
+   "dir": "environment_files/v220/357dafa509cf0402",
+   "files_sha256": {
+    "metadata.json": "cea459ef53faef6c14b48ee3ea70fa534832fb1ca49bd6641a736d9c84841648",
+    "v220.py": "fad2b83fb84d9877f67740bc06611bf1d8318b612109477fa66cd6ee8ea28eb7"
+   },
+   "vet": {
+    "game_id": "v220-357dafa509cf0402",
+    "ok": true,
+    "board_hash": "7c68486c19b14255b7a808f4",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 2,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 2,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 7,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 9,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 9,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 166,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 75,
+      "levels_completed": 7,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 7,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "7c68486c19b14255b7a808f4"
+  },
+  {
+   "game_id": "al7306-000afcc7",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    9,
+    17,
+    17,
+    21,
+    21,
+    23,
+    29,
+    37
+   ],
+   "source_baseline_actions": [
+    9,
+    17,
+    17,
+    21,
+    21,
+    23,
+    29,
+    37
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/al7306/000afcc7",
+   "files_sha256": {
+    "al7306.py": "ca46976a8ab7af407f5d48ac76735f0ae69d0451323dd8e174c7ebf1e54a26b4",
+    "metadata.json": "4a6f795cf1246595b7586f1408de0379ccf375642c02b30efc0f8e76b88d5a76"
+   },
+   "vet": {
+    "game_id": "al7306-000afcc7",
+    "ok": true,
+    "board_hash": "cbc183f3808c52aa43a93640",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 9,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 17,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 17,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 21,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 21,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 23,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 29,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 37,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "cbc183f3808c52aa43a93640"
+  },
+  {
+   "game_id": "cc2048-f080c4af",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    16,
+    20,
+    20,
+    19,
+    21,
+    21,
+    20,
+    21
+   ],
+   "source_baseline_actions": [
+    16,
+    20,
+    20,
+    19,
+    21,
+    21,
+    20,
+    21
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/cc2048/f080c4af",
+   "files_sha256": {
+    "cc2048.py": "bf052827b55adff758a49d8a2bab1011a9257f90575fe16105b5bbaab7c785c5",
+    "metadata.json": "8956ad26e7db14bbe82e645ada852813294f4bcda3aed3dd93ac6a976fa4b8d8"
+   },
+   "vet": {
+    "game_id": "cc2048-f080c4af",
+    "ok": true,
+    "board_hash": "b68aaef37aa0cffb0c8caf1e",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 16,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 20,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 20,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 19,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 21,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 21,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 20,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 21,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "b68aaef37aa0cffb0c8caf1e"
+  },
+  {
+   "game_id": "cg1842-e7600c9f",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    15,
+    20,
+    20,
+    18,
+    33,
+    22,
+    22,
+    27
+   ],
+   "source_baseline_actions": [
+    15,
+    20,
+    20,
+    18,
+    20,
+    22,
+    22,
+    27
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/cg1842/e7600c9f",
+   "files_sha256": {
+    "cg1842.py": "9366452f3251c1b023aed769b5cc38ba0f9d46a4dcd8e650d3e06af236312893",
+    "metadata.json": "85818bee5b5941a592b5763e1db35e14a508d704b5ed3cb7a7ba210745ab17ea"
+   },
+   "vet": {
+    "game_id": "cg1842-e7600c9f",
+    "ok": true,
+    "board_hash": "a6bde42b799551e617471e92",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 15,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 20,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 20,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 18,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 33,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 22,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 22,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 27,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "a6bde42b799551e617471e92"
+  },
+  {
+   "game_id": "cl0426-c5dfa3ac",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    8,
+    10,
+    6,
+    8,
+    10,
+    10,
+    10,
+    12
+   ],
+   "source_baseline_actions": [
+    8,
+    10,
+    6,
+    8,
+    10,
+    10,
+    10,
+    12
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/cl0426/c5dfa3ac",
+   "files_sha256": {
+    "cl0426.py": "5fbd6633c7af03415cbb23a00b754f0bcf36bca976aee29aa16603c73ec96358",
+    "metadata.json": "8c0ac0d23394055e0d58b9488eee8605e7e4ca082d8b767736c4e2643859e2fb"
+   },
+   "vet": {
+    "game_id": "cl0426-c5dfa3ac",
+    "ok": true,
+    "board_hash": "f52857baabb34c6a97ebb814",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 8,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 10,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 6,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 8,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 10,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 10,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 10,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 12,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "f52857baabb34c6a97ebb814"
+  },
+  {
+   "game_id": "df4821-818c2c5e",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    14,
+    24,
+    18,
+    16,
+    38,
+    20,
+    26,
+    26
+   ],
+   "source_baseline_actions": [
+    14,
+    20,
+    18,
+    16,
+    32,
+    20,
+    26,
+    26
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/df4821/818c2c5e",
+   "files_sha256": {
+    "df4821.py": "81655d0abdd26f3e38c1ec3a99db86a5856a3d3d11378a5f9c3ee190a53c6041",
+    "metadata.json": "fce121fdbd81fc62c62bfa541543eb56e08f0d3fb6785d7cb76dea26adbc10ab"
+   },
+   "vet": {
+    "game_id": "df4821-818c2c5e",
+    "ok": true,
+    "board_hash": "f21b6f2d96ddfe8810bbacea",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 14,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 24,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 18,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 16,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 38,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 20,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 26,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 26,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "f21b6f2d96ddfe8810bbacea"
+  },
+  {
+   "game_id": "dl4827-b8768101",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    12,
+    29,
+    23,
+    37,
+    33,
+    29,
+    34,
+    29
+   ],
+   "source_baseline_actions": [
+    12,
+    29,
+    25,
+    30,
+    32,
+    29,
+    33,
+    29
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/dl4827/b8768101",
+   "files_sha256": {
+    "dl4827.py": "e593cacaab74c23d4fe4d9160e60b24582361dfe467fca6d9d4338dbc6e3d454",
+    "metadata.json": "8f50dc9489f163db495e14fd3f45017aea574d298cefa3e5231a8ddd9c427504"
+   },
+   "vet": {
+    "game_id": "dl4827-b8768101",
+    "ok": true,
+    "board_hash": "f47f75c8e32e4a49afd5ffa8",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 12,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 29,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 23,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 37,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 33,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 29,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 34,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 29,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "f47f75c8e32e4a49afd5ffa8"
+  },
+  {
+   "game_id": "fl5273-6a25a72a",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    9,
+    28,
+    20,
+    23,
+    48,
+    17,
+    23,
+    32
+   ],
+   "source_baseline_actions": [
+    9,
+    20,
+    20,
+    17,
+    28,
+    17,
+    21,
+    24
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/fl5273/6a25a72a",
+   "files_sha256": {
+    "fl5273.py": "cce41872c88768c74ae9fb93e41462908ec3d45f941ca50c885fdff8ef4869a0",
+    "metadata.json": "b79f708903c8b6a7c47ba12bca1b2161bad273ba6add2655444bbb07284ce265"
+   },
+   "vet": {
+    "game_id": "fl5273-6a25a72a",
+    "ok": true,
+    "board_hash": "b0200db7e55a977d95a8c085",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 9,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 28,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 20,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 23,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 48,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 17,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 23,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 32,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 1,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "b0200db7e55a977d95a8c085"
+  },
+  {
+   "game_id": "fw4821-98cb6b43",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    8,
+    8,
+    9,
+    8,
+    9,
+    9,
+    13,
+    15
+   ],
+   "source_baseline_actions": [
+    8,
+    10,
+    9,
+    8,
+    11,
+    11,
+    13,
+    15
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/fw4821/98cb6b43",
+   "files_sha256": {
+    "fw4821.py": "8566aba8d70e1a1773e0a64db4b8935e7b4856fd31c88ebde9838a9be3517939",
+    "metadata.json": "c862182dcac1fab3b59d874ad6b348f97d1e39c05391b77725c28cd4997bdc19"
+   },
+   "vet": {
+    "game_id": "fw4821-98cb6b43",
+    "ok": true,
+    "board_hash": "db5a2d4f0f277055d853e88d",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 8,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 8,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 9,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 8,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 9,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 9,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 13,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 15,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "db5a2d4f0f277055d853e88d"
+  },
+  {
+   "game_id": "gc4721-78997285",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    14,
+    14,
+    10,
+    7,
+    16,
+    20,
+    21,
+    17
+   ],
+   "source_baseline_actions": [
+    14,
+    14,
+    16,
+    13,
+    16,
+    20,
+    21,
+    17
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/gc4721/78997285",
+   "files_sha256": {
+    "gc4721.py": "dade6d2f5556460542b452bd884312f46f17a4caab28190609746992655ec057",
+    "metadata.json": "024b2a0305399499ec5df5f516079703faeb4ff45244af8bd2442807ac1c6afb"
+   },
+   "vet": {
+    "game_id": "gc4721-78997285",
+    "ok": true,
+    "board_hash": "21888203d279c171430a1120",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 14,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 14,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 10,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 7,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 16,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 20,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 21,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 17,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "21888203d279c171430a1120"
+  },
+  {
+   "game_id": "hr2048-b96419ed",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    10,
+    15,
+    16,
+    19,
+    15,
+    15,
+    16,
+    18
+   ],
+   "source_baseline_actions": [
+    10,
+    15,
+    18,
+    19,
+    15,
+    15,
+    18,
+    18
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/hr2048/b96419ed",
+   "files_sha256": {
+    "hr2048.py": "c1f73be653cf9ea0289f2ac29f32cae16baf8125fc547bbc8e3154bcbc9f12ad",
+    "metadata.json": "b89b43afeca352b26bcb70f7dfe45dfdf19b35f35a929ea37ff3f5150f8232b4"
+   },
+   "vet": {
+    "game_id": "hr2048-b96419ed",
+    "ok": true,
+    "board_hash": "e8607ea827472121b440a435",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 10,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 15,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 16,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 19,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 15,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 15,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 16,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 18,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "e8607ea827472121b440a435"
+  },
+  {
+   "game_id": "ll4821-9da7c9ef",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    8,
+    9,
+    19,
+    22,
+    19,
+    11,
+    15,
+    15
+   ],
+   "source_baseline_actions": [
+    8,
+    10,
+    22,
+    30,
+    21,
+    17,
+    25,
+    27
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/ll4821/9da7c9ef",
+   "files_sha256": {
+    "ll4821.py": "45fdde5e2e0f76f2065bd7473f771227592a176d909f79f6e40ec8725acf6c1e",
+    "metadata.json": "9b7038de0620cf31c296d98e8d25390d6f0821c0eb0539a9acddb9e4c6777fe4"
+   },
+   "vet": {
+    "game_id": "ll4821-9da7c9ef",
+    "ok": true,
+    "board_hash": "74a761dd1f32e0ba58c69338",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 8,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 9,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 19,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 22,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 19,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 11,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 15,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 15,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "74a761dd1f32e0ba58c69338"
+  },
+  {
+   "game_id": "ma4173-177dbde4",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    10,
+    12,
+    14,
+    13,
+    15,
+    13,
+    15,
+    19
+   ],
+   "source_baseline_actions": [
+    8,
+    10,
+    12,
+    13,
+    15,
+    13,
+    15,
+    19
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/ma4173/177dbde4",
+   "files_sha256": {
+    "ma4173.py": "5ccea84f73d3beb5816b233ea7d4b5dcaf85bb38bfcf2d2ce1f9583f87ef901f",
+    "metadata.json": "fb912d42f722e6f4b602523af91f2522b8c0d1668db2c134e944c6aa28cf8cd8"
+   },
+   "vet": {
+    "game_id": "ma4173-177dbde4",
+    "ok": true,
+    "board_hash": "152f0f516163cac73af097a3",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 10,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 12,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 14,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 13,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 15,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 13,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 15,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 19,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "152f0f516163cac73af097a3"
+  },
+  {
+   "game_id": "mb2741-094cefb3",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    10,
+    14,
+    10,
+    15,
+    16,
+    15,
+    15,
+    17
+   ],
+   "source_baseline_actions": [
+    10,
+    14,
+    12,
+    15,
+    16,
+    15,
+    15,
+    17
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/mb2741/094cefb3",
+   "files_sha256": {
+    "mb2741.py": "a7019c63cec196e9dbfc9959baa161e422f98bedaa4efa3bac18d19d0b506ebb",
+    "metadata.json": "d963d62056d793de7e81fba722e97321e7dac0b41b3f6ab04508d4768856bed5"
+   },
+   "vet": {
+    "game_id": "mb2741-094cefb3",
+    "ok": true,
+    "board_hash": "e6a520260dafd452340e3224",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 10,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 14,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 10,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 15,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 16,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 15,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 15,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 17,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "e6a520260dafd452340e3224"
+  },
+  {
+   "game_id": "ml2048-a6677a07",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    8,
+    12,
+    13,
+    12,
+    16,
+    21,
+    23,
+    23
+   ],
+   "source_baseline_actions": [
+    10,
+    15,
+    15,
+    15,
+    20,
+    25,
+    30,
+    30
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/ml2048/a6677a07",
+   "files_sha256": {
+    "metadata.json": "e53b703533ebba2505f5b21478c36356a5b9732e718e889d12cb2aa220b265cd",
+    "ml2048.py": "ba5c523e00b4a71f49bb0ac3e6ad936e9cf4f99f49c3996e3eaef5e78c1e5331"
+   },
+   "vet": {
+    "game_id": "ml2048-a6677a07",
+    "ok": true,
+    "board_hash": "daa44549466fd30eb3c6aca5",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 8,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 12,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 13,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 12,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 16,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 21,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 23,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 23,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "daa44549466fd30eb3c6aca5"
+  },
+  {
+   "game_id": "mt4926-66d0222a",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    10,
+    20,
+    10,
+    6,
+    10,
+    10,
+    12,
+    15
+   ],
+   "source_baseline_actions": [
+    10,
+    24,
+    10,
+    6,
+    10,
+    10,
+    12,
+    32
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/mt4926/66d0222a",
+   "files_sha256": {
+    "metadata.json": "4f368e93c968d3075ab58de5898c9c273b53a3df58279a078b2000fd3468d346",
+    "mt4926.py": "16db0844837bbc5ae2775859a25d51b146beeea212d2f01c731a6e331e2a780e"
+   },
+   "vet": {
+    "game_id": "mt4926-66d0222a",
+    "ok": true,
+    "board_hash": "b06b21d6ddacc3116e815ba0",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 10,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 20,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 10,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 6,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 10,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 10,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 12,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 15,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "b06b21d6ddacc3116e815ba0"
+  },
+  {
+   "game_id": "ne4172-fe2b50a3",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    15,
+    21,
+    21,
+    51,
+    55,
+    57,
+    61,
+    76
+   ],
+   "source_baseline_actions": [
+    15,
+    21,
+    21,
+    35,
+    27,
+    27,
+    27,
+    35
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/ne4172/fe2b50a3",
+   "files_sha256": {
+    "metadata.json": "4ae96d6d9e47a7095c89686fc4939b6b55d5bbba7e61e530192dd193a2b19145",
+    "ne4172.py": "4ef4539355de7e7713e6dd9abb0bc2bc661ac3afcc1a58bd427afcab84a3a120"
+   },
+   "vet": {
+    "game_id": "ne4172-fe2b50a3",
+    "ok": true,
+    "board_hash": "cee0d7814e1f5e845f8fb5be",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 15,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 21,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 21,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 67,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 55,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 57,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 61,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 76,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "cee0d7814e1f5e845f8fb5be"
+  },
+  {
+   "game_id": "os1842-ca39ae90",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    4,
+    10,
+    6,
+    7,
+    8,
+    7,
+    9,
+    10
+   ],
+   "source_baseline_actions": [
+    4,
+    10,
+    6,
+    7,
+    8,
+    7,
+    9,
+    10
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/os1842/ca39ae90",
+   "files_sha256": {
+    "metadata.json": "e15f231f28017ca58a6fbd0007f5788003abb5d6918216fccc95f85c40d414ad",
+    "os1842.py": "bd37ea5f54a813555e878ac87a447c3fc529f1e30c150643fcd1accb3d17159b"
+   },
+   "vet": {
+    "game_id": "os1842-ca39ae90",
+    "ok": true,
+    "board_hash": "6c9dbc0c892afd953cdb36f4",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 4,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 10,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 6,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 7,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 8,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 7,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 9,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 10,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "6c9dbc0c892afd953cdb36f4"
+  },
+  {
+   "game_id": "ps1842-539e99d4",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    2,
+    6,
+    2,
+    6,
+    13,
+    14,
+    13,
+    7
+   ],
+   "source_baseline_actions": [
+    2,
+    6,
+    2,
+    6,
+    13,
+    14,
+    13,
+    7
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/ps1842/539e99d4",
+   "files_sha256": {
+    "metadata.json": "5b5716417a2e70b04b42d574e3a1eb22c5fa2952efe65bcaa8cbb09c99377d40",
+    "ps1842.py": "c899b216c7de79f7bc301b164f2dc77b142c47d746b63dae7ef129b20bc46e34"
+   },
+   "vet": {
+    "game_id": "ps1842-539e99d4",
+    "ok": true,
+    "board_hash": "42782df75fa050b1102b4181",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 2,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 6,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 2,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 6,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 13,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 14,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 13,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 7,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "42782df75fa050b1102b4181"
+  },
+  {
+   "game_id": "ps7413-3a14ed61",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    8,
+    19,
+    32,
+    33,
+    51,
+    48,
+    76,
+    78
+   ],
+   "source_baseline_actions": [
+    8,
+    19,
+    32,
+    33,
+    51,
+    48,
+    76,
+    78
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/ps7413/3a14ed61",
+   "files_sha256": {
+    "metadata.json": "8f2aabb21c8c60e4741c22425f59c647458773d1ec5757d584c9b37f68b7fb31",
+    "ps7413.py": "b0271b1758d182081fbc387e61c181bd759f9ede04421cbb01b83190135cb89a"
+   },
+   "vet": {
+    "game_id": "ps7413-3a14ed61",
+    "ok": true,
+    "board_hash": "fb6a1a5e2183fa8c0dec33d5",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 8,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 19,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 32,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 33,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 51,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 48,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 76,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 78,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "fb6a1a5e2183fa8c0dec33d5"
+  },
+  {
+   "game_id": "rl2048-8deeab8c",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    10,
+    12,
+    22,
+    14,
+    22,
+    12,
+    14,
+    24
+   ],
+   "source_baseline_actions": [
+    10,
+    12,
+    18,
+    14,
+    22,
+    12,
+    14,
+    24
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/rl2048/8deeab8c",
+   "files_sha256": {
+    "metadata.json": "3312e2733a01f830ed8057088332120a1d64a811e336096411349b4a6070a277",
+    "rl2048.py": "2a2ec24786cc4c8e84a1b40be9064c0914983dd59d2f84767976e7157c7af80b"
+   },
+   "vet": {
+    "game_id": "rl2048-8deeab8c",
+    "ok": true,
+    "board_hash": "e19a4cdb182e31673735df95",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 10,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 12,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 22,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 14,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 22,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 12,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 14,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 24,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "e19a4cdb182e31673735df95"
+  },
+  {
+   "game_id": "rs0427-2c8b97d9",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    8,
+    10,
+    9,
+    12,
+    15,
+    21,
+    21,
+    37
+   ],
+   "source_baseline_actions": [
+    8,
+    10,
+    9,
+    12,
+    23,
+    25,
+    21,
+    37
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/rs0427/2c8b97d9",
+   "files_sha256": {
+    "metadata.json": "f8e903c29a6c83537f95827a8b025d14d30970fb790cd5f126523aea4e7f92f1",
+    "rs0427.py": "8121c496b744833131c7d56a32bf903e4c67e36a792ac81b0d30ab720a4cf836"
+   },
+   "vet": {
+    "game_id": "rs0427-2c8b97d9",
+    "ok": true,
+    "board_hash": "8bf6f035b1680ef21f965dd8",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 8,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 10,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 9,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 12,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 15,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 21,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 21,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 37,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "8bf6f035b1680ef21f965dd8"
+  },
+  {
+   "game_id": "sf2048-f3d334c1",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    7,
+    9,
+    11,
+    10,
+    14,
+    14,
+    16,
+    21
+   ],
+   "source_baseline_actions": [
+    8,
+    11,
+    13,
+    15,
+    20,
+    21,
+    26,
+    35
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/sf2048/f3d334c1",
+   "files_sha256": {
+    "metadata.json": "f3b1abcc71df205c01cd647150fc48a43462ca433dfa2c731e9bcaefc3ec7194",
+    "sf2048.py": "57e805f5ed07294543ba0f0c625f3620b17057bf58aa210216e1d997497b83ce"
+   },
+   "vet": {
+    "game_id": "sf2048-f3d334c1",
+    "ok": true,
+    "board_hash": "de5f218e0a9c9ba4b797c810",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 7,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 9,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 11,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 10,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 14,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 14,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 16,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 21,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "de5f218e0a9c9ba4b797c810"
+  },
+  {
+   "game_id": "sl4821-3b4e1b22",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    3,
+    9,
+    5,
+    5,
+    8,
+    5,
+    8,
+    9
+   ],
+   "source_baseline_actions": [
+    3,
+    9,
+    5,
+    5,
+    8,
+    6,
+    8,
+    9
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/sl4821/3b4e1b22",
+   "files_sha256": {
+    "metadata.json": "54b4851e7174c341a99a03bda4698506d020223b2a3ae0cc4969be30e1b1b805",
+    "sl4821.py": "28bcf0ead735c177f554b4867ae9b5edeaa8470312901fcad72910e8c98f66e4"
+   },
+   "vet": {
+    "game_id": "sl4821-3b4e1b22",
+    "ok": true,
+    "board_hash": "c54186345ed2bbe5ee2196f1",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 3,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 9,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 5,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 5,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 8,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 5,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 8,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 9,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "c54186345ed2bbe5ee2196f1"
+  },
+  {
+   "game_id": "ss6041-1abeadb2",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    16,
+    19,
+    13,
+    20,
+    19,
+    17,
+    20,
+    21
+   ],
+   "source_baseline_actions": [
+    16,
+    19,
+    13,
+    20,
+    19,
+    17,
+    20,
+    21
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/ss6041/1abeadb2",
+   "files_sha256": {
+    "metadata.json": "fa35b0f14c1ff80d1eb9e469a8ea09842c64ce774396ae79e88331a5d217b671",
+    "ss6041.py": "29904f2d67c32fa90dcad9b2590934a9473eb92c777bb3582ceb67317b7f456c"
+   },
+   "vet": {
+    "game_id": "ss6041-1abeadb2",
+    "ok": true,
+    "board_hash": "dd1a9878e0a26bbcec7872d0",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 16,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 19,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 13,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 20,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 19,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 17,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 20,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 21,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "dd1a9878e0a26bbcec7872d0"
+  },
+  {
+   "game_id": "td4826-33bf03a4",
+   "role": "pool",
+   "source": "Felix561/arc3-synthetic-games:nvidia",
+   "commit": "a0593815551414b0665c82accc50a0269cd9a2bc",
+   "licence": "Apache-2.0",
+   "total_levels": 8,
+   "reference_actions": [
+    12,
+    14,
+    23,
+    9,
+    23,
+    15,
+    15,
+    37
+   ],
+   "source_baseline_actions": [
+    12,
+    14,
+    23,
+    9,
+    23,
+    15,
+    15,
+    23
+   ],
+   "mechanics_text_withheld": false,
+   "dir": "environment_files/td4826/33bf03a4",
+   "files_sha256": {
+    "metadata.json": "72d58db33c294936ed12ff5d05c823a326ae84a41e7f041105de853b9f3fe1a5",
+    "td4826.py": "0ef4c27e56bd68b5fd9a6b18e9c7ed66d23404b5129169d11be181c3cefe53ec"
+   },
+   "vet": {
+    "game_id": "td4826-33bf03a4",
+    "ok": true,
+    "board_hash": "e34eeb1333e10718bd9c8f81",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 12,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 14,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 36,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 9,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 23,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 42,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 15,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 37,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "e34eeb1333e10718bd9c8f81"
+  },
+  {
+   "game_id": "tw01-e2556aaa4d93f4e7",
+   "role": "pool",
+   "source": "hoteizero/arc-witness-envs",
+   "commit": "097b866d04861de68c0b15bf2c133c847155903f",
+   "licence": "MIT (README; no LICENSE file)",
+   "total_levels": 8,
+   "reference_actions": [
+    9,
+    12,
+    12,
+    14,
+    15,
+    15,
+    16,
+    16
+   ],
+   "source_baseline_actions": [
+    11,
+    15,
+    15,
+    17,
+    18,
+    18,
+    20,
+    20
+   ],
+   "witness_levels": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "dir": "environment_files/tw01/e2556aaa4d93f4e7",
+   "files_sha256": {
+    "metadata.json": "34505032afd34fb85ca7c52597efb54ea4db4d57a9b4fa4bf03c69d506346dc4",
+    "tw01.py": "e2556aaa4d93f4e71b7016a30dc1772a1202ff4350588c332b9fe956d71baf96"
+   },
+   "vet": {
+    "game_id": "tw01-e2556aaa4d93f4e7",
+    "ok": true,
+    "board_hash": "f2a2c779b1936497d5a8d015",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 9,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 12,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 12,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 14,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 15,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 15,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 16,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 16,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "f2a2c779b1936497d5a8d015"
+  },
+  {
+   "game_id": "wp01-f49be762a1af85ac",
+   "role": "practice",
+   "source": "hoteizero/arc-witness-envs",
+   "commit": "097b866d04861de68c0b15bf2c133c847155903f",
+   "licence": "MIT (README; no LICENSE file)",
+   "total_levels": 2,
+   "reference_actions": [
+    23,
+    25
+   ],
+   "source_baseline_actions": [
+    28,
+    30
+   ],
+   "witness_levels": [
+    8,
+    9
+   ],
+   "dir": "environment_files/wp01/f49be762a1af85ac",
+   "files_sha256": {
+    "metadata.json": "a7552308f64cb5a1ccf40f558cd866031a283f248f937e2dee8736a7fe4f8946",
+    "wp01.py": "f49be762a1af85ac65aae6a6f6e1dbcdb9bd3161f3334708aee834cdfc576480"
+   },
+   "vet": {
+    "game_id": "wp01-f49be762a1af85ac",
+    "ok": true,
+    "board_hash": "32ea7b913b08f33c5a610e73",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 23,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 25,
+      "levels_completed": 2,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 2,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "32ea7b913b08f33c5a610e73"
+  },
+  {
+   "game_id": "tw02-989bc2f8e566ae51",
+   "role": "pool",
+   "source": "hoteizero/arc-witness-envs",
+   "commit": "097b866d04861de68c0b15bf2c133c847155903f",
+   "licence": "MIT (README; no LICENSE file)",
+   "total_levels": 8,
+   "reference_actions": [
+    4,
+    5,
+    5,
+    7,
+    9,
+    9,
+    9,
+    10
+   ],
+   "source_baseline_actions": [
+    5,
+    6,
+    6,
+    9,
+    11,
+    11,
+    11,
+    12
+   ],
+   "witness_levels": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "dir": "environment_files/tw02/989bc2f8e566ae51",
+   "files_sha256": {
+    "metadata.json": "f4e322217e3e9b561a5e212e25d7ad10ed94479d26f8803a3ad0f1038ea92da3",
+    "tw02.py": "989bc2f8e566ae51194012c37e3de1e3c5ebd84144875c72decc1c00939974a0"
+   },
+   "vet": {
+    "game_id": "tw02-989bc2f8e566ae51",
+    "ok": true,
+    "board_hash": "863036386287b65f45e9320a",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 4,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 5,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 5,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 7,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 9,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 9,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 9,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 10,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 2,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "863036386287b65f45e9320a"
+  },
+  {
+   "game_id": "wp02-2f445a39c1597858",
+   "role": "practice",
+   "source": "hoteizero/arc-witness-envs",
+   "commit": "097b866d04861de68c0b15bf2c133c847155903f",
+   "licence": "MIT (README; no LICENSE file)",
+   "total_levels": 8,
+   "reference_actions": [
+    10,
+    11,
+    14,
+    14,
+    16,
+    17,
+    17,
+    17
+   ],
+   "source_baseline_actions": [
+    12,
+    14,
+    17,
+    17,
+    20,
+    21,
+    21,
+    21
+   ],
+   "witness_levels": [
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "dir": "environment_files/wp02/2f445a39c1597858",
+   "files_sha256": {
+    "metadata.json": "9395f4489b9e2a7a858eba214b75b986f1245e448b8e5fd09de62ef611c4487c",
+    "wp02.py": "2f445a39c1597858da32c23a2b2ba48996651be4533929cf92afe32f6f4ec5ad"
+   },
+   "vet": {
+    "game_id": "wp02-2f445a39c1597858",
+    "ok": true,
+    "board_hash": "e6ba2d05817728a0ae5c808a",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 10,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 11,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 14,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 14,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 16,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 17,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 17,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 17,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "e6ba2d05817728a0ae5c808a"
+  },
+  {
+   "game_id": "tw03-8f53dc178fac2383",
+   "role": "pool",
+   "source": "hoteizero/arc-witness-envs",
+   "commit": "097b866d04861de68c0b15bf2c133c847155903f",
+   "licence": "MIT (README; no LICENSE file)",
+   "total_levels": 8,
+   "reference_actions": [
+    4,
+    4,
+    5,
+    5,
+    5,
+    5,
+    6,
+    6
+   ],
+   "source_baseline_actions": [
+    5,
+    5,
+    6,
+    6,
+    6,
+    6,
+    8,
+    8
+   ],
+   "witness_levels": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "dir": "environment_files/tw03/8f53dc178fac2383",
+   "files_sha256": {
+    "metadata.json": "81811c8e682500aa7b1c29926f78aeb2e0054cf13b30a084f2727983e8dbeddf",
+    "tw03.py": "8f53dc178fac2383472c646597a1fbe8ceec12b6ea4f5be494b24836f4c915c1"
+   },
+   "vet": {
+    "game_id": "tw03-8f53dc178fac2383",
+    "ok": true,
+    "board_hash": "f30b4816a335cea20358f01e",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 4,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 4,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 5,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 5,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 5,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 5,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 6,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 6,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 2,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "f30b4816a335cea20358f01e"
+  },
+  {
+   "game_id": "wp03-1432b356fa7f07a9",
+   "role": "practice",
+   "source": "hoteizero/arc-witness-envs",
+   "commit": "097b866d04861de68c0b15bf2c133c847155903f",
+   "licence": "MIT (README; no LICENSE file)",
+   "total_levels": 8,
+   "reference_actions": [
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7
+   ],
+   "source_baseline_actions": [
+    9,
+    9,
+    9,
+    9,
+    9,
+    9,
+    9,
+    9
+   ],
+   "witness_levels": [
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "dir": "environment_files/wp03/1432b356fa7f07a9",
+   "files_sha256": {
+    "metadata.json": "cad9fd18b42c9ac32be3838d5a4bdc35f2e113c3f4d637c15fe01998ca3394fe",
+    "wp03.py": "1432b356fa7f07a9e60aae368342ddec3cf419100b67bbb1720f812af70fddad"
+   },
+   "vet": {
+    "game_id": "wp03-1432b356fa7f07a9",
+    "ok": true,
+    "board_hash": "6a5765eddaf452281f1fea8b",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 7,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 7,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 7,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 7,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 7,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 7,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 7,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 7,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "6a5765eddaf452281f1fea8b"
+  },
+  {
+   "game_id": "tw04-576552124ab9fcab",
+   "role": "pool",
+   "source": "hoteizero/arc-witness-envs",
+   "commit": "097b866d04861de68c0b15bf2c133c847155903f",
+   "licence": "MIT (README; no LICENSE file)",
+   "total_levels": 8,
+   "reference_actions": [
+    5,
+    5,
+    6,
+    6,
+    7,
+    7,
+    8,
+    8
+   ],
+   "source_baseline_actions": [
+    6,
+    6,
+    8,
+    8,
+    9,
+    9,
+    10,
+    10
+   ],
+   "witness_levels": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "dir": "environment_files/tw04/576552124ab9fcab",
+   "files_sha256": {
+    "metadata.json": "343f188ed0feaa44c4c746fa7e9cbfb2265740a44cff025f6a4bd86b47133c44",
+    "tw04.py": "576552124ab9fcab3b73be0a97086b9bda059480ef2fe48e0f395e1fb511c5d9"
+   },
+   "vet": {
+    "game_id": "tw04-576552124ab9fcab",
+    "ok": true,
+    "board_hash": "68481ff66e7dd786bf832863",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 5,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 5,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 6,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 6,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 7,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 7,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 8,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 8,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 2,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "68481ff66e7dd786bf832863"
+  },
+  {
+   "game_id": "wp04-715ccb10fe977e84",
+   "role": "practice",
+   "source": "hoteizero/arc-witness-envs",
+   "commit": "097b866d04861de68c0b15bf2c133c847155903f",
+   "licence": "MIT (README; no LICENSE file)",
+   "total_levels": 8,
+   "reference_actions": [
+    10,
+    10,
+    12,
+    12,
+    13,
+    13,
+    14,
+    14
+   ],
+   "source_baseline_actions": [
+    12,
+    12,
+    15,
+    15,
+    16,
+    16,
+    17,
+    17
+   ],
+   "witness_levels": [
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "dir": "environment_files/wp04/715ccb10fe977e84",
+   "files_sha256": {
+    "metadata.json": "3ac5175cd30407e2d403edb6419037ed9ae218bb98e36a6cd931c11817fc46ac",
+    "wp04.py": "715ccb10fe977e84fe0bcfdd60b0116ffe456c84ccb91bd6fab6b82adc55bad1"
+   },
+   "vet": {
+    "game_id": "wp04-715ccb10fe977e84",
+    "ok": true,
+    "board_hash": "e6a0a6c6fe48d7ccd2065df2",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 10,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 10,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 12,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 12,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 13,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 13,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 14,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 14,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "e6a0a6c6fe48d7ccd2065df2"
+  },
+  {
+   "game_id": "tw05-ec79bd383bcf83ed",
+   "role": "pool",
+   "source": "hoteizero/arc-witness-envs",
+   "commit": "097b866d04861de68c0b15bf2c133c847155903f",
+   "licence": "MIT (README; no LICENSE file)",
+   "total_levels": 8,
+   "reference_actions": [
+    4,
+    4,
+    5,
+    5,
+    6,
+    7,
+    7,
+    7
+   ],
+   "source_baseline_actions": [
+    5,
+    5,
+    6,
+    6,
+    8,
+    9,
+    9,
+    9
+   ],
+   "witness_levels": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "dir": "environment_files/tw05/ec79bd383bcf83ed",
+   "files_sha256": {
+    "metadata.json": "e8acc368b3ded1eafcc85eb0e7cc837a9f0f4a4089c175d0fd94deebd21e6492",
+    "tw05.py": "ec79bd383bcf83ede1b9abc3fdcaa657f49d7e6e96e6dc9abd91bf7fbbef82df"
+   },
+   "vet": {
+    "game_id": "tw05-ec79bd383bcf83ed",
+    "ok": true,
+    "board_hash": "795e8bce76ec579986425fbe",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 4,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 4,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 5,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 5,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 6,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 7,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 7,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 7,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "795e8bce76ec579986425fbe"
+  },
+  {
+   "game_id": "wp05-d0e66a93e4a36058",
+   "role": "practice",
+   "source": "hoteizero/arc-witness-envs",
+   "commit": "097b866d04861de68c0b15bf2c133c847155903f",
+   "licence": "MIT (README; no LICENSE file)",
+   "total_levels": 8,
+   "reference_actions": [
+    7,
+    8,
+    8,
+    8,
+    9,
+    9,
+    11,
+    11
+   ],
+   "source_baseline_actions": [
+    9,
+    10,
+    10,
+    10,
+    11,
+    11,
+    14,
+    14
+   ],
+   "witness_levels": [
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "dir": "environment_files/wp05/d0e66a93e4a36058",
+   "files_sha256": {
+    "metadata.json": "f1c0d9aff97cdc716baacc3a5313e88c9805a4968c105fd7ff0fc729d40bb6a0",
+    "wp05.py": "d0e66a93e4a3605866e7a1ff796d9612aef6d24358fa9241488e70b91beba4c6"
+   },
+   "vet": {
+    "game_id": "wp05-d0e66a93e4a36058",
+    "ok": true,
+    "board_hash": "1f1dc3689b91676607fe0409",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 7,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 8,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 8,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 8,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 9,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 9,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 11,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 11,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "1f1dc3689b91676607fe0409"
+  },
+  {
+   "game_id": "tw06-0d500062becadfaa",
+   "role": "pool",
+   "source": "hoteizero/arc-witness-envs",
+   "commit": "097b866d04861de68c0b15bf2c133c847155903f",
+   "licence": "MIT (README; no LICENSE file)",
+   "total_levels": 8,
+   "reference_actions": [
+    11,
+    13,
+    13,
+    13,
+    13,
+    13,
+    14,
+    15
+   ],
+   "source_baseline_actions": [
+    14,
+    16,
+    16,
+    16,
+    16,
+    16,
+    17,
+    18
+   ],
+   "witness_levels": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "dir": "environment_files/tw06/0d500062becadfaa",
+   "files_sha256": {
+    "metadata.json": "28b40d182c0431e7acf242c600673b6a54f396ff3308d9d8e3892d635e9dcc15",
+    "tw06.py": "0d500062becadfaa1beaa98b2f97085bf07056f29e79a1d261054ff0b9264278"
+   },
+   "vet": {
+    "game_id": "tw06-0d500062becadfaa",
+    "ok": true,
+    "board_hash": "e6cf2b63c9fdf69343d3a8f8",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 11,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 13,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 13,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 13,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 13,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 13,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 14,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 15,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "e6cf2b63c9fdf69343d3a8f8"
+  },
+  {
+   "game_id": "wp06-f5743caf7fec99ba",
+   "role": "practice",
+   "source": "hoteizero/arc-witness-envs",
+   "commit": "097b866d04861de68c0b15bf2c133c847155903f",
+   "licence": "MIT (README; no LICENSE file)",
+   "total_levels": 8,
+   "reference_actions": [
+    15,
+    15,
+    15,
+    15,
+    15,
+    15,
+    15,
+    15
+   ],
+   "source_baseline_actions": [
+    18,
+    18,
+    18,
+    18,
+    18,
+    18,
+    18,
+    18
+   ],
+   "witness_levels": [
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "dir": "environment_files/wp06/f5743caf7fec99ba",
+   "files_sha256": {
+    "metadata.json": "76ac6afbbd88bed6e3b060f59c3207dcacce4a717c8e76829d32fd009893dd3d",
+    "wp06.py": "f5743caf7fec99ba5b215bf86d8714db1c6f8e9a80e74d06c066ddc4d18ec725"
+   },
+   "vet": {
+    "game_id": "wp06-f5743caf7fec99ba",
+    "ok": true,
+    "board_hash": "e7b067073075807c76ea4f9a",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 15,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 15,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 15,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 15,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 15,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 15,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 15,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 15,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "e7b067073075807c76ea4f9a"
+  },
+  {
+   "game_id": "tw07-15e9706e7ffb1ced",
+   "role": "pool",
+   "source": "hoteizero/arc-witness-envs",
+   "commit": "097b866d04861de68c0b15bf2c133c847155903f",
+   "licence": "MIT (README; no LICENSE file)",
+   "total_levels": 8,
+   "reference_actions": [
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    5,
+    5
+   ],
+   "source_baseline_actions": [
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    6,
+    6
+   ],
+   "witness_levels": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "dir": "environment_files/tw07/15e9706e7ffb1ced",
+   "files_sha256": {
+    "metadata.json": "a5bbdde1b328f3eaf52367d3554db8948174b9a9ae9f07830407c5149a48bea8",
+    "tw07.py": "15e9706e7ffb1ced1ca4833f9bb01ed3d879542225238ef40b694bb472a850bc"
+   },
+   "vet": {
+    "game_id": "tw07-15e9706e7ffb1ced",
+    "ok": true,
+    "board_hash": "78fe3b774beb147a3aa49db4",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 4,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 4,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 4,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 4,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 4,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 4,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 5,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 5,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 2,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "78fe3b774beb147a3aa49db4"
+  },
+  {
+   "game_id": "wp07-542ccbc38d8e36ff",
+   "role": "practice",
+   "source": "hoteizero/arc-witness-envs",
+   "commit": "097b866d04861de68c0b15bf2c133c847155903f",
+   "licence": "MIT (README; no LICENSE file)",
+   "total_levels": 8,
+   "reference_actions": [
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5
+   ],
+   "source_baseline_actions": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6
+   ],
+   "witness_levels": [
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "dir": "environment_files/wp07/542ccbc38d8e36ff",
+   "files_sha256": {
+    "metadata.json": "971d050162ab845e995e0a80586226bc0303d12ab63b4a3a914503c983d85d41",
+    "wp07.py": "542ccbc38d8e36ff1b48d72fb6032dac072f744adb8ff1e01a698cecced67ac5"
+   },
+   "vet": {
+    "game_id": "wp07-542ccbc38d8e36ff",
+    "ok": true,
+    "board_hash": "8ce80af146ce38108eff3a62",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 5,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 5,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 5,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 5,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 5,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 5,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 5,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 5,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "8ce80af146ce38108eff3a62"
+  },
+  {
+   "game_id": "tw08-42e9209df7836012",
+   "role": "pool",
+   "source": "hoteizero/arc-witness-envs",
+   "commit": "097b866d04861de68c0b15bf2c133c847155903f",
+   "licence": "MIT (README; no LICENSE file)",
+   "total_levels": 8,
+   "reference_actions": [
+    4,
+    5,
+    7,
+    7,
+    7,
+    7,
+    7,
+    8
+   ],
+   "source_baseline_actions": [
+    5,
+    6,
+    9,
+    9,
+    9,
+    9,
+    9,
+    10
+   ],
+   "witness_levels": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "dir": "environment_files/tw08/42e9209df7836012",
+   "files_sha256": {
+    "metadata.json": "e24bf0df8be740e92c5c3ec1773768ac07ffbd228e094c0722005309c6818834",
+    "tw08.py": "42e9209df7836012b63ecf54f78078294cc9a3b85580134af7e98c9bee75c0e6"
+   },
+   "vet": {
+    "game_id": "tw08-42e9209df7836012",
+    "ok": true,
+    "board_hash": "181351e58de6cfaa3e14f5fd",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 4,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 5,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 7,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 7,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 7,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 7,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 7,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 8,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 1,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "181351e58de6cfaa3e14f5fd"
+  },
+  {
+   "game_id": "wp08-7d3486bff00ea260",
+   "role": "practice",
+   "source": "hoteizero/arc-witness-envs",
+   "commit": "097b866d04861de68c0b15bf2c133c847155903f",
+   "licence": "MIT (README; no LICENSE file)",
+   "total_levels": 8,
+   "reference_actions": [
+    8,
+    9,
+    9,
+    9,
+    9,
+    11,
+    11,
+    11
+   ],
+   "source_baseline_actions": [
+    10,
+    11,
+    11,
+    11,
+    11,
+    14,
+    14,
+    14
+   ],
+   "witness_levels": [
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "dir": "environment_files/wp08/7d3486bff00ea260",
+   "files_sha256": {
+    "metadata.json": "cbb2bb861b2a5240cbe248f268010603b510dc534b989c3973aa56bdd9a216c0",
+    "wp08.py": "7d3486bff00ea26031a42d5d8953fc133c276a88db5f6fe29eb29f93cc341d97"
+   },
+   "vet": {
+    "game_id": "wp08-7d3486bff00ea260",
+    "ok": true,
+    "board_hash": "2b83b4c9dcff9d030db4d2eb",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 8,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 9,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 9,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 9,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 9,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 11,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 11,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 11,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "2b83b4c9dcff9d030db4d2eb"
+  },
+  {
+   "game_id": "tw09",
+   "role": "pool",
+   "source": "hoteizero/arc-witness-envs",
+   "excluded": "no solver-verified levels"
+  },
+  {
+   "game_id": "wp09",
+   "role": "practice",
+   "source": "hoteizero/arc-witness-envs",
+   "excluded": "no solver-verified levels"
+  },
+  {
+   "game_id": "tw10",
+   "role": "pool",
+   "source": "hoteizero/arc-witness-envs",
+   "excluded": "no solver-verified levels"
+  },
+  {
+   "game_id": "wp10",
+   "role": "practice",
+   "source": "hoteizero/arc-witness-envs",
+   "excluded": "no solver-verified levels"
+  },
+  {
+   "game_id": "tw11-50112e37ef8f5e26",
+   "role": "pool",
+   "source": "hoteizero/arc-witness-envs",
+   "commit": "097b866d04861de68c0b15bf2c133c847155903f",
+   "licence": "MIT (README; no LICENSE file)",
+   "total_levels": 8,
+   "reference_actions": [
+    6,
+    7,
+    7,
+    8,
+    9,
+    9,
+    9,
+    9
+   ],
+   "source_baseline_actions": [
+    8,
+    9,
+    9,
+    10,
+    11,
+    11,
+    11,
+    11
+   ],
+   "witness_levels": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "dir": "environment_files/tw11/50112e37ef8f5e26",
+   "files_sha256": {
+    "metadata.json": "ff968b35430bbcc2c7b501c727f5c0c769be4bd8fb3619d9b048de3225af8f09",
+    "tw11.py": "50112e37ef8f5e26dc4254eee47ad575e239d52a0b2ae9805a7ef5faca0a5d38"
+   },
+   "vet": {
+    "game_id": "tw11-50112e37ef8f5e26",
+    "ok": true,
+    "board_hash": "240f7381243796333816a5b3",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 6,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 7,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 7,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 8,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 9,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 9,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 9,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 9,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "240f7381243796333816a5b3"
+  },
+  {
+   "game_id": "wp11-2accf1ba866cc1c7",
+   "role": "practice",
+   "source": "hoteizero/arc-witness-envs",
+   "commit": "097b866d04861de68c0b15bf2c133c847155903f",
+   "licence": "MIT (README; no LICENSE file)",
+   "total_levels": 8,
+   "reference_actions": [
+    10,
+    11,
+    11,
+    11,
+    11,
+    11,
+    11,
+    11
+   ],
+   "source_baseline_actions": [
+    12,
+    14,
+    14,
+    14,
+    14,
+    14,
+    14,
+    14
+   ],
+   "witness_levels": [
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "dir": "environment_files/wp11/2accf1ba866cc1c7",
+   "files_sha256": {
+    "metadata.json": "d31b9fa62257683d82202a40079abf8097b09e59693716816c0ccdb35de24871",
+    "wp11.py": "2accf1ba866cc1c79f9b17a2489031def28c6dcc7dff4fdbe5b1911148563c2a"
+   },
+   "vet": {
+    "game_id": "wp11-2accf1ba866cc1c7",
+    "ok": true,
+    "board_hash": "96a1ba0dac6ff14644556d1f",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 10,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 11,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 11,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 11,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 11,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 11,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 11,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 11,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "96a1ba0dac6ff14644556d1f"
+  },
+  {
+   "game_id": "tw12-2e61cb0be811de80",
+   "role": "pool",
+   "source": "hoteizero/arc-witness-envs",
+   "commit": "097b866d04861de68c0b15bf2c133c847155903f",
+   "licence": "MIT (README; no LICENSE file)",
+   "total_levels": 4,
+   "reference_actions": [
+    9,
+    15,
+    15,
+    24
+   ],
+   "source_baseline_actions": [
+    11,
+    18,
+    18,
+    29
+   ],
+   "witness_levels": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "dir": "environment_files/tw12/2e61cb0be811de80",
+   "files_sha256": {
+    "metadata.json": "71a8a583f77d2733feee045d85905715a8af73b6464e8daf35ff00387b4f1035",
+    "tw12.py": "2e61cb0be811de8037039d801f59e30fd0b1bcde5a773b95647a372488efda41"
+   },
+   "vet": {
+    "game_id": "tw12-2e61cb0be811de80",
+    "ok": true,
+    "board_hash": "5f3f3a9d7eb04c7e6c0f554e",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 9,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 15,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 15,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 24,
+      "levels_completed": 4,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 4,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "5f3f3a9d7eb04c7e6c0f554e"
+  },
+  {
+   "game_id": "wp12",
+   "role": "practice",
+   "source": "hoteizero/arc-witness-envs",
+   "excluded": "no solver-verified levels"
+  },
+  {
+   "game_id": "tw13-a5e656126c7e9528",
+   "role": "pool",
+   "source": "hoteizero/arc-witness-envs",
+   "commit": "097b866d04861de68c0b15bf2c133c847155903f",
+   "licence": "MIT (README; no LICENSE file)",
+   "total_levels": 8,
+   "reference_actions": [
+    4,
+    4,
+    4,
+    5,
+    5,
+    6,
+    7,
+    7
+   ],
+   "source_baseline_actions": [
+    5,
+    5,
+    5,
+    6,
+    6,
+    8,
+    9,
+    9
+   ],
+   "witness_levels": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+   ],
+   "dir": "environment_files/tw13/a5e656126c7e9528",
+   "files_sha256": {
+    "metadata.json": "7ae8bec2cbf621fe0c04c480dd8219d71acdf91ec4393abbc8ce51f277714df8",
+    "tw13.py": "a5e656126c7e95283100fbe06c50f4245add842af9f75542540bbb35420a1431"
+   },
+   "vet": {
+    "game_id": "tw13-a5e656126c7e9528",
+    "ok": true,
+    "board_hash": "7567cca7639c6e0ff9f4f040",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 4,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 4,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 4,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 5,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 5,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 6,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 7,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 7,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 3,
+    "trivial": true
+   },
+   "vet_ok": true,
+   "board_hash": "7567cca7639c6e0ff9f4f040"
+  },
+  {
+   "game_id": "wp13-0f31ba14d464f559",
+   "role": "practice",
+   "source": "hoteizero/arc-witness-envs",
+   "commit": "097b866d04861de68c0b15bf2c133c847155903f",
+   "licence": "MIT (README; no LICENSE file)",
+   "total_levels": 8,
+   "reference_actions": [
+    7,
+    7,
+    7,
+    8,
+    8,
+    8,
+    8,
+    8
+   ],
+   "source_baseline_actions": [
+    9,
+    9,
+    9,
+    10,
+    10,
+    10,
+    10,
+    10
+   ],
+   "witness_levels": [
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "dir": "environment_files/wp13/0f31ba14d464f559",
+   "files_sha256": {
+    "metadata.json": "b2daad9dc90e97519ea09d30f12b764a08731e83a75592a00dc88bf925b75681",
+    "wp13.py": "0f31ba14d464f559bf76efdd989bc82bb3bcfa32ba7fc8ae93f8d39a4a5f7aa4"
+   },
+   "vet": {
+    "game_id": "wp13-0f31ba14d464f559",
+    "ok": true,
+    "board_hash": "e3df3cb0e5357b541f67d241",
+    "levels": [
+     {
+      "level": 1,
+      "actions": 7,
+      "levels_completed": 1,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 2,
+      "actions": 7,
+      "levels_completed": 2,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 3,
+      "actions": 7,
+      "levels_completed": 3,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 4,
+      "actions": 8,
+      "levels_completed": 4,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 5,
+      "actions": 8,
+      "levels_completed": 5,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 6,
+      "actions": 8,
+      "levels_completed": 6,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 7,
+      "actions": 8,
+      "levels_completed": 7,
+      "state": "NOT_FINISHED"
+     },
+     {
+      "level": 8,
+      "actions": 8,
+      "levels_completed": 8,
+      "state": "WIN"
+     }
+    ],
+    "problems": [],
+    "deterministic": true,
+    "win_levels": 8,
+    "final_state": "WIN",
+    "random_level1_wins": 0,
+    "trivial": false
+   },
+   "vet_ok": true,
+   "board_hash": "e3df3cb0e5357b541f67d241"
+  }
+ ]
+}

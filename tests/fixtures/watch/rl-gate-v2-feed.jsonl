@@ -1,8 +1,0 @@
-{"t": 33.7, "epoch": 1793149704.4, "kind": "seq_ahead_pending", "groups": 16, "prepared": 16}
-{"t": 193.7, "epoch": 1793149864.4, "kind": "seq_resume", "step": 1, "pending_groups": 16}
-{"t": 286.4, "epoch": 1793149957.1, "kind": "seq_start", "step": 1, "setup_seconds": 285.3}
-{"t": 289.1, "epoch": 1793149959.8, "kind": "seq_train", "step": 1, "play_seconds": 0.0, "groups": 16}
-{"t": 289.1, "epoch": 1793149959.8, "kind": "seq_early_ahead", "step": 2, "specs": 192, "groups": 16, "during_play": 16}
-{"t": 519.9, "epoch": 1793150190.6, "kind": "seq_accumulate", "one_call": true, "groups": 16, "call_util": 68.1, "setup_seconds": 17.93, "window_wait_seconds": 13.1}
-{"t": 531.5, "epoch": 1793150202.3, "kind": "step", "step": 2, "groups": 16}
-{"t": 850.5, "epoch": 1793150521.2, "kind": "seq_phase", "step": 2, "play_seconds": 0.0, "stop": {"aborted": 0, "drain_s": 0.001, "sleep_s": 1.734, "unpark_s": 7.675, "switch_s": 9.41}, "start": {"park_s": 83.687, "wake_s": 229.04, "load_s": 6.022, "switch_s": 318.748, "save_wait_s": 0.494, "recycled": [{"old_pid": 1020, "pid": 3677, "stopped": {"pids": 4, "rss_gib": 156.2, "killed": false, "seconds": 12.16}, "boot_s": 216.3, "seconds": 228.4}, {"old_pid": 1058, "pid": 3656, "stopped": {"pids": 4, "rss_gib": 156.13, "killed": false, "seconds": 8.73}, "boot_s": 220.3, "seconds": 229.0}]}}

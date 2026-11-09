@@ -14,9 +14,9 @@ GRAD_SPIKE = 3.0       # grad norm above this multiple of the run's median so fa
 
 
 def get(remote, local):
-    from arc_infra.runops import volfetch  # the feed export_rl and watch read too: one fetch through the mirror
-
-    return volfetch.copy(VOL, remote, local, modal=str(paths.ROOT_PATH / ".venv/bin/modal"))
+    r = subprocess.run(["uv", "run", "--project", str(paths.ROOT_PATH), "modal", "volume", "get", VOL, remote, str(local),
+                        "--force"], capture_output=True, text=True, timeout=300)
+    return r.returncode == 0 and pathlib.Path(local).exists()
 
 
 def jsonl(path):
@@ -39,9 +39,8 @@ def _bench_heartbeat(run):
     """Seconds since the running bench's last progress line, read inside the job's container (a bench writes no feed
     row until it ends, ~1 h; the feed staleness rule would fire during every bench). None if not readable."""
     try:
-        _, rec = _rec(run)  # the current attempt's app (an attempt's ledger row is <run>/attempt-N in spend.json)
-        app = next((x["row"].get("app_id") for x in reversed(rec.get("ledger") or []) if x.get("row", {}).get("app_id")), None) or next(
-            (r.get("app_id") for r in json.loads((paths.ROOT_PATH / "docs/spend.json").read_text())["runs"] if r.get("run_id") == run), None)
+        app = next((r.get("app_id") for r in json.loads((paths.ROOT_PATH / "docs/spend.json").read_text())["runs"]
+                    if r.get("run_id") == run), None)
         ls = subprocess.run(["uv", "run", "--project", str(paths.ROOT_PATH), "modal", "container", "list", "--json"],
                             capture_output=True, text=True, timeout=120)
         box = next((c["container_id"] for c in json.loads(ls.stdout) if c.get("app_id") == app), None)
@@ -62,29 +61,13 @@ def _bench_heartbeat(run):
         return None
 
 
-def _rec(run):
-    try:
-        sys.path.insert(0, str(paths.ROOT_PATH / "src"))
-        from arc_infra.runops import records as R
-        return R, R.get(run) or {}
-    except Exception:
-        return None, {}
-
-
-def folder(run):
-    """The current attempt's volume folder (records.out_id), as export_rl reads it (28 Oct: real-v11 attempt 2)."""
-    R, rec = _rec(run)
-    return R.out_id(run, rec=rec) if R and rec else run
-
-
 def row(run):
     d = OUT / run; d.mkdir(parents=True, exist_ok=True)
-    fo = folder(run)
-    if not get(f"validation/{fo}/{FEED}", d / "feed.jsonl"):
-        ended = get(f"validation/{fo}/modal-identity.json", d / "identity.json")
+    if not get(f"validation/{run}/{FEED}", d / "feed.jsonl"):
+        ended = get(f"validation/{run}/modal-identity.json", d / "identity.json")
         return {"run": run, "state": "job ended before any feed row" if ended else "starting: no feed yet"}
     ev = jsonl(d / "feed.jsonl")
-    ended = get(f"validation/{fo}/modal-identity.json", d / "identity.json")
+    ended = get(f"validation/{run}/modal-identity.json", d / "identity.json")
     ident = json.loads((d / "identity.json").read_text()) if ended else None
     kinds = [e["kind"] for e in ev]
     rounds = [e for e in ev if e["kind"] == "round"]
@@ -163,8 +146,7 @@ def deviations(r, now=None):
         hb = bench_heartbeat(r["run"])
         r["bench"] = hb
         if hb is None or hb["age"] > STALE_S:
-            d.append(f"stale feed: no row for {(now - r['last_epoch']) / 60:.0f} min (last {r['phase']}; "
-                     + ("no bench heartbeat)" if hb is None else f"bench {hb['age'] / 60:.0f} min old)"))
+            d.append(f"stale feed: no row for {(now - r['last_epoch']) / 60:.0f} min (last {r['phase']}; bench {hb})")
     if r["ended"]: d.append(f"job ended: {json.dumps(r['identity'])[:200]}")
     return d
 
@@ -172,7 +154,7 @@ def deviations(r, now=None):
 def text(r):
     b = [f"{r['mode']} rank {r['rank']}", f"phase {r['phase']}", f"{r['hours']:.1f} h"]
     if r["mode"] == "probe": b.append(f"probe update {r['probe_updates']} of {r['probe_total']}")
-    else: b.append(f"round {r['rounds']}" + (f" of {r['of']}" if r["of"] is not None else ""))  # rl_seq: no round count
+    else: b.append(f"round {r['rounds']} of {r['of']}")
     if r["reward"]: b.append(f"reward {r['reward'][0][1]:.2f} -> {r['reward'][-1][1]:.2f}")
     if r["lp85"]: b.append(f"lp85 {r['lp85'][-1][1]}")
     if r["tok_s"]: b.append(f"{r['tok_s'][-1]:.0f} tok/s play")
@@ -187,9 +169,8 @@ def text(r):
 
 def bits(r):
     """Card lines (status_html)."""
-    total = r['probe_total'] if r['mode'] == 'probe' else r['of']
-    m = [f"<div class='v'>{r['probe_updates'] if r['mode'] == 'probe' else r['rounds']} <small>"
-         + (f"of {total} " if total is not None else "") + f"{'probe updates' if r['mode'] == 'probe' else 'rounds'}"
+    m = [f"<div class='v'>{r['probe_updates'] if r['mode'] == 'probe' else r['rounds']} <small>of "
+         f"{r['probe_total'] if r['mode'] == 'probe' else r['of']} {'probe updates' if r['mode'] == 'probe' else 'rounds'}"
          f" · {r['hours']:.1f} h · phase {r['phase']}</small></div>"]
     if r["reward"]:
         m.append("<div class='m'>sb26 reward per round: " + " · ".join(f"r{n} <b>{v:.2f}</b>" for n, v in r["reward"][-6:]) + "</div>")
@@ -208,7 +189,7 @@ def bits(r):
     if r["pick"]: m.append(f"<div class='m'>LR pick: <b>{r['pick'].get('chosen')}</b> of {r['pick'].get('rates')}</div>")
     dev = deviations(r)
     m.append("<div class='m' style='color:#e03131'>" + "; ".join(dev[:3]) + "</div>" if dev else "<div class='m'>no alerts</div>")
-    m.append(f"<div class='m'>read {paths.local(r['utc']):%H:%M} {paths.tz()}</div>")
+    m.append(f"<div class='m'>read {r['utc'][11:]} UTC</div>")
     return m
 
 

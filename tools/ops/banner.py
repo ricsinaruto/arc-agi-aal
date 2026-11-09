@@ -10,20 +10,11 @@ MON = {m: i for i, m in enumerate(["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Ju
 OWNER = re.compile(r"\bwait(s|ing)? (on|for) the maintainer|\bawaits? the maintainer|\bowner (to )?chooses?\b", re.I)
 
 def spend(prefixes):
-    d = paths.read_json(ROOT / "docs/spend.json"); tot = 0.0
+    d = json.loads((ROOT / "docs/spend.json").read_text()); tot = 0.0
     for v in [d.get("runs")] + [x.get("runs") for x in d.values() if isinstance(x, dict)]:
         for r in v if isinstance(v, list) else []:
             if isinstance(r, dict) and str(r.get("run_id") or r.get("run") or "").split("-")[0] in prefixes: tot += r.get("charged_bound_usd") or 0
     return tot
-
-def cap(key, a):
-    """The arm's $ cap from docs/budget.json (allowances.<arm>.usd, the gate's own), else arm-state's spend_cap."""
-    al = (paths.read_json(ROOT / "docs/budget.json") or {}).get("allowances") or {}
-    for k in [key] + list(a.get("queue_arms") or []):
-        usd = (al.get(k) or {}).get("usd")
-        if isinstance(usd, (int, float)):
-            return usd
-    return a.get("spend_cap") or 0
 
 def nums(r):
     if not r or "state" in r: return ""
@@ -137,12 +128,8 @@ def view(a, started, now):
     v["result"] = (list(v.get("result") or []) + ["", ""])[:2]
     return v
 
-EXTRA = ""
-
-
 def run(live, full, now, failures=()):
-    st = json.loads((H / "arm-state.json").read_text()); lt = paths.local(now); stamp = f"State as of {lt.day} {lt:%b, %H:%M} {paths.tz()} · refreshed every 2 minutes"
-    if EXTRA: stamp += f" · {EXTRA}"  # mon.py: the Modal GPU slot count
+    st = json.loads((H / "arm-state.json").read_text()); stamp = f"State as of {now.day} {now:%b, %H:%M} UTC · refreshed every 10 minutes"
     try: stamp_edits(st, now)
     except Exception as exc: print("edit stamp failed:", exc)
     arms, views = [], {}
@@ -158,7 +145,7 @@ def run(live, full, now, failures=()):
                 + f"<div class='bn-grid'><div><label>Latest result</label><b>{esc(v['result'][0])}</b>{esc(v['result'][1])}</div>"
                 f"<div><label>Next</label>{esc(v['next'] or '')}</div>"
                 f"<div class='{'ask' if ask else ''}'><label>Waiting on you</label>{esc(ask) if ask else 'nothing'}</div>"
-                f"<div><label>Spend</label><b>${spend(a['spend_prefixes']):,.0f}</b>of ${cap(key, a):,}</div></div>"
+                f"<div><label>Spend</label><b>${spend(a['spend_prefixes']):,.0f}</b>of ${a['spend_cap']:,}</div></div>"
                 + runs_table(mine, full, st["labels"]) + "</section>")
         put(a["page"], "<!--BANNER:start-->", "<!--BANNER:end-->", body)
         arms.append(f"<a href='{a['page']}' style='--c:{a['color']}'><b>{esc(a['name'])}</b><span><span class='chip {v['chip']}'>{esc(v['chip_text'] or '')}</span></span>"
@@ -211,7 +198,7 @@ def live_charts(st, live, full):
                     out = [{"name": n, "points": [p for p in ser[n][i] if p[0] <= lim[i] or n in live_n], "dash": n in dashed} for n in ser if ser[n][i]]
                     return out + ([{"name": n, "points": p, "dash": True} for n, p in extra.items()] if i == 0 else [])
                 cap = "dashed = " + ", ".join(dashed + list(extra)) if dashed or extra else "live runs of this arm"
-                charts += [chart("Score by generated tokens", s(0), "million tokens", a.get("chart_y", "score %"), cap + "; refreshed every 2 minutes"),
+                charts += [chart("Score by generated tokens", s(0), "million tokens", a.get("chart_y", "score %"), cap + "; refreshed every 10 minutes"),
                            chart("Tokens per second, 15-minute bins", s(1), "hours of play", "tok/s", "gaps are restarts")]
             if mine and not any("&quot;points&quot;: [[" in c for c in charts[-2:]):
                 charts[-2:] = ["<p class='cap'>Live: " + esc(", ".join(short(r, st["labels"]) for r in mine)) + ". No scored data yet; the charts appear with the first scorecard read.</p>"]

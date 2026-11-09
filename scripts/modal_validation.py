@@ -22,6 +22,13 @@ TEST = os.environ.get("ARC_VALIDATION_TEST", "smoke")
 
 
 def validation_timeout(kind, test):
+    if kind == "arena" and test in ("rsi2-arena", "rsi2-loop"):
+        # RSI arm restart: gen 0 / candidate arena runs on the selection pool; notebook_seconds
+        # (setup + the stage wall) + 300 s, at most 24 h. Run ids rsi-.
+        bundle = (Path(os.environ.get("ARC_VALIDATION_BUNDLE", "")).resolve() if modal.is_local()
+                  else Path("/opt/arc-validation"))
+        study = json.loads((bundle / "configs/comparison.json").read_text())
+        return min(86400, int(study["notebook_seconds"]) + 300)
     choices = {
         ("vllm", "duck-transfer-mxfp8"): 2100,
         ("arena", "smoke"): 1680,
@@ -206,6 +213,10 @@ def validation_timeout(kind, test):
 
 
 def arena_arguments(test):
+    if test == "rsi2-arena":
+        return ["--trial", "duck-transfer"]
+    if test == "rsi2-loop":  # the RSI loop leg (24 h checkpointed legs on 1 RTX)
+        return ["--trial", "rsi2-loop"]
     if test == "research-model":
         return []
     if test == "campaign-9h":
@@ -320,8 +331,7 @@ def reserve(run_id, kind, seconds, *, test="smoke"):
         cpu = globals().get("CPU_CEILING", 8)  # the tests exec reserve() alone
         rate = 0.000842 + cpu * 0.0000131 + 192 * 0.00000222
         bound = (seconds + 60) * rate * 1.15
-        from arc_infra.runops.records import row_cost
-        committed = data["infrastructure_reserve_usd"] + sum(row_cost(r)[0] for r in data["runs"])
+        committed = data["infrastructure_reserve_usd"] + sum(r["charged_bound_usd"] for r in data["runs"])
         if committed + bound > data["cap_usd"]:
             raise RuntimeError(f"Spend cap: ${committed:.2f} + ${bound:.2f} required")
         if any(r["run_id"] == run_id for r in data["runs"]):

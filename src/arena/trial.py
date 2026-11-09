@@ -31,8 +31,6 @@ from .live_progress import settings as live_settings
 from .report import game_row, trial_report
 from .scheduler import GameRecord, Scheduler
 
-TICK_SECONDS = 1.0  # the scheduler tick (the audit allows a switch 1.1 s after its trigger); tests shorten it
-
 KINDS = ("duck-transfer", "duck-public")
 READY_TIMEOUT = 600
 
@@ -428,7 +426,7 @@ class Trial:
         try:
             while wall.remaining() > 0 and any(not t.done() for t in tasks):
                 await asyncio.wait([t for t in tasks if not t.done()],
-                                   timeout=min(TICK_SECONDS, max(0.05, wall.remaining())),
+                                   timeout=min(1.0, max(0.05, wall.remaining())),
                                    return_when=asyncio.FIRST_COMPLETED)
                 scheduler.tick()
                 if lane is not None:

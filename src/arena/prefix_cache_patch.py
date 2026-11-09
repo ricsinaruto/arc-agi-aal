@@ -264,10 +264,6 @@ TAIL_POP_INSERT = ('        if self._arc_tail is not None:\n'
                    '            self._arc_tail.register(request)\n'
                    '            self._arc_tail.after_free()\n')
 COORDINATOR_RELATIVE = 'vllm/v1/core/kv_cache_coordinator.py'
-# Files this module edits, for the CPU patch check (arc_infra.runops.patchcheck); existence only, since the
-# manager file is stacked on cache_patch / reclamation at boot. The tail helper is new, so it is not listed.
-TARGETS = tuple({'relative': r} for r in (SCHEDULER_RELATIVE, MANAGER_RELATIVE, POOL_RELATIVE, KV_MANAGER_RELATIVE,
-                                          COORDINATOR_RELATIVE))
 COORDINATOR_SHA256 = '9cd616a0f6bbd27776aa6bb44c7420c95574f9ffb5e254a8f355937642b8451b'
 EAGLE_DROP_ANCHOR = '                drop_eagle_block = use_eagle and idx not in eagle_verified\n'
 EAGLE_DROP_REPLACEMENT = ('                # ARC spec_decode: no EAGLE last-unit drop (target KV and states of a hit are exact; at\n'
