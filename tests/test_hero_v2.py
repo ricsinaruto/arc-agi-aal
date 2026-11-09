@@ -594,10 +594,3 @@ async def test_compaction_preflight_passes_on_the_served_flash_template():
     assert result["ok"], result["reason"]
     for row in result["shapes"].values():
         assert row["assistant_turn"].startswith("<think>\n\n</think>\n\nWorld model:")
-
-
-@pytest.mark.parametrize("prune,kept", [(None, 512), ("prune12", 448), ("prune-t37", 320)])
-def test_wide_tiles_follow_the_router_expert_count(prune, kept):
-    study = hero_v2.compose(hero(), {**READY, "expert_prune": prune, "gptq_arc": False,
-                                    "wide_tiles": True, "stall_dump": None})
-    assert study["server"]["dense_kernels"]["mid_wide_shapes"] == [[kept, 2560]]

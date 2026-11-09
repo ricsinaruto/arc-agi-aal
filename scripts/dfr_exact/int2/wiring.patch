@@ -1,0 +1,134 @@
+diff --git a/src/arc_infra/serving_kernels_patch.py b/src/arc_infra/serving_kernels_patch.py
+index 658787f4..a17a3efd 100644
+--- a/src/arc_infra/serving_kernels_patch.py
++++ b/src/arc_infra/serving_kernels_patch.py
+@@ -56,6 +56,10 @@ are appended to the serving command by ``arena.serving``.
+   the pinned Triton writers cast on store) and the paged scoring kernel reads the keys up-cast to the query's BF16
+   (``nvidia/ops/qsa.py``). Only the top-2,048-block selection can change (the selected tokens are attended exactly in
+   the main KV); the compressed pages are 64 -> 32 B per token and layer.
++- ``expert_int2`` (INT2 cold half, 8 October; with ``expert_int3`` and an INT2-cold expert overlay): the overlay's
++  int2 experts are served as a second Humming tensor in uint2 with its own launch per projection
++  (``expert_int2_patch`` / ``expert_int2_runtime``, installed as ``vllm/arc_expert_int2.py``; replaces the int3 edit
++  of ``humming_utils.py`` and patches ``fused_humming_moe.py``).
+ """
+ 
+ import hashlib
+@@ -67,6 +71,7 @@ KV8_HELPER = 'vllm/arc_kv8.py'
+ KV4_HELPER = 'vllm/arc_kv4.py'
+ KV8_PREFILL_HELPER = 'vllm/arc_kv8_prefill.py'
+ INT3_HELPER = 'vllm/arc_expert_int3.py'
++INT2_HELPER = 'vllm/arc_expert_int2.py'
+ SETTINGS = 'vllm/arc_serving_kernels.json'
+ DRAFT_VOCAB = 'vllm/arc_draft_vocab.json'
+ DRAFT_VOCAB_SOURCE = 'serving_draft_vocab.json'  # next to this module (scripts/specialization_vocab.py draft-vocab)
+@@ -78,8 +83,9 @@ PLE_MARKER = 'serving-kernels-ple-patch.json'
+ PHASE4_OPTIONS = ('mamba_ssm_cache_dtype', 'moe_backend', 'draft_experts', 'hc_fusion', 'topk_sampler')
+ TWEAK_OPTIONS = ('draft_vocab', 'ple_uva', 'embed_host')
+ OPTIONS = (PHASE4_OPTIONS + ('kv_cache_8bit', 'kv_cache_4bit', 'kv8_prefill') + TWEAK_OPTIONS + ('expert_int3',)
+-           + ('indexer_fp8',))
+-OPTIONAL = ('kv_cache_8bit', 'kv_cache_4bit', 'kv8_prefill') + TWEAK_OPTIONS + ('expert_int3', 'indexer_fp8')
++           + ('indexer_fp8', 'expert_int2'))
++OPTIONAL = ('kv_cache_8bit', 'kv_cache_4bit', 'kv8_prefill') + TWEAK_OPTIONS + ('expert_int3', 'indexer_fp8',
++                                                                               'expert_int2')
+ # moe_backend "marlin" (expert quantization, 28 September): vLLM's Marlin NvFp4 MoE, weight-only W4A16 on the same
+ # NvFp4 weights (BF16 activations); no pinned file changes (the draft layer keeps its own b12x backend).
+ CHOICES = {'mamba_ssm_cache_dtype': ('bfloat16',), 'moe_backend': ('flashinfer_b12x', 'marlin', 'humming'),
+@@ -106,7 +112,7 @@ def kv4_block_tokens(mode, spec_tokens=0):
+         return KV4_BLOCK_TOKENS[mode]
+     page = 10240 * (3 + int(spec_tokens)) * 2 + 48 * 128 * 128 * 2
+     return 64 * -(-page // (64 * KV4_BYTES_PER_TOKEN[mode]))
+-FLAGS = ('hc_fusion', 'topk_sampler', 'ple_uva', 'embed_host', 'indexer_fp8')
++FLAGS = ('hc_fusion', 'topk_sampler', 'ple_uva', 'embed_host', 'indexer_fp8', 'expert_int2')
+ # The pinned serving environment's PLE switch (serving_setup.runtime_environment sets "1"); ple_uva serves the PLE
+ # on the GPU worker instead of the CPU offload process.
+ PLE_OFFLOAD_ENV = 'VLLM_PLE_CPU_OFFLOAD'
+@@ -390,6 +396,8 @@ def validate(spec):
+         raise ValueError('serving_kernels.kv_cache_8bit and kv_cache_4bit are exclusive')
+     if result['expert_int3'] and result['moe_backend'] != 'humming':
+         raise ValueError('serving_kernels.expert_int3 needs moe_backend "humming" (the uint3 repack is Humming\'s)')
++    if result['expert_int2'] and not result['expert_int3']:
++        raise ValueError('serving_kernels.expert_int2 needs expert_int3 (the cold half rides on the int3 repack)')
+     if result['kv8_prefill'] and result['kv_cache_8bit'] != 'int8':
+         raise ValueError('serving_kernels.kv8_prefill needs kv_cache_8bit "int8" (the dequant kernel reads int8 codes)')
+     return {key: result[key] for key in OPTIONS
+@@ -415,7 +423,11 @@ def targets(spec):
+         chosen.append(qsa_kv8_prefill() if spec.get('kv8_prefill') else QSA)
+     if spec.get('kv_cache_4bit'):
+         chosen.append(qsa_kv4())
+-    if spec.get('expert_int3'):
++    if spec.get('expert_int2'):
++        from .expert_int2_patch import TARGETS as INT2_TARGETS
++
++        chosen.extend(INT2_TARGETS)  # its humming_utils.py edits include the int3 repack
++    elif spec.get('expert_int3'):
+         from .expert_int3_patch import TARGET as INT3_TARGET
+ 
+         chosen.append(INT3_TARGET)
+@@ -503,6 +515,8 @@ def apply(site, output, spec):
+     # The 3-bit expert helper, only with its option.
+     int3_helper = (Path(__file__).with_name('expert_int3_runtime.py').read_bytes() if spec.get('expert_int3')
+                    else None)
++    int2_helper = (Path(__file__).with_name('expert_int2_runtime.py').read_bytes() if spec.get('expert_int2')
++                   else None)
+     settings = (json.dumps(spec, sort_keys=True) + '\n').encode()
+     vocab = draft_vocab_bytes(spec)
+     marker = Path(output) / MARKER
+@@ -519,6 +533,8 @@ def apply(site, output, spec):
+             (site / KV8_PREFILL_HELPER).write_bytes(kv8p_helper)
+         if int3_helper is not None:
+             (site / INT3_HELPER).write_bytes(int3_helper)
++        if int2_helper is not None:
++            (site / INT2_HELPER).write_bytes(int2_helper)
+         (site / SETTINGS).write_bytes(settings)
+         if vocab is not None:
+             (site / DRAFT_VOCAB).write_bytes(vocab)
+@@ -539,6 +555,8 @@ def apply(site, output, spec):
+             identity['kv8_prefill_helper_sha256'] = hashlib.sha256(kv8p_helper).hexdigest()
+         if int3_helper is not None:
+             identity['expert_int3_helper_sha256'] = hashlib.sha256(int3_helper).hexdigest()
++        if int2_helper is not None:
++            identity['expert_int2_helper_sha256'] = hashlib.sha256(int2_helper).hexdigest()
+         marker.parent.mkdir(parents=True, exist_ok=True)
+         marker.write_text(json.dumps(identity, indent=2) + '\n')
+         print('ARC_SERVING_KERNELS_PATCH ' + json.dumps(identity, sort_keys=True), flush=True)
+@@ -559,7 +577,9 @@ def apply(site, output, spec):
+                 and (kv8p_helper is None or ((site / KV8_PREFILL_HELPER).is_file()
+                                              and (site / KV8_PREFILL_HELPER).read_bytes() == kv8p_helper))
+                 and (int3_helper is None or ((site / INT3_HELPER).is_file()
+-                                             and (site / INT3_HELPER).read_bytes() == int3_helper))):
++                                             and (site / INT3_HELPER).read_bytes() == int3_helper))
++                and (int2_helper is None or ((site / INT2_HELPER).is_file()
++                                             and (site / INT2_HELPER).read_bytes() == int2_helper))):
+             return identity
+     raise RuntimeError('Serving-kernel overlay found a modified or partially patched pinned file')
+ 
+diff --git a/src/arena/serving.py b/src/arena/serving.py
+index 7433d03a..702c2687 100644
+--- a/src/arena/serving.py
++++ b/src/arena/serving.py
+@@ -269,6 +269,8 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
+         # Before recipe.main(): wait_for_server's deadline, main()'s setup deadline and its SIGALRM read these globals.
+         recipe.SERVER_READY_TIMEOUT, recipe.SETUP_TOTAL_TIMEOUT = (int(v) for v in setup_timeouts)
+     serving_kernels = validate_serving_kernels(serving_kernels)
++    if serving_kernels is not None and serving_kernels.get('expert_int2') and expert_overlay is None:
++        raise ValueError('serving_kernels.expert_int2 needs server.expert_overlay (an INT2-cold overlay)')
+     stack_kernels = validate_stack_kernels(stack_kernels)
+     if type(torch_profiler) is not bool:
+         raise ValueError('torch_profiler must be boolean')
+@@ -431,6 +433,16 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
+                     check=expert_overlay.get('check', 'sha256'),
+                     expert_prune_sha256=expert_prune_sha256 if expert_prune is not None else None)
+                 (Path(working) / expert_overlay_module.RECORD).write_text(json.dumps(record, indent=2))
++                if serving_kernels is not None and serving_kernels.get('expert_int2'):
++                    # INT2 cold half (8 October): the overlay's own cold list, next to the helper that serves it.
++                    from arc_infra.expert_int2_patch import write_settings as write_expert_int2
++
++                    identity = write_expert_int2(
++                        recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages',
++                        expert_overlay_module.load_manifest(dataset_mount(expert_overlay['dataset'], input_root),
++                                                            expert_overlay['manifest_sha256']),
++                        expert_overlay['manifest_sha256'])
++                    (Path(working) / 'expert-int2-start.json').write_text(json.dumps({'identity': identity}, indent=2))
+                 overlays[argv[position]] = record['dest']
+             argv[position] = overlays[argv[position]]
+         if torch_profiler:

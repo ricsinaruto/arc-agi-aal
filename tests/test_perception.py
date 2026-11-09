@@ -1,7 +1,5 @@
 """Exact observations, lossless grid encoding and validated actions."""
 
-import hashlib
-
 import numpy as np
 import pytest
 from conftest import observation, raw
@@ -17,14 +15,6 @@ def test_grid_encoding_is_lossless_and_hash_tracks_content():
     after = board.copy()
     after[9, 20] = 14
     assert board_hash(board) != board_hash(after) and board_hash(board) == board_hash(board.copy())
-
-
-@pytest.mark.parametrize("shape", [(0, 0), (1, 1), (31, 66), (32, 64), (64, 64), (100, 100)])
-def test_board_hash_preserves_existing_digests(shape):
-    board = np.arange(shape[0] * shape[1], dtype=np.uint8).reshape(shape)
-    for value in (board, board.T, board[:, ::2], board.tolist(), board.astype(np.int64)):
-        expected = hashlib.blake2s(np.asarray(value, dtype=np.uint8).tobytes(), digest_size=12).hexdigest()
-        assert board_hash(value) == expected
 
 
 def test_observation_uses_settled_animation_and_copies_arrays():

@@ -33,8 +33,6 @@ like the pinned partial hit (one step, until the copy fence).
 """
 import hashlib
 import json
-import os
-import time
 from array import array
 from collections import Counter
 
@@ -56,31 +54,8 @@ PLACEMENT = "swap"
 # first requests share a parent; the v3 smoke's cap of 4 dropped a primer's entry after 4 same-parent probes.
 MAX_PER_PARENT = 128
 SWEEP_EVERY = 512  # registrations between sweeps of invalid (evicted) entries
-LOG_EVERY = int(os.environ.get("ARC_TAIL_LOG_EVERY", "200"))  # registrations between ARC_TAIL_STATS lines
-# Collapse diagnostics (phase 4, 4 October): "1" logs ARC_TAIL_COLLAPSE once per request whose pinned hit is at most
-# two blocks on a prompt of at least eight: which groups still hold which boundaries of its prefix.
-COLLAPSE_LOG = os.environ.get("ARC_TAIL_COLLAPSE_LOG") == "1"
+LOG_EVERY = 200  # registrations between ARC_TAIL_STATS lines in the server log
 TAG = b"arc-tail"
-# MTP-k (throughput arm, 4 October; prefix_cache_patch writes True with the ``spec_decode`` key): a finished request
-# whose last step was a verify step has its state after the last accepted token in the running column or one of the k
-# speculative columns, depending on that step's acceptance, which the scheduler no longer knows. Two finishes leave the
-# state in the running column with no acceptance bias, and only those register:
-# - an in-flight verify step (async scheduling; num_computed = num_tokens + k): it processed the last sampled token
-#   (position num_tokens - 1) first, so the running column holds the state after num_tokens tokens;
-# - a prefill-only finish (one output token, num_computed = the prompt): the prefill's running state.
-SPEC_TAIL = False
-# tail_spec_acceptance: a finish without an in-flight step registers at its computed length, at the state slot of its
-# last verify step's acceptance a (the scheduler's request._arc_last_accepted): slot (L - a) // B + a.
-SPEC_ACCEPT = False
-# v7 (5 October): under MTP-k a finish by length (the completion cap) registers no entry. With tail_spec_acceptance,
-# 11 of 57 post-cap replies (accept-v2, t37fix, t37dev v1/v2, b2-cachefix) that resumed from such an entry looped
-# ("ductduct...") to the cap again, against 0 of 146 without it; the next request recomputes from the boundary.
-SPEC_SKIP_LENGTH = True
-
-
-def finished_by_length(request):
-    status = getattr(request, "status", None)
-    return getattr(status, "name", status) == "FINISHED_LENGTH_CAPPED"
 
 
 class Entry:
@@ -107,15 +82,9 @@ class TailIndex:
         sizes = set()
         unsupported = []
         managers = manager.coordinator.single_type_managers
-        self.spec = 0
         for gid, (group, mgr) in enumerate(zip(manager.kv_cache_config.kv_cache_groups, managers)):
             name = type(mgr).__name__
-            if (SPEC_TAIL and name == "MambaManager" and mgr.mamba_cache_mode == "align"
-                    and mgr.num_speculative_blocks > 0):
-                self.spec = mgr.num_speculative_blocks
-                self.mamba.append(gid)
-                sizes.add(mgr.block_size)
-            elif name == "CircularBufferManager":
+            if name == "CircularBufferManager":
                 self.ring.append(gid)
             elif name == "MambaManager" and mgr.mamba_cache_mode == "align" and mgr.num_speculative_blocks == 0:
                 self.mamba.append(gid)
@@ -130,7 +99,7 @@ class TailIndex:
             reasons.append(f"unsupported groups {sorted(set(unsupported))}")
         if len(sizes) != 1 or not self.attention or not self.mamba:
             reasons.append(f"attention/Mamba block sizes {sorted(sizes)}")
-        if manager.use_eagle and not (SPEC_TAIL and self.spec):
+        if manager.use_eagle:
             reasons.append("speculative decoding")
         self.block = next(iter(sizes)) if len(sizes) == 1 else None
         if self.block is not None and self.block % self.hash_block:
@@ -159,51 +128,9 @@ class TailIndex:
         """Called by ``KVCacheManager.free`` before the request's blocks return to the pool."""
         if self.disabled is not None or not request.is_finished():
             return
-        if COLLAPSE_LOG:
-            self.record_finish(request)
         B = self.block
         L = request.num_computed_tokens
-        computed = L
-        column = None
-        extra_token = None
-        if self.spec:
-            if SPEC_SKIP_LENGTH and finished_by_length(request):
-                self.stats["skip_spec_length"] += 1
-                return
-            # MTP-k: the entry ends at the state the running column holds with no acceptance bias (SPEC_TAIL).
-            accepted = getattr(request, "_arc_last_accepted", None) if SPEC_ACCEPT else None
-            if computed == request.num_tokens + self.spec:
-                L = request.num_tokens  # an in-flight verify step processed the last sampled token
-                self.stats["spec_inflight"] += 1
-            elif request.num_output_tokens <= 1 and computed == request.num_prompt_tokens:
-                self.stats["spec_prefill_only"] += 1
-            elif (SPEC_ACCEPT and accepted == self.spec and computed == request.num_tokens + self.spec + 1
-                  and getattr(request, "_arc_dropped", None)):
-                # The stop was the last accepted draft and an in-flight step processed the dropped bonus token b
-                # (and a draft): its running slot holds the state after b, so the entry ends at num_tokens + 1
-                # with b as its last token (served only when the next prompt continues with b, e.g. the newline
-                # the chat template puts after <|im_end|>).
-                extra_token = int(request._arc_dropped[0])
-                L = request.num_tokens + 1
-                column = (computed - 1) // B
-                self.stats["spec_dropped_bonus"] += 1
-            elif (accepted == 0 and request.num_output_tokens > 1 and computed == request.num_tokens - 1):
-                # The last verify step rejected its draft: the running slot holds the state after the bonus token.
-                # accepted > 0 is not registered: the temporal state sits in slot `accepted`, but the GDN and PLE
-                # conv states live only in the running slot (read at offset `accepted`), so slot `accepted` carries
-                # another sequence's conv window (6 October, eqv review); `_arc_last_accepted` is also stale after a
-                # step without drafts.
-                column = (computed - accepted) // B + accepted
-                self.stats["spec_accepted"] += 1
-            else:
-                self.stats["skip_spec_unknown_acceptance"] += 1
-                if SPEC_ACCEPT:  # diagnostics: computed - num_tokens and the recorded acceptance of the skipped
-                    self.stats[f"skip_d{computed - request.num_tokens}_a{accepted}"] += 1
-                return
-            if column is None and -(-computed // B) != -(-L // B):
-                self.stats["skip_spec_column"] += 1
-                return
-        if L % B == 0 or L < B or L > request.num_tokens + (extra_token is not None):
+        if L % B == 0 or L < B or L > request.num_tokens:
             self.stats["skip_aligned_or_short"] += 1
             return
         k = L // B
@@ -223,16 +150,8 @@ class TailIndex:
             blocks[gid] = table[k]
         for gid in self.mamba:
             table = managers[gid].req_to_blocks.get(rid) or []
-            if column is not None:
-                # tail_spec_acceptance: the slot must be one of the table's last 1 + k (state) entries.
-                if (column >= len(table) or column < len(table) - 1 - self.spec or table[column].is_null
-                        or table[column].block_hash is not None):
-                    self.stats["skip_mamba_layout"] += 1
-                    return
-                blocks[gid] = table[column]
-                continue
-            # The running state column is cdiv(L, B) - 1 = k, followed by the k speculative columns under MTP-k.
-            if len(table) != cdiv(computed, B) + self.spec or table[k].is_null or table[k].block_hash is not None:
+            # The running state column is cdiv(L, B) - 1 = k and the last one (no speculative blocks).
+            if len(table) != cdiv(L, B) or table[k].is_null or table[k].block_hash is not None:
                 self.stats["skip_mamba_layout"] += 1
                 return
             blocks[gid] = table[k]
@@ -243,10 +162,8 @@ class TailIndex:
                 return
             blocks[gid] = table[0]
         parent = request.block_hashes[parent_index]
-        tokens = list(request.all_token_ids[start:L - (extra_token is not None)])
-        if extra_token is not None:
-            tokens.append(extra_token)
-        extra, _ = generate_block_hash_extra_keys(request, start, L - (extra_token is not None), 0)
+        tokens = list(request.all_token_ids[start:L])
+        extra, _ = generate_block_hash_extra_keys(request, start, L, 0)
         synthetic = self._synthetic(parent, L, tokens, extra)
         keys = {}
         for gid, block in blocks.items():
@@ -262,8 +179,6 @@ class TailIndex:
                     self.superseded.append(kept)
         bucket = self.entries.setdefault(parent, [])
         bucket.insert(0, Entry(L, tokens, extra, keys))
-        if COLLAPSE_LOG:
-            self.__dict__.setdefault("_born", {})[id(bucket[0])] = time.monotonic()
         del bucket[MAX_PER_PARENT:]
         self.stats["registered"] += 1
         self.stats["registered_tail_tokens"] += L - start
@@ -326,8 +241,6 @@ class TailIndex:
     def lookup(self, request, computed_blocks, hit, max_length):
         for gid in self.ring:
             self.pending[gid].pop(request.request_id, None)
-        if COLLAPSE_LOG and self.block and hit <= 2 * self.block and max_length >= 8 * self.block:
-            self.collapse_report(request, hit, max_length)
         if self.disabled is not None or not self.entries:
             return computed_blocks, hit
         B = self.block
@@ -350,8 +263,6 @@ class TailIndex:
                     continue
                 if not self.valid(entry):
                     self.stats["lookup_invalid"] += 1
-                    if COLLAPSE_LOG:
-                        self.invalid_report(request, entry)
                     continue
                 full = self._full_blocks(request, k, computed_blocks, hit)
                 if full is None:
@@ -369,99 +280,6 @@ class TailIndex:
                 self.stats["hit_tokens_above_pinned"] += L - hit
                 return tuple(result), L
         return computed_blocks, hit
-
-    def record_finish(self, request):
-        """Diagnostics: each Mamba group's kept boundary state and table at a finish, keyed by the state's prefix hash,
-        so a later collapse can say what became of the state its game should have resumed from."""
-        records = self.__dict__.setdefault("_finishes", {})
-        managers = self.manager.coordinator.single_type_managers
-        rid, B, unit = request.request_id, self.block, self.hash_block
-        groups, keys = {}, set()
-        for gid in self.mamba:
-            kept = getattr(managers[gid], "_arc_kept_state", {}).get(rid)
-            table = managers[gid].req_to_blocks.get(rid) or []
-            tokens = getattr(kept, "block_hash_num_tokens", None) if kept is not None else None
-            groups[gid] = {"kept": kept, "hash": None if kept is None else kept.block_hash, "tokens": tokens,
-                           "table": [i for i, b in enumerate(table) if not b.is_null and b.block_hash is not None]}
-            if tokens and tokens % B == 0 and tokens // unit - 1 < len(request.block_hashes):
-                keys.add(request.block_hashes[tokens // unit - 1])
-        record = {"time": time.monotonic(), "computed": request.num_computed_tokens, "tokens": request.num_tokens,
-                  "groups": groups, "table_len": len(managers[self.mamba[0]].req_to_blocks.get(rid) or [])}
-        last = request.num_computed_tokens // B
-        if last and last * B // unit - 1 < len(request.block_hashes):
-            keys.add(request.block_hashes[last * B // unit - 1])
-        for key in keys:
-            records[key] = record
-        while len(records) > 8192:
-            records.pop(next(iter(records)))
-
-    def finish_report(self, request, max_length):
-        """The newest recorded finish whose kept state or last boundary lies on this prompt, and its blocks now."""
-        records = self.__dict__.get("_finishes", {})
-        B, unit = self.block, self.hash_block
-        for j in range(max_length // B, 0, -1):
-            index = j * B // unit - 1
-            if index >= len(request.block_hashes):
-                continue
-            record = records.get(request.block_hashes[index])
-            if record is None:
-                continue
-            mapping = self.pool.cached_block_hash_to_block
-            groups = {}
-            for gid, g in record["groups"].items():
-                kept = g["kept"]
-                groups[str(gid)] = None if kept is None else {
-                    "tokens": g["tokens"], "same_hash": kept.block_hash == g["hash"], "ref_cnt": kept.ref_cnt,
-                    "cached": g["hash"] is not None and mapping.contain(g["hash"], kept.block_id),
-                    "table_hashed": g["table"][-4:]}
-            return {"boundary": j, "age_seconds": round(time.monotonic() - record["time"], 2),
-                    "computed": record["computed"], "tokens": record["tokens"], "table_len": record["table_len"],
-                    "groups": groups}
-        return None
-
-    def invalid_report(self, request, entry):
-        """ARC_TAIL_INVALID (diagnostics): which of a matching entry's blocks lost their key, and the entry's age."""
-        mapping = self.pool.cached_block_hash_to_block
-        missing = {str(gid): {"ref_cnt": block.ref_cnt, "rekeyed": block.block_hash is not None and block.block_hash != key}
-                   for gid, (key, block) in entry.keys.items() if not mapping.contain(key, block.block_id)}
-        born = self.__dict__.get("_born", {}).get(id(entry))
-        print("ARC_TAIL_INVALID " + json.dumps({
-            "request": request.request_id, "length": entry.length, "missing": missing,
-            "age_seconds": None if born is None else round(time.monotonic() - born, 2),
-            "free_blocks": self.pool.get_num_free_blocks()}, sort_keys=True), flush=True)
-
-    def collapse_report(self, request, hit, max_length):
-        """ARC_TAIL_COLLAPSE (diagnostics): per group, the boundaries of this prompt still cached, once per request."""
-        seen = self.__dict__.setdefault("_collapse_seen", set())
-        if request.request_id in seen:
-            return
-        seen.add(request.request_id)
-        B, unit = self.block, self.hash_block
-        mapping = self.pool.cached_block_hash_to_block
-        bounds = [j for j in range(1, max_length // B + 1) if j * B // unit - 1 < len(request.block_hashes)]
-
-        def cached(j, gid):
-            key = make_block_hash_with_group_id(request.block_hashes[j * B // unit - 1], gid)
-            return mapping.get_one_block(key) is not None
-
-        groups = {}
-        for gid in self.attention:
-            run = 0
-            for j in bounds:
-                if not cached(j, gid):
-                    break
-                run = j
-            groups[f"attn{gid}"] = {"run": run, "count": sum(cached(j, gid) for j in bounds)}
-        for gid in self.mamba:
-            have = [j for j in bounds if cached(j, gid)]
-            groups[f"mamba{gid}"] = have[-6:]
-        entries = self.entries.get(request.block_hashes[bounds[-1] * B // unit - 1]) if bounds else None
-        print("ARC_TAIL_COLLAPSE " + json.dumps({
-            "request": request.request_id, "prompt": request.num_prompt_tokens, "hit": hit,
-            "max_length": max_length, "boundaries": len(bounds), "groups": groups,
-            "free_blocks": self.pool.get_num_free_blocks(), "tail_entries_at_last_boundary": len(entries or ()),
-            "finish": self.finish_report(request, max_length)},
-            sort_keys=True), flush=True)
 
     # --------------------------------------------------------------------------------------- ring copy
     def _wrap_ring(self, mgr):

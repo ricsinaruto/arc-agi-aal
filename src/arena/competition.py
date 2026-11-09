@@ -102,11 +102,6 @@ def gameplay_seconds(study, hard_end, *, now=None):
     # scheduler and the agents see it) but only at_seconds of it are played, so only those must fit.
     stop = study.get('early_stop') or {}
     needed = min(requested, stop['at_seconds']) if stop.get('always') else requested
-    fit = study['competition'].get('fit_wall_min_seconds')
-    if fit and study['competition'].get('research_clones') and fit <= available < needed:
-        # Harness-arm research runs (3 October): a slow server start shortens the wall instead of losing the run;
-        # the runs are compared at a common horizon. Never on a submission (no research clones there).
-        return int(available)
     if available < needed:
         raise TimeoutError('Insufficient time for the complete public rehearsal')
     return requested
@@ -248,12 +243,8 @@ def open_arcade(study, games_dir, output):
                 for i, game in enumerate(games)
             ], indent=2))
         owner = ScorecardOwner(arcade, output)
-        if server is not None and (settings.get('research_clones') or (settings.get('preview_live_score') and (
-                not is_rerun() or is_rehearsal(study)))):
-            # Live progress reads (ScorecardOwner.peek_score): research clones, or a preview / rerun rehearsal (owner
-            # 25 Oct: Nebius 9 h kf runs) of a competition bundle built with preview_live_score; monitoring only.
-            # Never the hidden gateway (no local server there).
-            owner.local_gateway = server
+        if server is not None and study['competition'].get('research_clones'):
+            owner.local_gateway = server  # live progress reads (ScorecardOwner.peek_score)
         yield resolved, owner
     finally:
         try:

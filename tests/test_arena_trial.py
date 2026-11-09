@@ -149,10 +149,10 @@ def test_cli_merges_trials_and_renders(tmp_path, monkeypatch):
     base = ["--source", ".", "--study", str(study_path), "--output", str(tmp_path / "out"), "--server-dir", str(tmp_path),
             "--games-dir", "games", "--notebook-start-epoch", str(time.time()), "--notebook-seconds", str(10**6)]
     run_module.main([*base, "--trial", "duck-transfer"])
-    run_module.main([*base, "--trial", "duck-public", "--smoke"])
+    run_module.main([*base, "--trial", "qwen-c", "--smoke"])
     record = json.loads((tmp_path / "out/study.json").read_text())
-    assert [t["trial"]["name"] for t in record["trials"]] == ["duck-transfer", "duck-public"]
-    assert calls == [("duck-transfer", False), ("duck-public", True)] and record["hardware"] == {"gpu": "fake"}
+    assert [t["trial"]["name"] for t in record["trials"]] == ["duck-transfer", "qwen-c"]
+    assert calls == [("duck-transfer", False), ("qwen-c", True)] and record["hardware"] == {"gpu": "fake"}
     assert record["comparison"][0]["mean_score_equal_weight_25_games"] == 4.5
     assert "| duck-transfer | complete | 4.50% | 3 | 40 | 120.0 | 0 | 131072 |" in render(record)
     assert "Score (tested games)" in render(record)
@@ -265,12 +265,14 @@ async def test_returned_worker_releases_focus_slot_without_restart(tmp_path, mon
                for e in events)
 
 
-@pytest.mark.parametrize('kind', ['duck-transfer'])
+@pytest.mark.parametrize('kind', ['pi', 'retrodict'])
 @pytest.mark.parametrize('bad_report', [False, True])
 @pytest.mark.parametrize('block_admission', [False, True])
 async def test_archive_metrics_snapshot_after_drain_before_close(tmp_path, monkeypatch, kind, bad_report, block_admission):
     import sqlite3
 
+    if block_admission and kind == 'retrodict':
+        pytest.skip('Retrodict block admission is not enabled')
     games = STUDY['games'][:1]
     study = {**STUDY, 'games': games, 'wall_seconds': 0.06}
     if block_admission:
@@ -316,7 +318,7 @@ async def test_archive_metrics_snapshot_after_drain_before_close(tmp_path, monke
 
         return workers, rows, close
 
-    monkeypatch.setattr(Trial, 'duck_agents', agents)
+    monkeypatch.setattr(Trial, 'qwen_agents', agents)
     trial = Trial(study, {'name': kind, 'kind': kind}, source='.', games_dir='games',
                   output=tmp_path / 'trial', server_dir=tmp_path, base_url='http://localhost',
                   log=lambda *a, **k: None)

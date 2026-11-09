@@ -8,7 +8,7 @@ from pathlib import Path
 import httpx
 import pytest
 from test_arena_cache import layout
-from test_serving_core import import_fork
+from test_qwen_serving import import_fork
 
 from arena import throughput_bench as tb
 from arena.variants import NGRAM_SPECULATION
@@ -188,7 +188,7 @@ def test_ngram_bench_server_command_replaces_the_mtp_draft(tmp_path, monkeypatch
                        'TAAF_VLLM_MAX_NUM_BATCHED_TOKENS': '4096', 'TAAF_VLLM_MTP_TOKENS': '0'}.items():
         monkeypatch.setenv(key, value)
     monkeypatch.setattr(recipe, 'verify_and_extract_runtime', lambda *a, **k: {})
-    recipe.ANALYZER_CONTEXT = 262144  # as arena.serving_core.serving.start sets before launching
+    recipe.ANALYZER_CONTEXT = 262144  # as qwen_baselines.serving.start sets before launching
     receipt = configure(recipe, tmp_path, reclaim_skipped_blocks=True, speculative=NGRAM_SPECULATION)
     assert receipt['speculative'] == NGRAM_SPECULATION and receipt['reclaim_skipped_blocks'] is True
     tuning = recipe.resolve_vllm_tuning()

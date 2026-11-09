@@ -1,4 +1,5 @@
 import hashlib
+import importlib.util
 import json
 from dataclasses import replace
 from pathlib import Path
@@ -6,7 +7,7 @@ from types import SimpleNamespace as NS
 
 import httpx
 import pytest
-from test_serving_core import import_fork
+from test_qwen_serving import import_fork
 
 from arc_infra.model_templates import NEX_MODEL, NEX_REVISION
 from arena import candidate_serving as candidate
@@ -15,6 +16,9 @@ from arena.candidate_profiles import (
     NEX,
     QWEN_27_FP8,
     QWEN_27_NVFP4,
+    UI_MATE_9B,
+    UI_MATE_27B,
+    from_study,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -82,6 +86,12 @@ def test_qwen27_manifest_and_study_reject_model_drift(tmp_path, profile):
     with pytest.raises(RuntimeError, match='MTP inventory'):
         candidate.verify_model(tmp_path, manifest)
 
+    suffix = 'nvfp4' if profile == QWEN_27_NVFP4 else 'fp8'
+    study = json.loads((ROOT / f'configs/arena_30m_qwen27_{suffix}.json').read_text())
+    assert from_study(study) == profile
+    study['server']['mtp_tokens'] = 0
+    with pytest.raises(ValueError, match='MTP/reasoning'):
+        from_study(study)
 
 
 def test_checkpoint_verification_rejects_modified_or_untracked_shards(tmp_path):
@@ -117,14 +127,37 @@ async def test_readiness_checks_candidate_identity_without_ple_log_requirements(
         assert await candidate.ready(recipe, {'pid': 2, 'start_ticks': 3}, timeout=1, base_url='http://test/v1')
 
 
-@pytest.mark.parametrize('profile', [NEX, replace(NEX, effort='none'), QWEN_27_NVFP4, QWEN_27_FP8])
+def test_candidate_bundle_contains_own_weights_reference_and_both_trials(tmp_path):
+    spec = importlib.util.spec_from_file_location('builder', ROOT / 'scripts/build_arena.py')
+    builder = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(builder)
+    output, study = builder.build('nex-test', output=tmp_path / 'bundle', paired_30m=True, nex=True, include_pi=True)
+    builder.kaggle_files(output, study, smoke=False)
+    metadata = json.loads((output / 'kernel-metadata.json').read_text())
+    assert metadata['model_sources'] == []
+    assert 'richardcsaky/arc-nex-n25-mini-nvfp4' in metadata['dataset_sources']
+    control = json.loads((ROOT / 'configs/arena_30m.json').read_text())
+    assert study['budget_clock'] == 'inference'
+    assert 'queue, tokenization and tools excluded' in study['level_budget_rule']
+    for key in ['games', 'wall_seconds', 'windows', 'active_limit', 'completion_cap', 'trials', 'temperature']:
+        assert study[key] == control[key]
+    assert study['server']['mtp_tokens'] == 0 and study['reasoning_effort'] == 'high'
+    assert (output / 'src/arena/models/nex-n25-mini-nvfp4.json').is_file()
+    with pytest.raises(ValueError, match='paired'):
+        builder.build('bad', output=tmp_path / 'bad', nex=True)
+
+
+@pytest.mark.parametrize('profile', [NEX, replace(NEX, effort='none'), QWEN_27_NVFP4, QWEN_27_FP8, UI_MATE_9B, UI_MATE_27B])
 @pytest.mark.parametrize('fail', [False, True])
 @pytest.mark.parametrize('graph_size', [None, 128])
 def test_candidate_controller_preserves_failure_evidence_and_owned_cleanup(tmp_path, monkeypatch, fail, profile, graph_size):
-    study = json.loads((ROOT / 'configs/arena_30m_ornith15.json').read_text())
+    study = json.loads((ROOT / 'configs/arena_30m_nex.json').read_text())
     study.update(candidate_profile=profile.name, served_model=profile.model,
                  model_revision=profile.revision, reasoning_effort=profile.effort)
     study['server']['mtp_tokens'] = profile.mtp_tokens
+    native = profile in (UI_MATE_9B, UI_MATE_27B)
+    if native:
+        study['trials'] = [{'name': 'native', 'kind': 'ui-mate-native'}]
     if graph_size is not None:
         study['server']['max_cudagraph_capture_size'] = graph_size
         study['server']['cudagraph_metrics'] = True
@@ -149,7 +182,7 @@ def test_candidate_controller_preserves_failure_evidence_and_owned_cleanup(tmp_p
     monkeypatch.setattr(candidate, 'load_recipe', lambda *a, **k: recipe)
     def configure(*args, graph_capture_size=None, reclaim_skipped_blocks=False, graph_metrics=False, **extra):
         assert graph_capture_size == graph_size
-        assert reclaim_skipped_blocks is study['cache_experiment']['reclaim_skipped_blocks']
+        assert reclaim_skipped_blocks is False
         assert graph_metrics == study['server'].get('cudagraph_metrics', False)
         assert extra == {}  # no prefix cache, ready guard, token details or stall dump without a study/trial asking
         calls.append('cache')
@@ -174,17 +207,51 @@ def test_candidate_controller_preserves_failure_evidence_and_owned_cleanup(tmp_p
 
     monkeypatch.setattr(candidate, 'ready', ready)
     monkeypatch.setattr(candidate, 'preflight', preflight)
+    from ui_mate_actor import preflight as native_preflight
+
+    async def handoff(config, output):
+        assert native and output == tmp_path / 'native-action-preflight'
+        assert config.model == profile.model
+        calls.append('handoff')
+        return {'status': 'passed', 'public_game_actions': 0}
+
+    monkeypatch.setattr(native_preflight, 'check', handoff)
     if fail:
         with pytest.raises(TimeoutError):
             candidate.start(study, tmp_path, '/inputs')
     else:
         candidate.start(study, tmp_path, '/inputs')
     record = json.loads((tmp_path / 'candidate-preflight.json').read_text())
-    assert calls == ['cache', profile.name, *(['stop'] if fail else [])]
+    assert calls == ['cache', profile.name, *(['stop'] if fail else ['handoff'] if native else [])]
     if fail:
         assert record['failed_stage'] == 'model_startup' and record['cleanup']['stopped']
     else:
         assert record['status'] == 'ready' and record['native_preflight']['profile']['mtp_tokens'] == profile.mtp_tokens
+
+
+@pytest.mark.parametrize('profile', [QWEN_27_NVFP4, QWEN_27_FP8])
+def test_qwen27_bundle_preserves_paired_control_and_own_weights(tmp_path, profile):
+    spec = importlib.util.spec_from_file_location('builder', ROOT / 'scripts/build_arena.py')
+    builder = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(builder)
+    output, study = builder.build('candidate-test', output=tmp_path / 'bundle', paired_30m=True,
+                                  candidate_profile=profile.name, include_pi=True)
+    builder.kaggle_files(output, study, smoke=False)
+    metadata = json.loads((output / 'kernel-metadata.json').read_text())
+    manifest = json.loads(profile.manifest.read_text())
+    if profile == QWEN_27_FP8:
+        assert metadata['model_sources'] == [manifest['model_source']]
+        assert manifest['dataset'] not in metadata['dataset_sources']
+    else:
+        assert metadata['model_sources'] == []
+        assert manifest['dataset'] in metadata['dataset_sources']
+    control = json.loads((ROOT / 'configs/arena_30m.json').read_text())
+    assert study['budget_clock'] == 'inference'
+    assert 'queue, tokenization and tools excluded' in study['level_budget_rule']
+    for key in ['games', 'wall_seconds', 'windows', 'active_limit', 'completion_cap', 'trials',
+                'temperature', 'generation_slots', 'reasoning_effort', 'server']:
+        assert study[key] == control[key]
+    assert study['served_model'] == profile.model and study['model_revision'] == profile.revision
 
 
 def test_verified_model_mount_is_explicit_and_versioned(tmp_path):
@@ -205,3 +272,22 @@ def test_verified_model_mount_is_explicit_and_versioned(tmp_path):
         checkpoint_mount({}, manifest, tmp_path)
 
 
+def test_nex_none_builder_and_profile_preserve_comparison(tmp_path):
+    spec = importlib.util.spec_from_file_location('builder_none', ROOT / 'scripts/build_arena.py')
+    builder = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(builder)
+    _, study = builder.build('nex-none', output=tmp_path / 'bundle', paired_30m=True,
+                             nex=True, nex_no_thinking=True, capacity_phase2=True)
+    original = json.loads((ROOT / 'configs/arena_30m_nex.json').read_text())
+    assert from_study(study) == replace(NEX, effort='none')
+    assert from_study(original) == NEX
+    for key in ['games', 'wall_seconds', 'windows', 'completion_cap', 'temperature', 'server']:
+        assert study[key] == original[key]
+    assert study['trials'] == [{'name': 'duck-transfer', 'kind': 'duck-transfer'}]
+    assert study['phase2_admission'] == 'cache_capacity'
+    assert study['model_template_notes']['gameplay'] == 'none'
+    with pytest.raises(ValueError, match='Nex candidate'):
+        builder.build('bad', nex_no_thinking=True)
+    study['server']['mtp_tokens'] = 3
+    with pytest.raises(ValueError, match='MTP/reasoning'):
+        from_study(study)

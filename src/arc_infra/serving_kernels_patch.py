@@ -51,11 +51,6 @@ are appended to the serving command by ``arena.serving``.
 - ``expert_int3: 16`` (with ``moe_backend "humming"`` and an int3 expert overlay): ``humming_utils.py`` re-encodes
   the int3-grid NVFP4 routed experts as Humming uint3 at load (``expert_int3_patch`` / ``expert_int3_runtime``,
   installed as ``vllm/arc_expert_int3.py``; ``ARC_EXPERT_INT3`` in the serving environment).
-- ``indexer_fp8`` (throughput arm, 3 October; docs/research-throughput/LOG.md): the QSA indexer's compressed-key cache
-  in float8 e4m3 instead of BF16 (``nvidia/indexer_qsa.py``: the cache spec dtype, so its pages and the block shrink;
-  the pinned Triton writers cast on store) and the paged scoring kernel reads the keys up-cast to the query's BF16
-  (``nvidia/ops/qsa.py``). Only the top-2,048-block selection can change (the selected tokens are attended exactly in
-  the main KV); the compressed pages are 64 -> 32 B per token and layer.
 """
 
 import hashlib
@@ -77,9 +72,8 @@ PLE_MARKER = 'serving-kernels-ple-patch.json'
 # the settings file the server reads) stay byte-identical.
 PHASE4_OPTIONS = ('mamba_ssm_cache_dtype', 'moe_backend', 'draft_experts', 'hc_fusion', 'topk_sampler')
 TWEAK_OPTIONS = ('draft_vocab', 'ple_uva', 'embed_host')
-OPTIONS = (PHASE4_OPTIONS + ('kv_cache_8bit', 'kv_cache_4bit', 'kv8_prefill') + TWEAK_OPTIONS + ('expert_int3',)
-           + ('indexer_fp8',))
-OPTIONAL = ('kv_cache_8bit', 'kv_cache_4bit', 'kv8_prefill') + TWEAK_OPTIONS + ('expert_int3', 'indexer_fp8')
+OPTIONS = PHASE4_OPTIONS + ('kv_cache_8bit', 'kv_cache_4bit', 'kv8_prefill') + TWEAK_OPTIONS + ('expert_int3',)
+OPTIONAL = ('kv_cache_8bit', 'kv_cache_4bit', 'kv8_prefill') + TWEAK_OPTIONS + ('expert_int3',)
 # moe_backend "marlin" (expert quantization, 28 September): vLLM's Marlin NvFp4 MoE, weight-only W4A16 on the same
 # NvFp4 weights (BF16 activations); no pinned file changes (the draft layer keeps its own b12x backend).
 CHOICES = {'mamba_ssm_cache_dtype': ('bfloat16',), 'moe_backend': ('flashinfer_b12x', 'marlin', 'humming'),
@@ -106,7 +100,7 @@ def kv4_block_tokens(mode, spec_tokens=0):
         return KV4_BLOCK_TOKENS[mode]
     page = 10240 * (3 + int(spec_tokens)) * 2 + 48 * 128 * 128 * 2
     return 64 * -(-page // (64 * KV4_BYTES_PER_TOKEN[mode]))
-FLAGS = ('hc_fusion', 'topk_sampler', 'ple_uva', 'embed_host', 'indexer_fp8')
+FLAGS = ('hc_fusion', 'topk_sampler', 'ple_uva', 'embed_host')
 # The pinned serving environment's PLE switch (serving_setup.runtime_environment sets "1"); ple_uva serves the PLE
 # on the GPU worker instead of the CPU offload process.
 PLE_OFFLOAD_ENV = 'VLLM_PLE_CPU_OFFLOAD'
@@ -346,25 +340,6 @@ PLE = {
                '            getattr(config, "arc_unpruned_" + field, getattr(config, field, None)) != expected\n', 1)],
 }
 TWEAK_TARGETS = (MODEL, PLE)
-# indexer_fp8 (3 October): the compressed-key cache dtype and the scoring kernel's key up-cast.
-INDEXER_FP8 = {
-    'relative': 'vllm/models/qwen3_8_flash_next/nvidia/indexer_qsa.py',
-    'sha256': 'e2f398a2fe29466c9681627651ccb5b8eb2b5980445c9e44b270ff45bcb61066',
-    'edits': [('        self.compressed_key_cache = QSACompressedKeyCache(\n'
-               '            head_size=self.index_head_dim,\n'
-               '            dtype=torch.bfloat16,\n',
-               '        # ARC indexer_fp8 (throughput arm, 3 October): float8 e4m3 compressed keys.\n'
-               '        self.compressed_key_cache = QSACompressedKeyCache(\n'
-               '            head_size=self.index_head_dim,\n'
-               '            dtype=torch.float8_e4m3fn,\n', 1)],
-}
-QSA_OPS_FP8 = {
-    'relative': 'vllm/models/qwen3_8_flash_next/nvidia/ops/qsa.py',
-    'sha256': 'c4ffe3674cafa0ce2dabc39a39f0ddbb4b594bc358ad210ffce9d04383350c7f',
-    'edits': [('        scores = tl.dot(keys, query, out_dtype=tl.float32)\n',
-               '        # ARC indexer_fp8: float8 keys up-cast to the query dtype (exact) before the MMA.\n'
-               '        scores = tl.dot(keys.to(query.dtype), query, out_dtype=tl.float32)\n', 1)],
-}
 
 
 def validate(spec):
@@ -419,8 +394,6 @@ def targets(spec):
         from .expert_int3_patch import TARGET as INT3_TARGET
 
         chosen.append(INT3_TARGET)
-    if spec.get('indexer_fp8'):
-        chosen.extend((INDEXER_FP8, QSA_OPS_FP8))
     return chosen
 
 

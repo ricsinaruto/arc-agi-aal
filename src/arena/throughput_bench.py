@@ -686,19 +686,6 @@ class Bench:
                     except Exception as exc:  # noqa: BLE001 - the report is still written
                         self.errors.append(f"spec_sweep: {type(exc).__name__}: {str(exc)[:300]}")
                     save_spec()
-                if self.spec.get("kernel_profile"):
-                    # Kernel-level profile and real-vs-synthetic step pilot (30 September; arena.kernel_profile).
-                    from .kernel_profile import kernel_profile
-
-                    def save_profile():
-                        (self.output / "bench.json").write_text(json.dumps(report, indent=2))
-
-                    try:
-                        report["kernel_profile"] = await kernel_profile(
-                            self, client, gate, budget, monitor, self.spec["kernel_profile"], save=save_profile)
-                    except Exception as exc:  # noqa: BLE001 - the report is still written
-                        self.errors.append(f"kernel_profile: {type(exc).__name__}: {str(exc)[:300]}")
-                    save_profile()
                 if self.spec.get("stream_sweep") or self.spec.get("partial_check") or self.spec.get("partial_tf"):
                     # hero-v2 pre-check (29 September): decode / mixed step time against the stream count, then the
                     # --prefix-match-unit partial-hit correctness check (arena.hero_v2_precheck).

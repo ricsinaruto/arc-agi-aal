@@ -58,40 +58,6 @@ def window(first, last, streams):
     return out
 
 
-async def capture_profile(bench, client, label, seconds):
-    """Throughput arm (4 October): one torch-profiler capture (the server's profiler config: 3-step delay, 40 steps)
-    while the current load runs; the traces move into the bench output with ``summarize_trace`` summaries."""
-    import shutil
-    from pathlib import Path
-
-    from .throughput_bench import PROFILE_DIR, load_trace, summarize_trace
-
-    root = bench.base_url[:-3] if bench.base_url.endswith("/v1") else bench.base_url
-    folder = Path(bench.server_dir) / PROFILE_DIR
-    before = set(folder.rglob("*")) if folder.is_dir() else set()
-    record = {"label": label}
-    response = await client.post(root + "/start_profile")
-    if response.status_code != 200:
-        raise RuntimeError(f"start_profile {response.status_code}: {response.text[:200]}")
-    await asyncio.sleep(seconds)
-    response = await client.post(root + "/stop_profile")
-    if response.status_code != 200:
-        raise RuntimeError(f"stop_profile {response.status_code}: {response.text[:200]}")
-    destination = bench.output / f"profile-{label}"
-    destination.mkdir(parents=True, exist_ok=True)
-    record["traces"] = []
-    for trace in await bench.new_traces(folder, before):
-        target = destination / trace.name
-        shutil.move(str(trace), target)
-        entry = {"file": f"profile-{label}/{target.name}", "bytes": target.stat().st_size}
-        try:
-            entry["summary"] = summarize_trace(load_trace(target))
-        except Exception as exc:  # noqa: BLE001 - keep the raw trace
-            entry["summary_error"] = f"{type(exc).__name__}: {str(exc)[:200]}"
-        record["traces"].append(entry)
-    return record
-
-
 async def spec_sweep(bench, client, gate, budget, monitor, spec, *, save=lambda: None):
     path = bench.source / spec["contexts"] if bench.source else spec["contexts"]
     contexts = json.loads(open(path).read())["contexts"]
@@ -118,49 +84,10 @@ async def spec_sweep(bench, client, gate, budget, monitor, spec, *, save=lambda:
         finally:
             gate.release(reservation)
 
-    tail = spec.get("mtp_tail_check")
-    if tail:
-        # MTP request-end tail check (throughput arm, 4 October; arena.prefix_replay.mtp_tail_check).
-        from .prefix_replay import mtp_tail_check
-
-        chosen = [c["prompt_ids"] for c in contexts if c["tokens"] >= int(tail.get("min_tokens", 23000))]
-        chosen = chosen[:int(tail.get("sequences", 8))]
-        try:
-            result["mtp_tail_check"] = await mtp_tail_check(client, bench.base_url, model=bench.model,
-                                                            sequences=chosen, spec=tail, log=bench.log,
-                                                            remaining=bench.remaining)
-        except Exception as exc:  # noqa: BLE001 - the report is still written
-            result["errors"].append(f"mtp_tail_check: {type(exc).__name__}: {str(exc)[:300]}")
-        save()
-        if not spec["decode_counts"] and not spec.get("drift") and not spec.get("teacher_force"):
-            result["gpu_memory_end"] = await gpu_memory()
-            return result
-    teacher = spec.get("teacher_force")
-    if teacher:
-        # Throughput arm (3 October): fixed token sequences teacher-forced one at a time (prompt_logprobs top-k over
-        # the last ``positions`` tokens), compared offline across servers (e.g. BF16 vs float8 indexer keys).
-        try:
-            result["teacher_force"] = await teacher_force(bench, client, post, url, teacher)
-        except Exception as exc:  # noqa: BLE001 - the report is still written
-            result["errors"].append(f"teacher_force: {type(exc).__name__}: {str(exc)[:300]}")
-        save()
-        if not spec["decode_counts"] and not spec.get("drift") and not spec.get("greedy"):
-            result["gpu_memory_end"] = await gpu_memory()
-            return result
-
     started = time.monotonic()
     before = await sample()
-    prefill = asyncio.gather(*[post(f"prefill-{i}", c, 1, body(c, max_tokens=1, temperature=0.0))
-                               for i, c in enumerate(contexts)], return_exceptions=True)
-    if spec.get("profile_prefill_seconds"):
-        # Profile the cold prefill (prefill-only steps) while it runs.
-        await asyncio.sleep(5)
-        try:
-            result["profile_prefill"] = await capture_profile(bench, client, "prefill",
-                                                              float(spec["profile_prefill_seconds"]))
-        except Exception as exc:  # noqa: BLE001
-            result["errors"].append(f"profile prefill: {type(exc).__name__}: {str(exc)[:300]}")
-    replies = await prefill
+    replies = await asyncio.gather(*[post(f"prefill-{i}", c, 1, body(c, max_tokens=1, temperature=0.0))
+                                     for i, c in enumerate(contexts)], return_exceptions=True)
     after = await sample()
     result["prefill"] = {"wall_seconds": round(time.monotonic() - started, 2),
                          "ok": sum(getattr(r, "status_code", 0) == 200 for r in replies),
@@ -208,12 +135,6 @@ async def spec_sweep(bench, client, gate, budget, monitor, spec, *, save=lambda:
                 if not finished.is_set():
                     samples.append(now)
             record.update(window(first, samples[-1], streams))
-            if streams in (spec.get("profile_streams") or ()) and not finished.is_set():
-                try:
-                    record["profile"] = await capture_profile(bench, client, f"decode-{streams}",
-                                                              float(spec.get("profile_seconds", 6)))
-                except Exception as exc:  # noqa: BLE001
-                    record["profile_error"] = f"{type(exc).__name__}: {str(exc)[:300]}"
             record["running_min"] = min(s[1].get("vllm:num_requests_running", 0) for s in samples)
             record["kv_cache_usage_max"] = max(s[1].get("vllm:kv_cache_usage_perc", 0) for s in samples)
             record["ended_early"] = finished.is_set()
@@ -275,29 +196,6 @@ async def spec_sweep(bench, client, gate, budget, monitor, spec, *, save=lambda:
             save()
     result["gpu_memory_end"] = await gpu_memory()
     return result
-
-
-async def teacher_force(bench, client, post, url, spec):
-    """Each sequence of ``spec["sequences"]`` (bundle-relative JSON: [{"id", "ids"}]) once, sequentially, temperature 0,
-    ``prompt_logprobs`` = ``top_logprobs``; keeps the top-k of the last ``positions`` positions and their token ids."""
-    from .kernel_gate import token_id
-
-    path = bench.source / spec["sequences"] if bench.source else spec["sequences"]
-    sequences = json.loads(open(path).read())["sequences"]
-    top, keep = int(spec.get("top_logprobs", 10)), int(spec.get("positions", 256))
-    rows, t0 = [], time.monotonic()
-    for s in sequences:
-        response = await post(f"tf-{s['id']}", {"tokens": len(s["ids"])}, 1, {
-            "model": bench.model, "prompt": s["ids"], "max_tokens": 1, "temperature": 0.0, "prompt_logprobs": top})
-        response.raise_for_status()
-        entries = response.json()["choices"][0].get("prompt_logprobs") or []
-        if len(entries) != len(s["ids"]):
-            raise RuntimeError(f"prompt_logprobs length {len(entries)} != {len(s['ids'])}")
-        tail = entries[-keep:]
-        rows.append({"id": s["id"], "tokens": len(s["ids"]), "ids": s["ids"][-keep:],
-                     "top": [{str(token_id(k)): round(float(v["logprob"]), 5) for k, v in (e or {}).items()}
-                             for e in tail]})
-    return {"spec": spec, "seconds": round(time.monotonic() - t0, 2), "sequences": rows}
 
 
 async def drift_check(bench, client, post, url, contexts, spec, sampling):

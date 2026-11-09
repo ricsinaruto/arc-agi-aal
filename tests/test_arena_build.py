@@ -1,4 +1,4 @@
-"""The arena bundle builder, notebook and kernel metadata."""
+"""The arena bundle builder, notebook and kernel metadata; the Pi launcher variant."""
 
 import ast
 import json
@@ -18,7 +18,8 @@ def test_build_bundle_notebook_and_kernel_files(tmp_path):
     for package in builder.PACKAGES:
         assert (output / "src" / package / "__init__.py").is_file()
     assert not (output / "src/duck_controls").exists() and not (output / "src/sglang_bench").exists()
-    assert not (output / "pi").exists() and not (output / "pi-arena").exists()
+    assert (output / "pi/agent.mjs").is_file() and (output / "pi-arena/agent.mjs").is_file()
+    assert (output / "pi/transport.mjs").is_file()
     assert (output / "bootstrap.py").is_file() and (output / "bootstrap_arena.py").is_file()
     assert (output / "configs/duck_controls.yaml").is_file() and (output / "configs/duck_public_notebook.json").is_file()
     comparison = json.loads((output / "configs/comparison.json").read_text())
@@ -43,6 +44,26 @@ def test_build_bundle_notebook_and_kernel_files(tmp_path):
     builder.kaggle_files(full_output, full_study, smoke=False)
     source = json.loads((full_output / "experiment.ipynb").read_text())["cells"][1]["source"]
     assert "'--smoke'" not in source and "--max-seconds', '7200'" in source
+
+
+def test_pi_arena_launcher_has_only_reviewed_timeout_and_modality_changes():
+    original = (ROOT / 'pi/agent.mjs').read_text()
+    arena = (ROOT / 'pi-arena/agent.mjs').read_text()
+    replacements = {
+        '    httpIdleTimeoutMs: 0,\n': '',
+        "input: cfg.textOnly ? ['text'] : ['text', 'image']": "input: ['text', 'image']",
+        'contextWindow: cfg.contextWindow ?? 262144, maxTokens: cfg.contextWindow ?? 262144':
+            'contextWindow: 262144, maxTokens: 262144',
+        "readFile: async p => Buffer.from((await rpc(\n"
+        "      cfg.textOnly && p.toLowerCase().endsWith('.png') ? 'read_grid' : 'read',\n"
+        "      {path: p})).output.trim(), 'base64')":
+            "readFile: async p => Buffer.from((await rpc('read', {path: p})).output.trim(), 'base64')",
+        "!cfg.textOnly && p.toLowerCase().endsWith('.png')": "p.toLowerCase().endsWith('.png')",
+    }
+    for changed, historical in replacements.items():
+        assert arena.count(changed) == 1
+        arena = arena.replace(changed, historical)
+    assert arena == original
 
 
 def test_separate_runtime_dataset_matches_notebook_upload_and_attachment(tmp_path):
@@ -76,8 +97,8 @@ def test_bootstrap_arena_parses_and_names_its_steps():
     source = (ROOT / "scripts/arena/bootstrap.py").read_text()
     tree = ast.parse(source)
     names = {node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)}
-    assert "main" in names and "stage_pi" not in names
-    assert "arena.serving_core.cli" in source and "serve-native" in source and "arena.run" in source and "--smoke" in source
+    assert {"main", "stage_pi"} <= names
+    assert "serve-native" in source and "arena.run" in source and "--smoke" in source
 
 
 def test_cache_variants_preserve_scheduler_context_and_compaction(tmp_path):
@@ -148,7 +169,7 @@ def test_known_unsupported_cache_builds_fail_before_creating_output(tmp_path):
         assert not output.exists()
 
 
-def test_paired_30m_bundle_is_independent_and_runs_the_duck_only(tmp_path):
+def test_paired_30m_bundle_is_independent_and_includes_both_agents(tmp_path):
     import importlib.util
 
     import pytest
@@ -157,17 +178,17 @@ def test_paired_30m_bundle_is_independent_and_runs_the_duck_only(tmp_path):
     builder = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(builder)
     historical = (ROOT / 'configs/arena.json').read_bytes()
-    output, study = builder.build('paired-test', output=tmp_path / 'paired', paired_30m=True)
+    output, study = builder.build('paired-test', output=tmp_path / 'paired', paired_30m=True, include_pi=True)
     builder.kaggle_files(output, study, smoke=False)
     assert study['wall_seconds'] == 1800 and len(study['games']) == 25
-    assert [t['kind'] for t in study['trials']] == ['duck-transfer']
+    assert [t['kind'] for t in study['trials']] == ['duck-transfer', 'pi']
     assert study['windows'] == [131072] and study['isolate_trial_cache']
     assert study['cache_admission'] == 'hybrid_blocks'
     assert study['generation_slots'] == 25 and study['server']['max_num_batched_tokens'] == 4096
-    assert study['notebook_seconds'] >= (1800 + 600) + 1800
+    assert study['notebook_seconds'] >= 2 * (1800 + 600) + 1800
     notebook = json.loads((output / 'experiment.ipynb').read_text())
     assert '1800-second' in notebook['cells'][0]['source']
-    assert 'qwen-c' not in notebook['cells'][0]['source']
+    assert 'qwen-c' in notebook['cells'][0]['source']
     for cell in notebook['cells'][1:]:
         ast.parse(cell['source'])
     assert (ROOT / 'configs/arena.json').read_bytes() == historical
@@ -177,18 +198,29 @@ def test_paired_30m_bundle_is_independent_and_runs_the_duck_only(tmp_path):
     assert not (tmp_path / 'bad').exists()
 
 
-def test_paired_runs_drop_the_retired_pi_trial_and_its_budget(tmp_path):
+def test_new_model_runs_default_to_duck_with_pi_explicitly_opted_in(tmp_path):
     import importlib.util
+
+    import pytest
     spec = importlib.util.spec_from_file_location('builder', ROOT / 'scripts/build_arena.py')
     builder = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(builder)
-    for name, kwargs, config in [('flash', {}, 'arena_30m.json'), ('sglang', {'sglang': True}, 'arena_30m_sglang.json')]:
-        base = json.loads((ROOT / 'configs' / config).read_text())
+    for name, kwargs in [('flash', {}), ('nex', {'nex': True}),
+                         ('sglang', {'sglang': True}), ('ui9', {'candidate_profile': 'ui-mate-9b'})]:
         _, duck = builder.build(name, paired_30m=True, output=tmp_path/name, **kwargs)
+        _, both = builder.build(name+'-pi', paired_30m=True, include_pi=True,
+                                output=tmp_path/(name+'-pi'), **kwargs)
         assert [t['kind'] for t in duck['trials']] == ['duck-transfer']
-        assert duck['wall_seconds'] == 1800 and len(duck['games']) == 25
-        assert duck['notebook_seconds'] == base['notebook_seconds'] - 2400
-        assert duck['kernel_timeout'] == base['kernel_timeout'] - 2400
+        assert [t['kind'] for t in both['trials']] == ['duck-transfer', 'pi']
+        assert duck['wall_seconds'] == both['wall_seconds'] == 1800
+        assert len(duck['games']) == len(both['games']) == 25
+        assert duck['server'] == both['server'] and duck['windows'] == both['windows']
+        assert duck['notebook_seconds'] == both['notebook_seconds'] - 2400
+        assert duck['kernel_timeout'] == both['kernel_timeout'] - 2400
+    with pytest.raises(ValueError, match='Pi opt-in'):
+        builder.build('invalid', output=tmp_path/'invalid', paired_30m=True, include_pi=True,
+                      candidate_profile='ui-mate-9b', ui_mate_native=True)
+    assert not (tmp_path/'invalid').exists()
 
 
 def test_exclude_games_drops_named_games_from_the_30m_roster_only(tmp_path):

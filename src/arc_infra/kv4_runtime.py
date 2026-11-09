@@ -414,7 +414,10 @@ def _qsa_kv4_splitk_kernel(
     TOPK: tl.constexpr, PAGE_SIZE: tl.constexpr, PAGE_TABLE_WIDTH: tl.constexpr, GROUP_SIZE: tl.constexpr,
     HEAD_DIM: tl.constexpr, NUM_QUERY_HEADS: tl.constexpr, NUM_SPLITS: tl.constexpr, NUM_TILES: tl.constexpr,
     BLOCK_M: tl.constexpr, BLOCK_N: tl.constexpr, KEY_BITS: tl.constexpr, INTERPRET: tl.constexpr = False,
+    PV_SPLIT: tl.constexpr = False,
 ) -> None:
+    # PV_SPLIT (ARC_KV4_PV_FP32=1, P0 21 Oct): the FP32 tile weights go to the MMAs as BF16 hi + lo parts (~16
+    # mantissa bits instead of 8; the value codes are exact in BF16), two PV MMAs per tile.
     # The kv8 split-K kernel with packed 4-bit values (and keys for KEY_BITS == 4). Head dimension j of a packed
     # part is 2 * (j // 2) + (j % 2): even dims in the low nibbles, odd dims in the high ones, so the query and the
     # output are split into their even and odd halves. INTERPRET (CPU tests only): FP32 dots of the same
@@ -508,10 +511,19 @@ def _qsa_kv4_splitk_kernel(
         value_scale = (value_scale_raw & -16).to(tl.float32, bitcast=True)
         v_even = ((value_packed & 0xF) - value_zero[:, None]).to(tl.float32)
         v_odd = (((value_packed >> 4) & 0xF) - value_zero[:, None]).to(tl.float32)
-        weights = (probabilities * value_scale[None, :]).to(tl.bfloat16)
+        weights32 = probabilities * value_scale[None, :]
+        weights = weights32.to(tl.bfloat16)
         if INTERPRET:
             acc_even = tl.dot(weights.to(tl.float32), v_even, acc=acc_even * alpha[:, None])
             acc_odd = tl.dot(weights.to(tl.float32), v_odd, acc=acc_odd * alpha[:, None])
+        elif PV_SPLIT:
+            weights_lo = (weights32 - weights.to(tl.float32)).to(tl.bfloat16)
+            v_even16 = v_even.to(tl.bfloat16)
+            v_odd16 = v_odd.to(tl.bfloat16)
+            acc_even = tl.dot(weights, v_even16, acc=acc_even * alpha[:, None])
+            acc_even = tl.dot(weights_lo, v_even16, acc=acc_even)
+            acc_odd = tl.dot(weights, v_odd16, acc=acc_odd * alpha[:, None])
+            acc_odd = tl.dot(weights_lo, v_odd16, acc=acc_odd)
         else:
             acc_even = tl.dot(weights, v_even.to(tl.bfloat16), acc=acc_even * alpha[:, None])
             acc_odd = tl.dot(weights, v_odd.to(tl.bfloat16), acc=acc_odd * alpha[:, None])
@@ -542,6 +554,9 @@ def _qsa_kv4_splitk_kernel(
 
 def _interpreting():
     return os.environ.get("TRITON_INTERPRET") == "1"
+
+
+_PV_SPLIT = os.environ.get("ARC_KV4_PV_FP32") == "1"
 
 
 def sparse_attention(q, k_codes, v_codes, k_scale, v_scale, logical_indices, block_table, token_to_req, out,
@@ -590,7 +605,7 @@ def sparse_attention(q, k_codes, v_codes, k_scale, v_scale, logical_indices, blo
         TOPK=logical_indices.shape[1], PAGE_SIZE=k_codes.shape[1], PAGE_TABLE_WIDTH=block_table.shape[1],
         GROUP_SIZE=group_size, HEAD_DIM=HEAD_DIM, NUM_QUERY_HEADS=q.shape[1], NUM_SPLITS=p["splits"],
         NUM_TILES=p["tiles"], BLOCK_M=p["block_m"], BLOCK_N=p["block_n"], KEY_BITS=key_bits,
-        INTERPRET=_interpreting(), num_warps=p["warps"], num_stages=2,
+        INTERPRET=_interpreting(), PV_SPLIT=_PV_SPLIT, num_warps=p["warps"], num_stages=2,
     )
     if p["splits"] > 1:
         _kv8._qsa_kv8_merge_kernel[(q.shape[0], q.shape[1])](

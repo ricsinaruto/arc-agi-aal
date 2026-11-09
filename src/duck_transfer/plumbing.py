@@ -10,19 +10,15 @@ receipt compaction.
 """
 
 import json
-import time
-from contextlib import ExitStack
 from types import MethodType
 
 from .libraries import with_globals
 
 # "gameplay_changed" .. "view_shift" are present only under the arena's harness v2 (effect-aware receipts);
-# "gameplay_changed", "animation" and the last four only under the arena's dfr_harness (the batch no-op stop);
-# the second line only under the arena's dfr_loop action feedback.
+# "gameplay_changed", "animation" and the last four only under the arena's dfr_harness (the batch no-op stop).
 RECEIPT_KEYS = ("transition", "tried_no_effect_here", "skipped_repeats", "gameplay_changed", "clock_only",
                 "gameplay_cells", "gameplay_bbox", "animation", "view_shift", "no_op_action", "no_op_action_index",
-                "skipped_actions", "action_trace",
-                "gameplay_changed_per_action", "no_op", "fatal_action", "blocked_action", "action_echo")
+                "skipped_actions", "action_trace")
 
 
 class PlumbingMixin:
@@ -32,21 +28,6 @@ class PlumbingMixin:
         owner = self._owner
         module = owner.module
         snapshot = {}
-        logs = ExitStack()
-        files = {}
-
-        def append_transcript(path, label, content):
-            section = module._render_transcript_section(label, content)
-            if not section:
-                return
-            if path not in files:
-                files[path] = [logs.enter_context(open(path, "a", encoding="utf-8", buffering=1 << 16)), 0.0]
-            file, flushed = files[path]
-            file.write(section)
-            now = time.monotonic()
-            if kwargs.get("transcript_updated") is not None or now - flushed >= 2.0:
-                file.flush()
-                files[path][1] = now
 
         def stash(*args, **data):
             snapshot.clear()
@@ -57,7 +38,6 @@ class PlumbingMixin:
                 module.ToolAgent.analyze,
                 load_runtime_state=owner.runtime_state,
                 _write_prompt_log_snapshot=stash,
-                _append_transcript_section=append_transcript,
             ),
             self,
         )
@@ -66,12 +46,9 @@ class PlumbingMixin:
         try:
             return run(state_path, action_num, **kwargs)
         finally:
-            try:
-                if snapshot:
-                    module._write_prompt_log_snapshot(*snapshot["args"], **snapshot["data"])
-                    owner.prompt_log_writes += 1
-            finally:
-                logs.close()  # Preserve the complete transcript on errors and interrupted turns, too.
+            if snapshot:
+                module._write_prompt_log_snapshot(*snapshot["args"], **snapshot["data"])
+                owner.prompt_log_writes += 1
 
     def _run_python_tool(self, state_path, arguments):
         owner = self._owner
@@ -82,7 +59,6 @@ class PlumbingMixin:
                 owner.module.ToolAgent._run_python_tool,
                 load_runtime_state=owner.runtime_state,
                 _ascii_history_view_payload=owner.ascii_history,
-                _ascii_frame_view_payload=owner.frame_view_payload,
                 run_sandboxed_python=owner.sandbox_runner,
             ),
             self,
@@ -107,6 +83,4 @@ class PlumbingMixin:
         for key in RECEIPT_KEYS:
             if key in payload:
                 compact[key] = payload[key]
-        owner = self._owner
-        receipt = getattr(owner, "compact_receipt", None) if owner is not None else None
-        return compact if receipt is None else receipt(compact)
+        return compact

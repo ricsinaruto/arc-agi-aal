@@ -28,6 +28,7 @@ from arc_infra.stack_kernels_patch import apply as apply_stack_kernels
 from arc_infra.stack_kernels_patch import validate as validate_stack_kernels
 from arc_infra.stall_dump_patch import apply as apply_stall_dump
 from arc_infra.stall_dump_patch import validate as validate_stall_dump
+from qwen_baselines.serving import start
 
 from . import expert_overlay as expert_overlay_module
 from .cache import BlockBudget
@@ -36,7 +37,6 @@ from .cache_reclamation import apply as apply_reclamation
 from .compatibility import validate_settings
 from .prefix_cache_patch import apply as apply_prefix_cache
 from .prefix_cache_patch import validate as validate_prefix_cache
-from .serving_core.serving import start
 
 SPECULATIVE_METHODS = ('ngram_gpu',)  # the pinned script's --async-scheduling rejects the CPU `ngram` proposer
 
@@ -231,8 +231,7 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
               expert_overlay=None, input_root='/kaggle/input', expert_probe=False, enforce_eager=False,
               ready_guard_seconds=None, expert_prune=None, expert_prune_sha256=None, prefix_cache=None, prompt_tokens_details=False,
               stall_dump_seconds=None, prefix_match_unit=None, warm_prompt_logprobs=False, research_checkpoint=None,
-              graph_capture_sizes=None, setup_timeouts=None, renderer_num_workers=None,
-              mm_processor_cache_gb=None):
+              graph_capture_sizes=None, setup_timeouts=None):
     if research_checkpoint is not None and (expert_overlay is not None or expert_prune is not None):
         raise ValueError('A research checkpoint cannot use the base Flash expert overlay or pruning mask')
     if type(warm_prompt_logprobs) is not bool:
@@ -247,11 +246,6 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
         raise ValueError('prompt_tokens_details must be boolean')
     if prefix_match_unit is not None and prefix_match_unit not in PREFIX_MATCH_UNITS:
         raise ValueError(f'prefix_match_unit must be one of {PREFIX_MATCH_UNITS}')
-    if renderer_num_workers is not None and (type(renderer_num_workers) is not int or not 1 <= renderer_num_workers <= 16):
-        raise ValueError('renderer_num_workers is an integer 1..16')
-    if mm_processor_cache_gb is not None and (type(mm_processor_cache_gb) not in (int, float)
-                                              or not 0 <= mm_processor_cache_gb <= 4):
-        raise ValueError('mm_processor_cache_gb is a number of GiB in 0..4 (vLLM default 4)')
     dense_kernels = validate_dense_kernels(dense_kernels)
     draft_head = validate_draft_head(draft_head)
     expert_overlay = expert_overlay_module.validate(expert_overlay)
@@ -451,18 +445,6 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
             if '--prefix-match-unit' in argv:
                 raise ValueError('The pinned serving command already sets --prefix-match-unit')
             argv.extend(['--prefix-match-unit', str(prefix_match_unit)])
-        if renderer_num_workers is not None:
-            # B200 (5 October): the API server's chat-template and tokenizer thread pool (vLLM default 1); multimodal
-            # processing keeps its own single thread.
-            if '--renderer-num-workers' in argv:
-                raise ValueError('The pinned serving command already sets --renderer-num-workers')
-            argv.extend(['--renderer-num-workers', str(renderer_num_workers)])
-        if mm_processor_cache_gb is not None:
-            # v7 (5 October): the processed-image LRU is duplicated in the API server and the engine core
-            # (4 GiB each by default); host RAM on Kaggle is ~78.6 GiB with 47.7 GiB of PLE pinned.
-            if '--mm-processor-cache-gb' in argv:
-                raise ValueError('The pinned serving command already sets --mm-processor-cache-gb')
-            argv.extend(['--mm-processor-cache-gb', str(mm_processor_cache_gb)])
         return argv
 
     recipe.server_command = wrapped_command
@@ -481,10 +463,6 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
         result['warm_prompt_logprobs'] = True
     if prefix_match_unit is not None:
         result['prefix_match_unit'] = prefix_match_unit
-    if renderer_num_workers is not None:
-        result['renderer_num_workers'] = renderer_num_workers
-    if mm_processor_cache_gb is not None:
-        result['mm_processor_cache_gb'] = mm_processor_cache_gb
     if graph_metrics:
         result['cudagraph_metrics'] = True
     if speculative is not None:
@@ -601,8 +579,6 @@ def main():
               prompt_tokens_details=lab.get('prompt_tokens_details',
                                             study['server'].get('prompt_tokens_details', False)),
               prefix_match_unit=lab.get('prefix_match_unit', study['server'].get('prefix_match_unit')),
-              renderer_num_workers=study['server'].get('renderer_num_workers'),
-              mm_processor_cache_gb=study['server'].get('mm_processor_cache_gb'),
               warm_prompt_logprobs=lab.get('warm_prompt_logprobs', False),
               ready_guard_seconds=lab.get('ready_guard'),
               setup_timeouts=lab.get('setup_timeouts'),

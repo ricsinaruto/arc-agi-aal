@@ -10,7 +10,7 @@ import pytest
 
 from arena import sglang, sglang_run
 from arena.gate import KVGate
-from arena.trial import duck_config
+from arena.trial import duck_config, qwen_config
 
 ROOT = Path(__file__).resolve().parents[1]
 STUDY = json.loads((ROOT / 'configs/arena_30m_sglang.json').read_text())
@@ -55,13 +55,52 @@ async def test_sglang_gate_respects_both_tokens_and_mamba_concurrency():
     assert gate.reserved == gate.inflight == 0
 
 
-def test_the_duck_agent_uses_the_sglang_alias_and_the_context_target():
+async def test_pi_preflight_distinguishes_native_tokenizer_metadata_from_verified_server_capacity():
+    from arena.clock import ActiveClock, GlobalClock
+    from arena.gate import GateSlot
+    from arena.pi import ArenaRequestLayer
+    from arena.scheduler import GameRecord
+
+    cfg = qwen_config(STUDY, 'pi', window=131072, cap=16384, wall=1800,
+                      base_url='http://mock/v1')
+    game = GameRecord('game', 0, ActiveClock(GlobalClock(1800)))
+    budget = sglang.TokenBudget(STARTUP, STUDY)
+    gate = KVGate(budget.capacity, 4, budget=budget)
+    slot = GateSlot(gate, game, cap=16384, window=131072)
+    reported = 262144
+
+    def endpoint(request):
+        assert request.url.path == '/tokenize'
+        assert json.loads(request.content)['model'] == 'pennyroyal'
+        return httpx.Response(200, json={'count': 17, 'max_model_len': reported})
+
+    async with httpx.AsyncClient(base_url='http://mock/v1/', transport=httpx.MockTransport(endpoint)) as client:
+        old = ArenaRequestLayer(cfg, game, slot, client=client)
+        with pytest.raises(RuntimeError, match='requested 524288'):
+            await old.preflight()
+        layer = ArenaRequestLayer(cfg, game, slot, client=client,
+                                  tokenizer_model_max_length=STUDY['tokenizer_model_max_length'])
+        assert await layer.preflight() == 17
+        assert cfg.context_window == 524288 and cfg.compaction_tokens + cfg.output_tokens_cap == 131072
+        reported = 65536
+        with pytest.raises(RuntimeError, match='metadata differs'):
+            await layer.preflight()
+        for incorrect in (65536, 1048576):
+            with pytest.raises(ValueError, match='verified SGLang'):
+                ArenaRequestLayer(cfg, game, slot, client=client, tokenizer_model_max_length=incorrect)
+        gate.budget = None
+        with pytest.raises(ValueError, match='verified SGLang'):
+            ArenaRequestLayer(cfg, game, slot, client=client, tokenizer_model_max_length=262144)
+
+
+def test_both_agents_use_the_sglang_alias_and_comparable_context_target():
     kwargs = dict(window=131072, cap=16384, wall=1800, base_url='http://127.0.0.1:8001/v1')
     duck = duck_config(STUDY, ROOT, **kwargs)
-    assert duck.model == 'pennyroyal'
-    assert duck.max_model_len == 131072
-    assert duck.gameplay_seconds == 1800
-    assert duck.reasoning_effort == 'xhigh'
+    pi = qwen_config(STUDY, 'pi', **kwargs)
+    assert duck.model == pi.model == 'pennyroyal'
+    assert duck.max_model_len == pi.compaction_tokens + pi.output_tokens_cap == 131072
+    assert pi.context_window == 524288 and duck.gameplay_seconds == pi.gameplay_seconds == 1800
+    assert duck.reasoning_effort == pi.reasoning_effort == 'xhigh'
 
 
 async def test_sglang_isolation_waits_for_idle_and_checks_flush_body(monkeypatch):
@@ -87,19 +126,20 @@ async def test_sglang_isolation_waits_for_idle_and_checks_flush_body(monkeypatch
     assert calls == ['/metrics', '/metrics', '/flush_cache']
 
 
-def test_sglang_arena_bundle_includes_the_pinned_runtime_reference(tmp_path):
+def test_sglang_arena_bundle_includes_pi_and_the_pinned_runtime_reference(tmp_path):
     spec = importlib.util.spec_from_file_location('builder', ROOT / 'scripts/build_arena.py')
     builder = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(builder)
-    output, study = builder.build('sglang-test', output=tmp_path / 'bundle', paired_30m=True, sglang=True)
+    output, study = builder.build('sglang-test', output=tmp_path / 'bundle', paired_30m=True, sglang=True, include_pi=True)
     builder.kaggle_files(output, study, smoke=False)
     assert (output / 'src/sglang_bench/launch.py').is_file()
     for name in ('tokenize_patch.py', 'tokenize_check.py'):
         assert (output / 'src/sglang_bench' / name).is_file()
+    assert (output / 'pi-arena/agent.mjs').is_file()
     meta = json.loads((output / 'kernel-metadata.json').read_text())
     assert meta['dataset_sources'] == [builder.DATASET, 'richardcsaky/arc-sglang-runtime']
-    assert study['wall_seconds'] == 1800 and [t['kind'] for t in study['trials']] == ['duck-transfer']
-    assert study['notebook_seconds'] > study['startup_timeout_seconds'] + 2400
+    assert study['wall_seconds'] == 1800 and len(study['trials']) == 2
+    assert study['notebook_seconds'] > study['startup_timeout_seconds'] + 2 * 2400
 
 
 @pytest.mark.parametrize('failure', [None, 'capacity', 'timeout', 'tokenize'])
@@ -140,11 +180,7 @@ def test_sglang_controller_owns_server_and_stops_after_trials_or_capacity_failur
         stopped.append(True)
         return {'port_free': True}
 
-    real_run = sglang_run.subprocess.run
-
     def run(command, **kwargs):
-        if not (isinstance(command, list) and '--trial' in command):
-            return real_run(command, **kwargs)  # global patch: another test's leaked thread (CI red 9d9a9a591)
         commands.append(command)
         assert kwargs['timeout'] == 2400
         assert command[command.index('--base-url') + 1] == 'http://127.0.0.1:8001/v1'

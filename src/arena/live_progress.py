@@ -73,50 +73,11 @@ def engine_snapshot(samples, window=RATE_WINDOW_SECONDS):
     return result
 
 
-def _gib(kib):
-    return round(kib / 1024**2, 2)
-
-
-def host_memory(proc="/proc", cgroup="/sys/fs/cgroup"):
-    """Host memory now (v7, 5 October: Kaggle's ~78.6 GiB free vs PLE's pinned 47.7 GiB): used (MemTotal -
-    MemAvailable), the cgroup's current / peak where readable, and the summed VmRSS of the vLLM processes (API server,
-    engine core, workers; pinned PLE pages count in the engine's RSS). Monitoring only; None on any failure."""
-    try:
-        info = {}
-        for line in Path(proc, "meminfo").read_text().splitlines():
-            key, _, rest = line.partition(":")
-            info[key] = int(rest.split()[0])
-        out = {"used_gib": _gib(info["MemTotal"] - info["MemAvailable"]), "available_gib": _gib(info["MemAvailable"])}
-        for name in ("memory.current", "memory.peak"):
-            path = Path(cgroup, name)
-            if path.is_file():
-                out["cgroup_" + name.split(".")[1] + "_gib"] = _gib(int(path.read_text().split()[0]) // 1024)
-        rss = {}
-        for entry in Path(proc).iterdir():
-            if not entry.name.isdigit():
-                continue
-            try:
-                cmd = (entry / "cmdline").read_bytes().replace(b"\0", b" ").decode(errors="replace")
-                if "vllm" not in cmd.lower():
-                    continue
-                for line in (entry / "status").read_text().splitlines():
-                    if line.startswith("VmRSS:"):
-                        rss[entry.name] = int(line.split()[1])
-            except OSError:
-                continue
-        out["vllm_rss_gib"] = _gib(sum(rss.values()))
-        out["vllm_processes"] = len(rss)
-        return out
-    except Exception:  # noqa: BLE001 - monitoring must never end the trial
-        return None
-
-
 class LiveProgress:
     def __init__(self, cfg, *, arc, card, monitor, games, clock=time.monotonic, log=None):
         self.cfg, self.arc, self.card, self.monitor, self.games = cfg, arc, card, monitor, games
         self.clock, self.log = clock, log
         self.score, self.score_at, self.score_error = None, None, None
-        self.host_peak = {}
 
     def read_now(self, elapsed):
         """Read the score now (the early-stop rule's read at its time); the next progress rows carry it. Returns the
@@ -150,17 +111,7 @@ class LiveProgress:
             "actions": sum(getattr(g, "total_actions", 0) for g in self.games),
             "errors": {g.game_id: g.error for g in self.games if g.error},
             "engine": engine_snapshot(getattr(self.monitor, "samples", [])),
-            "host": self.host(),
         }
-
-    def host(self):
-        now = host_memory()
-        if now is None:
-            return None
-        for key, value in now.items():
-            if key.endswith("_gib") and key != "available_gib":
-                self.host_peak[key] = max(value, self.host_peak.get(key, 0))
-        return {**now, "peak": dict(self.host_peak)}
 
 
 def summary_line(progress):
@@ -176,8 +127,6 @@ def summary_line(progress):
             "tok_s_recent": engine.get("tokens_per_second_recent"), "tok_s_mean": engine.get("tokens_per_second_mean"),
             "running": engine.get("running"), "waiting": engine.get("waiting"),
             "kv": engine.get("kv_cache_fraction"), "preemptions": engine.get("preemptions"),
-            "host_peak": (live.get("host") or {}).get("peak"),
-            "loop_rule": progress.get("loop_rule"),
             "top_levels": dict(list((live.get("levels_by_game") or {}).items())[:6])}
 
 

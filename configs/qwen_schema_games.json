@@ -1,0 +1,23 @@
+{
+  "status": "prepared-not-launched",
+  "games": [
+    "ft09-0d8bbf25",
+    "lp85-305b61c3",
+    "ar25-0c556536"
+  ],
+  "gameplay_seconds": 900,
+  "game_order": "explicit",
+  "timing": "actual elapsed and max(0,900-elapsed), shared start barrier",
+  "serving_profile": "qwen-minimal-native",
+  "trials": [
+    "S"
+  ],
+  "server_reuse": "drained between sequential trials; prefix caching on (qwen-minimal-native profile, since 15 September)",
+  "fresh_state": "environments, Pi sessions, workdirs and notes for every trial",
+  "selection_source": "https://www.kaggle.com/code/wuliao0/duck-qwen3-8-anim-base?scriptVersionId=347132234",
+  "selection_note": "Scored public Duck notebook (Version 1): ft09 4/6 levels, lp85 5/8. ft09 is click-only and animates on about 35% of actions, lp85 click-only with rare two-frame animation. ar25 (8 levels, arrow actions) replaced tr87 on 17 September: no Qwen or Duck run cleared a tr87 level in 600 s except once, while ar25 was the fastest first clear for Duck agents (13 of 16 twenty-five-game 15-minute runs, from 127 s at 25-way sharing) and appears in the public notebook's first 600 s.",
+  "notebook": "arc_qwen_schema_games.ipynb",
+  "kernel_metadata": "qwen-schema-kernel-metadata.json",
+  "protocol": "Schema procedure via open-schema (brayan07/open-schema 0fa9d44, MIT; validated against the 50 released Schema traces) as CLI subcommands run by the Pi coding agent through bash: observe/backtest/bfs/commit/history, world_model.py contract (init_state/predict or step), per-step misprediction abort, notes.md; Pi compaction at 65536 tokens; 50 tool turns per turn; raw hex grids",
+  "context_caps": "64K since 17 September: A/B history 65,536 prompt tokens, C/P/R/S compaction or fresh session at 65,536 (three concurrent games share a 291,900-token KV cache with a ~27K per-request floor on this hybrid model)"
+}

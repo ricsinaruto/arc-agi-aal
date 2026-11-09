@@ -476,8 +476,7 @@ def test_timeout_interrupts_the_statement_and_keeps_python_state(fixed_sandbox):
     after = run_in(sandbox, "print(helper(41), kept, partial)")
     assert after["stdout"] == "42 [1, 2] set before the loop\n" and after["error"] == ""
     assert sandbox.process.pid == pid and sandbox.restarts == 0 and sandbox.interrupts == 1
-    assert [kind for kind, _ in sandbox.events if kind != "duck_python_heap"] == [
-        "duck_python_interrupt", "duck_python_interrupted"]
+    assert [kind for kind, _ in sandbox.events] == ["duck_python_interrupt", "duck_python_interrupted"]
 
 
 def test_an_interrupt_during_actions_never_breaks_the_protocol(fixed_sandbox):
@@ -654,7 +653,7 @@ def test_opt_in_fixes_are_named_only_and_true_keeps_the_recorded_block():
     assert json.dumps(hf.settings(True)) == json.dumps(RECORDED_BLOCK)
     assert not set(hf.OPTIONAL_FIXES) & set(hf.settings(True)["fixes"])
     full = hf.settings([*hf.FIXES, *hf.OPTIONAL_FIXES])
-    assert full["fixes"] == [*hf.FIXES, "summary_headroom", "inventory_imports", "text_count"]
+    assert full["fixes"] == [*hf.FIXES, "summary_headroom", "inventory_imports"]
     assert set(full) == set(RECORDED_BLOCK)  # no new thresholds
     assert hf.settings(["summary_headroom"])["fixes"] == ["summary_headroom"]
     with pytest.raises(ValueError):

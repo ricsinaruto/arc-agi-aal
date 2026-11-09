@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import base64
 import io
-import itertools
 import os
 from typing import Any
 
 from PIL import Image
 
 from inference.agent.runtime_state import Frame
+
 
 ARC_COLOR_MAP: dict[int, tuple[int, int, int]] = {
     0: (255, 255, 255),
@@ -56,24 +56,12 @@ def frame_to_png_data_url(frame: Frame, *, upscale: int | None = None) -> str:
         raise ValueError("Cannot render an empty grid as an image.")
 
     scale = current_grid_image_upscale() if upscale is None else max(1, int(upscale))
-    data = None
-    if all(len(row) == cols for row in frame.grid):
-        try:
-            data = bytes(itertools.chain.from_iterable(frame.grid))
-        except (TypeError, ValueError, OverflowError):
-            pass
-    if data is not None:
-        image = Image.frombytes("P", (cols, rows), data)
-        image.putpalette(bytes(channel for value in range(256)
-                               for channel in ARC_COLOR_MAP.get(value, ARC_COLOR_MAP[0])))
-        image = image.convert("RGB")
-    else:
-        image = Image.new("RGB", (cols, rows), ARC_COLOR_MAP[0])
-        pixels = image.load()
-        for row_idx, row in enumerate(frame.grid):
-            for col_idx in range(cols):
-                value = row[col_idx] if col_idx < len(row) else 0
-                pixels[col_idx, row_idx] = ARC_COLOR_MAP.get(int(value), ARC_COLOR_MAP[0])
+    image = Image.new("RGB", (cols, rows), ARC_COLOR_MAP[0])
+    pixels = image.load()
+    for row_idx, row in enumerate(frame.grid):
+        for col_idx in range(cols):
+            value = row[col_idx] if col_idx < len(row) else 0
+            pixels[col_idx, row_idx] = ARC_COLOR_MAP.get(int(value), ARC_COLOR_MAP[0])
     if scale > 1:
         image = image.resize((cols * scale, rows * scale), Image.Resampling.NEAREST)
 

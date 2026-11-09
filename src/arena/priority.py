@@ -26,7 +26,7 @@ Behaviour (their gate, at our stream count):
     A = L x (h / (h + actions))^2 x 55 / (N (N + 1) / 2)   (normalize_score; h = human_actions)
     B = 8 / 7 / 5 / 0 for 3+ / 2 / 1 / 0 levels after L    (tail_lookup "remaining"), x the tail fade
     C = w x 0.5^((actions / action_scale)^2) + (1 - w) x 0.5^((tokens / token_scale)^2)   (w = action_weight)
-    priority = max(1, int((A + B) x C x 100))   (``floor`` false: the float (A + B) x C x 100)
+    priority = max(1, int((A + B) x C x 100))
   ``tail_lookup`` "capped" is their capped tail min(tail_cap, tail_base + L - 1) instead.
 - Tail fade: over the last ``tail_fade_fraction`` of the run's wall (the real wall: the competition gateway shortens
   ``GlobalClock.seconds`` to its deadline), B is scaled by the remaining wall / that window, down to 0 at the end, so
@@ -61,9 +61,6 @@ DEFAULTS = {
     # Only for tail_lookup "capped" (their environment defaults).
     "tail_base": 2.0,
     "tail_cap": 4.0,
-    # Their integer floor (max(1, int(value))). False keeps the float: levels past ~300K
-    # tokens no longer tie at 1 and rotate first-in-first-out; the least-spent level goes first.
-    "floor": True,
 }
 TAIL_LOOKUPS = ("remaining", "capped")
 # Admission-log reasons (admission.jsonl ``reason``): admit = why the game got a slot (its first window, else what
@@ -101,7 +98,7 @@ class PrioritySnapshot:
 
 def priority_value(state, *, endgame=False, tail_fraction=None, human_actions=25.0, action_scale=115.0,
                    token_scale=62000.0, action_weight=0.25, tail_base=6.0, tail_cap=6.0, normalize_score=False,
-                   tail_lookup=False, tail_efficiency=0.8, floor=True):
+                   tail_lookup=False, tail_efficiency=0.8):
     """Port of dfranzen's ``priority_value`` (ARC3-Inference, Apache-2.0), argument for argument.
 
     ``tail_lookup`` "remaining" uses the fixed 8/7/5/0 table; False keeps the capped tail min(tail_cap, tail_base +
@@ -139,7 +136,7 @@ def priority_value(state, *, endgame=False, tail_fraction=None, human_actions=25
             + (1.0 - action_weight) * 0.5 ** ((tokens / (token_scale * pace)) ** 2)
         )
         value = (current_value + tail) * chance / pace * 100
-    return max(1, int(value)) if floor else value
+    return max(1, int(value))
 
 
 def settings(raw=None):
@@ -148,7 +145,7 @@ def settings(raw=None):
     unknown = set(merged) - set(DEFAULTS)
     if unknown:
         raise ValueError(f"Unknown priority settings: {sorted(unknown)}")
-    for key in ("refresh_queue", "tail_fade", "normalize_score", "floor"):
+    for key in ("refresh_queue", "tail_fade", "normalize_score"):
         if type(merged[key]) is not bool:
             raise ValueError(f"priority.{key} is true or false")
     if merged["tail_lookup"] not in TAIL_LOOKUPS:
@@ -196,7 +193,7 @@ def score(game, cfg, wall_seconds, remaining_seconds):
         state, tail_fraction=fade, human_actions=cfg["human_actions"], action_scale=cfg["action_scale"],
         token_scale=cfg["token_scale"], action_weight=cfg["action_weight"], tail_base=cfg["tail_base"],
         tail_cap=cfg["tail_cap"], normalize_score=cfg["normalize_score"],
-        tail_lookup="remaining" if cfg["tail_lookup"] == "remaining" else False, floor=cfg["floor"])
+        tail_lookup="remaining" if cfg["tail_lookup"] == "remaining" else False)
     details = {"level": state.level, "actions": state.actions, "tokens": int(state.tokens),
                "total_levels": parse_total_levels(state.total_levels) or 10,
                "tail_fraction": None if fade is None else round(min(1.0, fade), 4)}

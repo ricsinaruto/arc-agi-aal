@@ -1,0 +1,9 @@
+**
+!pyproject.toml
+!src/
+!src/**
+!pi/
+!pi/**
+pi/node_modules
+!tests/
+!tests/test_qwen*

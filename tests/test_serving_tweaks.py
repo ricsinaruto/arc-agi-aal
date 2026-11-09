@@ -60,7 +60,7 @@ def test_phase4_settings_stay_byte_identical_and_tweaks_are_opt_in():
                                                                             "draft_experts")},
                                                       "hc_fusion": False, "topk_sampler": True}
     tweaks = patch.validate(patch.TWEAKS)
-    assert tweaks == patch.TWEAKS and list(tweaks) == [k for k in patch.OPTIONS if k not in ("kv_cache_8bit", "kv_cache_4bit", "kv8_prefill", "expert_int3", "indexer_fp8", "draft_moe_backend")]
+    assert tweaks == patch.TWEAKS and list(tweaks) == [k for k in patch.OPTIONS if k not in ("kv_cache_8bit", "kv_cache_4bit", "kv8_prefill", "expert_int3")]
     assert patch.TWEAKS == {**patch.PHASE4, "draft_vocab": "arena16k", "ple_uva": True, "embed_host": True}
     assert patch.validate({"ple_uva": True}) == {**{k: None for k in patch.CHOICES if k not in patch.OPTIONAL},
                                                  "hc_fusion": False, "topk_sampler": False, "ple_uva": True}
@@ -627,15 +627,3 @@ def test_ple_check_compares_the_gpu_path_with_the_offload_path(monkeypatch):
     ple.ngram_embedding.weight.view(torch.uint8)[:] += 1  # the 'device' table differs from the host one
     with pytest.raises(RuntimeError, match="PLE UVA self-check failed"):
         helper._ple_check(ple, table, ple.ngram_embedding.weight)
-
-
-def test_indexer_fp8_is_opt_in_and_patches_only_the_indexer_files():
-    """Throughput arm (3 October): float8 indexer keys (absent / false: no extra target, settings unchanged)."""
-    base = {**patch.TWEAKS, "kv_cache_4bit": "int4"}
-    off = patch.validate(base)
-    assert "indexer_fp8" not in off and patch.validate({**base, "indexer_fp8": False}) == off
-    on = patch.validate({**base, "indexer_fp8": True})
-    assert on["indexer_fp8"] is True
-    extra = {t["relative"] for t in patch.targets(on)} - {t["relative"] for t in patch.targets(off)}
-    assert extra == {patch.INDEXER_FP8["relative"], patch.QSA_OPS_FP8["relative"]}
-    assert "float8_e4m3fn" in patch.INDEXER_FP8["edits"][0][1] and "keys.to(query.dtype)" in patch.QSA_OPS_FP8["edits"][0][1]

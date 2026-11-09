@@ -149,21 +149,8 @@ class PromptMixin:
         return message
 
     def _build_user_prompt(self, action_num, **kwargs):
-        owner = self._owner
-        # The arena's dfr_loop: a summary carried over an invocation that executed nothing opens with its stale lines.
-        stale = getattr(owner, "stale_opener_lines", None) if owner is not None else None
-        stale = stale(kwargs.get("previous_step_summary")) if stale is not None else None
-        if stale:
-            kwargs = {**kwargs, "previous_step_summary": None}
         text = reduce_user_prompt(super()._build_user_prompt(action_num, **kwargs))
-        if stale:
-            from arena.dfr_loop import NO_SUMMARY_LINE
-
-            lines = text.split("\n")
-            if lines.count(NO_SUMMARY_LINE) != 1:
-                raise ValueError("Pinned Duck no-summary line changed")
-            at = lines.index(NO_SUMMARY_LINE)
-            text = "\n".join([*lines[:at], *stale, *lines[at + 1:]])
+        owner = self._owner
         if owner is not None and "The game is over." in text and owner.obs.state != "GAME_OVER":
             note = game_over_note(
                 owner.auto_reset or {"step": None, "actions": []},

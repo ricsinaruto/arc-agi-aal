@@ -1,8 +1,8 @@
-"""Build the arena bundle: source, configs, locked wheels; the Kaggle notebook, kernel metadata and
-dataset upload. No GPU job is submitted.
+"""Build the arena bundle: source, configs, Pi, locked wheels, Node; the Kaggle notebook,
+kernel metadata and dataset upload. No GPU job is submitted.
 
-``scripts/arena/bundle_bootstrap.py`` (bundled as ``bootstrap.py``) holds the verify/install/evidence helpers and
-``scripts/arena/bootstrap.py`` (bundled as ``bootstrap_arena.py``) is the in-notebook entry point.
+Mirrors ``scripts/qwen/prepare.py`` (the Qwen bundle: C needs Node and Pi) with the Duck
+packages added and ``scripts/arena/bootstrap.py`` as the in-notebook entry point.
 """
 
 import argparse
@@ -20,7 +20,7 @@ from arena.scheduler import token_budget_settings
 from arena.variants import VARIANTS, apply_variant
 
 ROOT = Path(__file__).resolve().parents[1]
-PACKAGES = ("arena", "arc_infra", "inference", "taaf", "duck_transfer")
+PACKAGES = ("arena", "arc_infra", "inference", "taaf", "duck_transfer", "qwen_baselines")
 # Token budgets ("It should definitely be token based to make it comparable with
 # different number of running streams. Make this change and it should apply to all new runs."): every new build's
 # level budgets count completion tokens instead of busy / inference seconds (arena.clock, arena.scheduler;
@@ -33,10 +33,11 @@ TOKEN_CLOCK_TEXT = ("completion tokens of the game's gameplay replies, reasoning
                     "is 1,920 tokens (30 s at 64 tokens per busy second, one focus game at six streams)")
 # Studies whose studied factor is a seconds knob stay on their recorded clock.
 SECONDS_KNOBS = ("max_level_grant_seconds", "t1_cap_seconds", "pool_time_limit_seconds")
+NON_DUCK_KINDS = ("pi", "retrodict", "ui-mate-native", "pi-rlm")
 # Compaction summary mode (reuse the gameplay prompt cache without reasoning, the default
 # for all new runs): the Duck agents' summary continues a pre-filled empty think block after the gameplay prefix
 # (arena.compaction). ``--compaction-thinking gameplay`` (thinking at the gameplay effort, 28 September) or ``off``
-# (tool-less, thinking-off) rebuilds an older study.
+# (tool-less, thinking-off) rebuilds an older study; Pi, Retrodict and Pi-RLM keep their own summary requests.
 COMPACTION_KINDS = ("duck-transfer", "duck-public", "level-bench")
 DEFAULT_COMPACTION_MODE = "prefilled-empty"
 
@@ -107,6 +108,9 @@ def token_clock_exclusion(study):
     knobs = [k for k in SECONDS_KNOBS if study.get(k) is not None]
     if knobs:
         return f"the variant's studied factor is defined in seconds ({', '.join(knobs)})"
+    kinds = sorted({t["kind"] for t in study["trials"]} & set(NON_DUCK_KINDS))
+    if kinds:
+        return f"completion tokens are charged by the Duck agents only; this study has {', '.join(kinds)} trials"
     return None
 THROUGHPUT_GRID = {"prompt_tokens": [8192, 32768, 65536], "concurrency": [1, 2, 4, 8], "output_tokens": 512,
                    "shared_prefix": {"prompt_tokens": 32768, "concurrency": 8, "tail_tokens": 256}}
@@ -279,6 +283,7 @@ def quality_reference(output, grid, reference):
     grid["quality"]["inputs_sha256"] = hashlib.sha256((target / "prompts.json").read_bytes()).hexdigest()
 
 
+PI_FILES =("package.json", "package-lock.json", ".node-version", "agent.mjs", "transport.mjs")
 CONFIGS = ("configs/arena.json", "configs/duck_public_notebook.json", "configs/duck_controls.yaml")
 DATASET = "richardcsaky/arc-arena-runtime"
 # Offline harness evolution rosters (25 September): 14 dev games and 9 held-out games from the
@@ -296,19 +301,21 @@ MODEL_SOURCE = "keithtyser/qwen3-8-flash-next-nvfp4/PyTorch/radixark-modelopt-fp
 PIP_WHEEL = "pip-25.2-py3-none-any.whl"
 PIP_SHA256 = "6d67a2b4e7f14d8b31b8b52648866fa717f45a1eb70e83002f4331d07e953717"
 PIP_URL = "https://files.pythonhosted.org/packages/b7/3f/945ef7ab14dc4f9d7f40288d2df998d1837ee0888ec3659c813487572faa/"
+NODE_FILE = "node-v22.19.0-linux-x64.tar.xz"
+NODE_BASE = "https://nodejs.org/dist/v22.19.0/"
 
 
 def manifest(root):
     return {
         str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
         for p in sorted(root.rglob("*"))
-        if p.is_file() and p.name != "MANIFEST.json" and p.suffix != ".ipynb"
+        if p.is_file() and p.name != "MANIFEST.json" and "node_modules" not in p.parts and p.suffix != ".ipynb"
         and p.name not in ("kernel-metadata.json", "build-manifest.json") and "dataset-upload" not in p.parts
     }
 
 
 def download_dependencies(output):
-    """Locked Linux x86_64 CPU wheels and the pinned bootstrap pip."""
+    """Locked Linux x86_64 CPU wheels, Pi's node_modules and the pinned Node (as prepare.py)."""
     wheels = output / "wheels"
     wheels.mkdir(exist_ok=True)
     pip_wheel = wheels / PIP_WHEEL
@@ -323,6 +330,15 @@ def download_dependencies(output):
          "-r", str(output / "requirements.txt"), "-d", str(wheels)],
         cwd=ROOT, check=True,
     )
+    subprocess.run(["npm", "ci", "--ignore-scripts", "--os=linux", "--cpu=x64", "--prefix", str(output / "pi")], check=True)
+    sums = urllib.request.urlopen(NODE_BASE + "SHASUMS256.txt", timeout=60).read().decode()
+    expected = next(line.split()[0] for line in sums.splitlines() if line.endswith("  " + NODE_FILE))
+    target = output / NODE_FILE
+    if not target.exists() or hashlib.sha256(target.read_bytes()).hexdigest() != expected:
+        urllib.request.urlretrieve(NODE_BASE + NODE_FILE, target)
+    if hashlib.sha256(target.read_bytes()).hexdigest() != expected:
+        raise ValueError("Pinned Node distribution hash mismatch")
+    (output / "NODE_SHA256.txt").write_text(expected + "  " + NODE_FILE + "\n")
 
 
 # Draft-head fine-tune (docs/validation-20260927/draft-head-finetune.md): one server start
@@ -378,7 +394,7 @@ def draft_head_overlay_study(study, output, overlay_dir):
     return study
 
 
-def build(name, *, smoke=False, output=None, dependencies=False, cache_variant=None, paired_30m=False, sglang=False, candidate_profile=None, arena_variant=None, capacity_phase2=False, competition=False, prioritize_parked_progress=False, graph_metrics=False, opening_burst_requests=1, throughput_bench=False, rerun_rehearsal=False, bench_transcript=None, exclude_games=(), evolve=False, wall_seconds=None, serving_ab=False, probe_games=(), generated_games=None, evolve_rounds=None, preview_seconds=3600, preview_instances=110, clone_instances=None, sanity_trial=True, rehearsal_seconds=6000, no_preview=False, weights_overlay=None, serving_lab=False, llamacpp=None, llamacpp_slots=None,
+def build(name, *, smoke=False, output=None, dependencies=False, cache_variant=None, paired_30m=False, sglang=False, nex=False, candidate_profile=None, ui_mate_native=False, arena_variant=None, capacity_phase2=False, include_pi=False, nex_no_thinking=False, competition=False, prioritize_parked_progress=False, graph_metrics=False, opening_burst_requests=1, throughput_bench=False, rerun_rehearsal=False, pi_rlm=False, bench_transcript=None, exclude_games=(), evolve=False, wall_seconds=None, serving_ab=False, probe_games=(), generated_games=None, evolve_rounds=None, preview_seconds=3600, preview_instances=110, clone_instances=None, sanity_trial=True, rehearsal_seconds=6000, no_preview=False, weights_overlay=None, serving_lab=False, llamacpp=None, llamacpp_slots=None,
           llamacpp_kv_unified=False, llamacpp_serve_check=None, level_bench=None, kernel_gate=False,
           kernel_smoke=False, draft_head=None, draft_head_overlay=None, kv8_smoke=False,
           kv8_reference=None, expert_quant=None, expert_quant_phase=None, expert_quant_candidates=None,
@@ -392,31 +408,28 @@ def build(name, *, smoke=False, output=None, dependencies=False, cache_variant=N
           hero_v2_drift_inputs=None, hero_v2_transcript=None, hero_v2_precheck=None, prefix_unit_int4=None,
           prefix_unit_int4_tf_only=False, kv8_prefill_check=None, early_stop=None, hero_v2_soak=False,
           decode_sweep=None,
-          prefix_cache_v3_smoke=None, prefix_cache_v3_recheck=False, campaign_arm=None,
-          preview_live_score=False):
+          prefix_cache_v3_smoke=None, prefix_cache_v3_recheck=False, campaign_arm=None):
     if draft_head is not None and (not throughput_bench or kernel_smoke or serving_ab or serving_lab
                                    or bench_transcript is not None or arena_variant is not None):
         raise ValueError('The draft-head job builds on the plain serving-bench profile (--paired-30m '
                          '--throughput-bench, no variant)')
     if clone_instances is not None and (competition or not paired_30m or smoke or evolve or probe_games or generated_games
-                                        or level_bench is not None or throughput_bench
+                                        or level_bench is not None or throughput_bench or include_pi or pi_rlm
                                         or not 1 <= int(clone_instances) <= 110):
         raise ValueError('--clone-instances is a 1-110 instance research roster on the Duck arena (not competition)')
     if rerun_rehearsal and not competition:
         raise ValueError('The hidden-rerun rehearsal is a competition build')
     if no_preview and not competition:
         raise ValueError('no_preview is a competition build option')
-    if preview_live_score and not competition:
-        raise ValueError('preview_live_score is a competition build option')
     if level_bench is not None and (not paired_30m or smoke or competition or throughput_bench or evolve or probe_games
-                                    or generated_games or cache_variant
+                                    or generated_games or include_pi or pi_rlm or ui_mate_native or cache_variant
                                     or wall_seconds is not None or exclude_games):
         raise ValueError('The level bench builds on the 30-minute Duck arena profile (e.g. --arena-variant '
                          'reclaim-fixed-2x) with no roster, wall or other trial option')
     if type(opening_burst_requests) is not int or opening_burst_requests not in (1, 3):
         raise ValueError('Opening comparison supports FIFO or three-request bursts')
-    if throughput_bench and (not paired_30m or smoke or sglang or competition
-                             or candidate_profile or cache_variant or capacity_phase2
+    if throughput_bench and (not paired_30m or smoke or sglang or competition or include_pi or ui_mate_native
+                             or candidate_profile or nex or cache_variant or capacity_phase2
                              or prioritize_parked_progress or opening_burst_requests != 1
                              or arena_variant not in (None, 'cache-reclaim', 'reclaim-mtp1', 'reclaim-mtp4',
                                                       'reclaim-ngram', 'reclaim-ngram8', 'reclaim-graph-128',
@@ -442,20 +455,27 @@ def build(name, *, smoke=False, output=None, dependencies=False, cache_variant=N
         raise ValueError('The prefix-cache smoke is the serving benchmark on the hero prefix arm, and only it')
     if prefix_cache_smoke and (bench_transcript is None or serving_ab or serving_lab or kv8_reference or kernel_smoke):
         raise ValueError('The prefix-cache smoke takes --bench-transcript and no other bench option')
-    if opening_burst_requests != 1 and (not paired_30m or smoke or prioritize_parked_progress):
+    if opening_burst_requests != 1 and (not paired_30m or smoke or include_pi
+                                        or ui_mate_native or prioritize_parked_progress):
         raise ValueError('Opening affinity requires a standalone full Duck-transfer research study')
     if type(graph_metrics) is not bool or (graph_metrics and (not paired_30m or smoke or sglang or competition)):
         raise ValueError('CUDA graph metrics require a full vLLM arena research study')
     if prioritize_parked_progress and (not paired_30m or smoke or cache_variant
                                       or arena_variant not in (None, 'control', 'cache-reclaim')):
         raise ValueError('Parked-progress comparison requires a full arena control without another scheduling variant')
-    if competition and (not paired_30m or smoke or sglang or candidate_profile
-                        or capacity_phase2 or cache_variant
+    if competition and (not paired_30m or smoke or include_pi or sglang or nex or candidate_profile
+                        or ui_mate_native or capacity_phase2 or cache_variant
                         or arena_variant not in (None, 'control', 'cache-reclaim', 'reclaim-fixed-2x', 'fixed-2x-stall-open360', 'fixed-2x-index-lane', 'fixed-2x-worldmodel', 'fixed-2x-mtp0-wide-kernels', 'fixed-2x-mtp0-wide-kv8-hero', 'fixed-2x-mtp0-wide-kv8-hero-6x64k')):
         raise ValueError('Competition requires the fixed Flash Duck-transfer control, cache-reclaim, reclaim-fixed-2x, fixed-2x-stall-open360, fixed-2x-index-lane, fixed-2x-worldmodel or fixed-2x-mtp0-wide-kv8-hero variant')
+    if pi_rlm and (not paired_30m or ui_mate_native or include_pi or competition or sglang or nex
+                   or candidate_profile or throughput_bench or cache_variant
+                   or prioritize_parked_progress):
+        raise ValueError('The Pi RLM trial runs alone on the Flash vLLM 30-minute arena profile')
+    if include_pi and (not paired_30m or ui_mate_native):
+        raise ValueError('Pi opt-in requires the full 30-minute model/arena study, not the native actor')
     if capacity_phase2 and (not paired_30m or arena_variant not in (None, 'graph-128') or cache_variant or smoke):
         raise ValueError('Cache-sized phase 2 requires a full model comparison; only the graph-128 serving variant may be combined')
-    if arena_variant is not None and (not paired_30m or smoke or cache_variant):
+    if arena_variant is not None and (not paired_30m or ui_mate_native or smoke or cache_variant):
         raise ValueError('Arena variants require the independent paired 30-minute study')
     if arena_variant is not None and arena_variant not in VARIANTS:
         raise ValueError('Unknown arena variant')
@@ -463,9 +483,25 @@ def build(name, *, smoke=False, output=None, dependencies=False, cache_variant=N
         raise ValueError('CUDA graph capture comparison requires vLLM')
     if sglang and arena_variant == 'cache-reclaim':
         raise ValueError('Sparse cache reclamation comparison requires vLLM')
-    # The other screened models' configs were retired on 4 October (cleanup); Ornith stays for the paused
-    # post-training arm (M0 overlay evaluation).
-    candidate_configs = {'ornith15-35b-a3b-nvfp4': 'arena_30m_ornith15.json'}
+    if nex and candidate_profile:
+        raise ValueError('Select only one candidate profile')
+    candidate_profile = 'nex-n25-mini-nvfp4' if nex else candidate_profile
+    if nex_no_thinking and candidate_profile != 'nex-n25-mini-nvfp4':
+        raise ValueError('Native none reasoning requires the Nex candidate')
+    if ui_mate_native and candidate_profile not in ('ui-mate-9b', 'ui-mate-27b'):
+        raise ValueError('Native UI-Mate requires a pinned UI-Mate candidate')
+    candidate_configs = {'nex-n25-mini-nvfp4': 'arena_30m_nex.json',
+                         'qwen38-27b-nvfp4': 'arena_30m_qwen27_nvfp4.json',
+                         'qwen38-27b-fp8': 'arena_30m_qwen27_fp8.json',
+                         'ui-mate-9b': 'arena_30m_ui_mate_9b.json',
+                         'ui-mate-27b': 'arena_30m_ui_mate_27b.json',
+                         'minicpm5-2b': 'arena_30m_minicpm5.json',
+                         'qwen36-35b-a3b-nvfp4': 'arena_30m_qwen36.json',
+                         'nemotron3-super-nvfp4': 'arena_30m_nemotron3_super.json',
+                         'nemotron35-lightning-nvfp4': 'arena_30m_nemotron35_lightning.json',
+                         'qwen35-122b-a10b-nvfp4': 'arena_30m_qwen35_122b.json',
+                         'ornith15-35b-a3b-nvfp4': 'arena_30m_ornith15.json',
+                         'holo4-27b-nvfp4': 'arena_30m_holo4_27b.json'}
     if candidate_profile and (not paired_30m or sglang):
         raise ValueError('Candidates require the paired 30-minute vLLM profile')
     if candidate_profile and candidate_profile not in candidate_configs:
@@ -480,18 +516,28 @@ def build(name, *, smoke=False, output=None, dependencies=False, cache_variant=N
     output = Path(output or ROOT / "dist" / name).resolve()
     if output.exists():
         for child in output.iterdir():
-            if child.name != "wheels":
+            if child.name not in ("wheels", "pi", NODE_FILE, "NODE_SHA256.txt"):
                 shutil.rmtree(child) if child.is_dir() else child.unlink()
     output.mkdir(parents=True, exist_ok=True)
     ignore = shutil.ignore_patterns("__pycache__", "*.pyc")
-    for package in (*PACKAGES, *(["sglang_bench"] if sglang else [])):
+    for package in (*PACKAGES, *(["sglang_bench"] if sglang else []),
+                    *(["ui_mate_actor"] if ui_mate_native else [])):
         target = output / "src" / package
         if target.exists():
             shutil.rmtree(target)
         shutil.copytree(ROOT / "src" / package, target, ignore=ignore)
+    (output / "pi").mkdir(exist_ok=True)
+    for file in PI_FILES:
+        shutil.copyfile(ROOT / "pi" / file, output / "pi" / file)
+    (output / "pi-arena").mkdir(exist_ok=True)
+    shutil.copyfile(ROOT / "pi-arena/agent.mjs", output / "pi-arena/agent.mjs")
     (output / "configs").mkdir(exist_ok=True)
-    config_name = candidate_configs[candidate_profile] if candidate_profile else "arena_30m_sglang.json" if sglang else "arena_30m.json" if paired_30m else "arena.json"
+    config_name = candidate_configs[candidate_profile] if candidate_profile else "arena_30m_sglang.json" if sglang else "arena_30m_pi_rlm.json" if pi_rlm else "arena_30m.json" if paired_30m else "arena.json"
     study = json.loads((ROOT / "configs" / config_name).read_text())
+    if nex_no_thinking:
+        study['reasoning_effort'] = 'none'
+        study['model_template_notes']['gameplay'] = 'none'
+        study['reasoning_intervention'] = {'control': 'high', 'candidate': 'none'}
     hero_v2_candidate = bool(candidate_profile) and (hero_v2 is not None or hero_v2_smoke
                                                      or hero_v2_served_blocks is not None)
     if arena_variant is not None and not hero_v2_candidate:
@@ -506,7 +552,7 @@ def build(name, *, smoke=False, output=None, dependencies=False, cache_variant=N
         # September: "please create a competition submission with run B"), the competition gateway: the public
         # preview's cyclic instances and gateway enumeration on the hidden rerun.
         if (hero_v2 is None or arena_variant != hero_v2_module.BASE or not paired_30m or smoke
-                or throughput_bench or (clone_instances is None) == (not competition)):
+                or throughput_bench or (clone_instances is None) == (not competition) or include_pi or pi_rlm):
             raise ValueError('hero-v2 builds on the hero variant with the clone roster or the competition gateway '
                              f'(--arena-30m --arena-variant {hero_v2_module.BASE} --hero-v2 JSON, and '
                              '--clone-instances N or --competition)')
@@ -518,7 +564,7 @@ def build(name, *, smoke=False, output=None, dependencies=False, cache_variant=N
         if hero_v2_candidate:
             # hero-v2 on a candidate checkpoint (Holo4-27B, 29 September): the Flash hero study gives the arena side,
             # the candidate config the checkpoint and serving (arena.hero_v2.compose_candidate).
-            if weights_overlay is not None or capacity_phase2:
+            if ui_mate_native or nex_no_thinking or weights_overlay is not None or capacity_phase2:
                 raise ValueError('hero-v2 on a candidate takes no other candidate option')
             hero = apply_variant(json.loads((ROOT / "configs/arena_30m.json").read_text()), arena_variant)
             study = hero_v2_module.compose_candidate(hero, study, hero_v2, served_blocks=hero_v2_served_blocks,
@@ -535,14 +581,21 @@ def build(name, *, smoke=False, output=None, dependencies=False, cache_variant=N
     if capacity_phase2:
         study['phase2_admission'] = 'cache_capacity'
         study['active_limit'] = 'resolved_from_cache'
-    if paired_30m:
-        # The paired configs' second trial (the retired Pi baseline C, "qwen-c") is always dropped.
-        study['harness_selection'] = 'duck-transfer default'
-        study['trials'] = [t for t in study['trials'] if t['kind'] == 'duck-transfer']
-        # Remove the second 30-minute trial and its 10-minute cleanup allowance.
-        # Keep the model-specific setup budget and first-trial cleanup intact.
-        study['notebook_seconds'] -= 2400
-        study['kernel_timeout'] -= 2400
+    if paired_30m and not ui_mate_native and not pi_rlm:
+        study['harness_selection'] = 'duck-transfer plus explicit Pi opt-in' if include_pi else 'duck-transfer default'
+        if not include_pi:
+            study['trials'] = [t for t in study['trials'] if t['kind'] == 'duck-transfer']
+            # Remove the second 30-minute trial and its 10-minute cleanup allowance.
+            # Keep the model-specific setup budget and first-trial cleanup intact.
+            study['notebook_seconds'] -= 2400
+            study['kernel_timeout'] -= 2400
+    if ui_mate_native:
+        study.update(trials=[{"name": "ui-mate-native", "kind": "ui-mate-native"}],
+                     notebook_seconds=6000, kernel_timeout=6300,
+                     context_policy="native five-image history; 100 complete exchanges; token backstop at 128K",
+                     native_actor={"upstream_revision": "1cb9e1e44ce856e23b593992b02efbd489943fcb",
+                                   "images_to_keep": 5, "history_exchanges": 100,
+                                   "image_pixels": 512, "interface": "ARC keyboard/click mapping"})
     if cache_variant is not None:
         if cache_variant not in {"blocks", "cpu", "fp8"} or smoke:
             raise ValueError("Cache variants require a full 25-game Duck-transfer study")
@@ -944,7 +997,7 @@ def build(name, *, smoke=False, output=None, dependencies=False, cache_variant=N
     if wall_seconds is not None and wall_seconds != study["wall_seconds"]:
         # One-hour arena: every run on the 23-game roster gets 3,600 s of
         # gameplay; the notebook and kernel limits grow by the same amount.
-        if not paired_30m or smoke or competition or throughput_bench:
+        if not paired_30m or smoke or competition or include_pi or throughput_bench:
             raise ValueError("--wall-seconds applies to the Duck-transfer arena only")
         delta = int(wall_seconds) - int(study["wall_seconds"])
         study["wall_seconds"] = int(wall_seconds)
@@ -961,8 +1014,8 @@ def build(name, *, smoke=False, output=None, dependencies=False, cache_variant=N
         study = level_bench_study(study, output, level_bench, candidate_profile=candidate_profile)
     if llamacpp is not None:
         study = llamacpp_study(study, llamacpp, probe=bool(probe_games), smoke=smoke, sglang=sglang,
-                               candidate=candidate_profile, competition=competition,
-                               bench=throughput_bench, evolve=evolve,
+                               candidate=candidate_profile or nex or ui_mate_native, competition=competition,
+                               bench=throughput_bench, evolve=evolve, include_pi=include_pi or pi_rlm,
                                slots=llamacpp_slots, kv_unified=llamacpp_kv_unified,
                                serve_check=llamacpp_serve_check)
     study["name"] = name
@@ -1010,10 +1063,10 @@ def build(name, *, smoke=False, output=None, dependencies=False, cache_variant=N
         if preview_seconds != 3600 or not sanity_trial:
             # Short public preview (a 15-minute 110-instance check before
             # submitting); the hidden rerun is unchanged (it plays for the whole envelope).
-            # Up to 8 h (four- and eight-hour Modal runs of the competition bundle; a Kaggle saved
-            # version of 28,800 s plus setup still fits the 12 h kernel limit).
-            if not 300 <= int(preview_seconds) <= 28800:
-                raise ValueError('The public preview must be 300-28800 seconds')
+            # Up to 4 h (four-hour Modal runs of the competition bundle; a Kaggle saved version of
+            # 14,400 s plus setup still fits the 12 h kernel limit).
+            if not 300 <= int(preview_seconds) <= 14400:
+                raise ValueError('The public preview must be 300-14400 seconds')
             study['competition']['preview_seconds'] = int(preview_seconds)
             # The bootstrap budgets each preview trial by the study wall (lane-v1 preview skipped its
             # trial: 1,780 s left < 3,600 + 300); the hidden rerun recomputes its wall from the envelope.
@@ -1028,12 +1081,6 @@ def build(name, *, smoke=False, output=None, dependencies=False, cache_variant=N
             if not 1 <= int(preview_instances) <= 110:
                 raise ValueError('The public preview must have 1-110 instances')
             study['competition']['preview_instances'] = int(preview_instances)
-        if preview_live_score:
-            # Live score in the public preview's progress (4 October: Modal preview tests of competition bundles had
-            # score None): the controller reads the local gateway's open scorecard in-process; never on the rerun.
-            if no_preview:
-                raise ValueError('preview_live_score needs the public preview')
-            study['competition']['preview_live_score'] = True
         if no_preview:
             # No public preview (out of Kaggle GPU quota; the build is tested offline by a Modal
             # rerun rehearsal instead). Outside the hidden rerun the notebook only verifies and unpacks the runtime
@@ -1092,8 +1139,8 @@ def build(name, *, smoke=False, output=None, dependencies=False, cache_variant=N
             raise ValueError("--draft-head-overlay serves a trained head; it is not a training job option")
         study = draft_head_overlay_study(study, output, draft_head_overlay)
     if expert_quant is not None:
-        if (not paired_30m or smoke or arena_variant is not None or throughput_bench or competition
-                or candidate_profile or sglang or kernel_gate or level_bench is not None or evolve):
+        if (not paired_30m or smoke or arena_variant is not None or throughput_bench or competition or include_pi
+                or pi_rlm or candidate_profile or sglang or kernel_gate or level_bench is not None or evolve):
             raise ValueError('The expert-quantization trials build on the plain Flash 30-minute arena profile alone')
         if expert_quant_phase == "evaluate":
             study = expert_quant_eval_study(study, output, expert_quant, expert_quant_candidates or {})
@@ -1101,14 +1148,14 @@ def build(name, *, smoke=False, output=None, dependencies=False, cache_variant=N
             study = expert_quant_study(study, output, expert_quant, expert_quant_phase,
                                        overrides=expert_quant_settings, prune_variant=expert_quant_prune)
     if drift_long is not None:
-        if (not paired_30m or smoke or arena_variant is not None or throughput_bench or competition
-                or candidate_profile or sglang or kernel_gate or level_bench is not None or evolve
+        if (not paired_30m or smoke or arena_variant is not None or throughput_bench or competition or include_pi
+                or pi_rlm or candidate_profile or sglang or kernel_gate or level_bench is not None or evolve
                 or expert_quant is not None):
             raise ValueError('The drift test builds on the plain Flash 30-minute arena profile alone')
         study = drift_long_study(study, output, drift_long)
     if kv4_drift is not None:
-        if (not paired_30m or smoke or arena_variant is not None or throughput_bench or competition
-                or candidate_profile or sglang or kernel_gate or level_bench is not None or evolve
+        if (not paired_30m or smoke or arena_variant is not None or throughput_bench or competition or include_pi
+                or pi_rlm or candidate_profile or sglang or kernel_gate or level_bench is not None or evolve
                 or expert_quant is not None or drift_long is not None):
             raise ValueError('The 4-bit KV drift test builds on the plain Flash 30-minute arena profile alone')
         study = kv4_drift_study(study, output, kv4_drift)
@@ -1166,19 +1213,19 @@ def build(name, *, smoke=False, output=None, dependencies=False, cache_variant=N
                            if t['kind'] == 'duck-transfer' else t for t in study['trials']]
     if expert_prune_hang_test:
         if (not paired_30m or smoke or arena_variant != 'fixed-2x-mtp0-wide-kv8-hero-prune12' or throughput_bench
-                or competition or expert_usage is not None or expert_prune_check is not None):
+                or competition or include_pi or pi_rlm or expert_usage is not None or expert_prune_check is not None):
             raise ValueError('The prune hang test builds on the prune12 hero variant alone (--arena-30m '
                              '--arena-variant fixed-2x-mtp0-wide-kv8-hero-prune12)')
         study = expert_prune_hang_study(study)
     if expert_prune_check is not None:
         if (not paired_30m or smoke or arena_variant != 'fixed-2x-mtp0-wide-kv8-hero' or throughput_bench
-                or competition or expert_usage is not None or kernel_gate):
+                or competition or include_pi or pi_rlm or expert_usage is not None or kernel_gate):
             raise ValueError('The expert-prune check builds on the hero variant alone (--arena-30m '
                              '--arena-variant fixed-2x-mtp0-wide-kv8-hero)')
         study = expert_prune_check_study(study, output, expert_prune_check, levels=expert_prune_levels)
     if expert_usage is not None:
-        if (not paired_30m or smoke or arena_variant is not None or throughput_bench or competition
-                or candidate_profile or sglang or kernel_gate or level_bench is not None or evolve):
+        if (not paired_30m or smoke or arena_variant is not None or throughput_bench or competition or include_pi
+                or pi_rlm or candidate_profile or sglang or kernel_gate or level_bench is not None or evolve):
             raise ValueError('The expert-usage measurement builds on the plain Flash 30-minute arena profile alone')
         study = expert_usage_study(study, output, expert_usage, measure_only=expert_usage_measure_only)
     if study["server"].get("expert_prune"):
@@ -1273,7 +1320,7 @@ def build(name, *, smoke=False, output=None, dependencies=False, cache_variant=N
     (output / "configs/comparison.json").write_text(json.dumps(study, indent=2) + "\n")
     for config in CONFIGS[1:]:
         shutil.copyfile(ROOT / config, output / "configs" / Path(config).name)
-    shutil.copyfile(ROOT / "scripts/arena/bundle_bootstrap.py", output / "bootstrap.py")
+    shutil.copyfile(ROOT / "scripts/qwen/bootstrap.py", output / "bootstrap.py")
     shutil.copyfile(ROOT / "scripts/arena/bootstrap.py", output / "bootstrap_arena.py")
     subprocess.run(
         ["uv", "export", "--frozen", "--no-dev", "--no-editable", "--no-emit-project",
@@ -2481,14 +2528,14 @@ def level_bench_study(study, output, options, *, candidate_profile=None):
     return study
 
 
-def llamacpp_study(study, name, *, probe, smoke, sglang, candidate, competition, bench, evolve,
+def llamacpp_study(study, name, *, probe, smoke, sglang, candidate, competition, bench, evolve, include_pi,
                    slots=None, kv_unified=False, serve_check=None):
     """A Duck-transfer probe on llama-server (model screens, 27 September): the profile's model,
     per-slot window, slots, sampling and effort replace the Flash vLLM serving keys; the probe roster,
     wall, scheduler variant, completion cap and harness stay as built."""
     from arena.llamacpp_profiles import profile
 
-    if not probe or smoke or sglang or candidate or competition or bench or evolve:
+    if not probe or smoke or sglang or candidate or competition or bench or evolve or include_pi:
         raise ValueError("--llamacpp builds a Duck-transfer --probe-games study only")
     prof = dict(profile(name))
     # GLM follow-up: a unified KV cache (the path the glm5next PR fixed) or one slot
@@ -2755,7 +2802,7 @@ def level_bench_options(args):
     if not args.level_bench:
         return None
     options = {"wall_seconds": args.bench_wall_seconds, "split": args.bench_split,
-               "mtp_tokens": None if (args.candidate or args.sglang) else args.bench_mtp}
+               "mtp_tokens": None if (args.candidate or args.sglang or args.nex) else args.bench_mtp}
     for key in ("concurrency", "window", "token_budget", "passes"):
         value = getattr(args, f"bench_{key}")
         if value is not None:
@@ -2774,12 +2821,25 @@ def main():
     parser.add_argument("--cache-variant", choices=["blocks", "cpu", "fp8"])
     parser.add_argument("--arena-30m", "--paired-30m", dest="paired_30m", action="store_true",
                         help="25 games, 1800 s: Duck-transfer by default (legacy --paired-30m alias retained)")
+    parser.add_argument("--include-pi", action="store_true",
+                        help="Also run Pi C for a promising improvement or a Pi-specific change")
+    parser.add_argument("--pi-rlm", action="store_true",
+                        help="The generic Pi RLM harness (persistent kernel, shared notes/skills) as the only trial")
     parser.add_argument("--sglang", action="store_true", help="Arena on the pinned Pennyroyal SGLang recipe")
+    parser.add_argument("--nex", action="store_true", help="Nex NVFP4 arena with native template and no MTP")
+    parser.add_argument("--nex-no-thinking", action="store_true",
+                        help="Use native Nex none reasoning for gameplay; preserves other settings")
+    parser.add_argument("--ui-mate-native", action="store_true",
+                        help="Separate 25-game 30m native screenshot/action trial for a UI-Mate candidate")
     parser.add_argument("--arena-variant", choices=VARIANTS,
                         help="Control or one-factor concurrency/context/allocation/CUDA graph comparison")
-    parser.add_argument("--candidate", choices=['ornith15-35b-a3b-nvfp4'],
+    parser.add_argument("--candidate", choices=['nex-n25-mini-nvfp4', 'qwen38-27b-nvfp4', 'qwen38-27b-fp8',
+                                                'ui-mate-9b', 'ui-mate-27b', 'minicpm5-2b',
+                                                'qwen36-35b-a3b-nvfp4', 'nemotron3-super-nvfp4',
+                                                'nemotron35-lightning-nvfp4', 'qwen35-122b-a10b-nvfp4',
+                                                'ornith15-35b-a3b-nvfp4', 'holo4-27b-nvfp4'],
                         help="Arena using a reviewed checkpoint-specific serving profile")
-    parser.add_argument("--dependencies", action="store_true", help="Download the locked wheels")
+    parser.add_argument("--dependencies", action="store_true", help="Download locked wheels, Node and Pi dependencies")
     parser.add_argument('--competition', action='store_true',
                         help='Flash Duck: one-hour 110-game preview and nine-hour hidden gateway rerun')
     parser.add_argument('--prioritize-parked-progress', action='store_true',
@@ -2962,7 +3022,8 @@ def main():
     name = args.name + ("-smoke" if args.smoke and not args.name.endswith("-smoke") else "")
     output, study = build(name, smoke=args.smoke, output=args.output, dependencies=args.dependencies,
                           cache_variant=args.cache_variant, paired_30m=args.paired_30m, sglang=args.sglang,
-                          candidate_profile=args.candidate, arena_variant=args.arena_variant,
+                          nex=args.nex, nex_no_thinking=args.nex_no_thinking, candidate_profile=args.candidate, ui_mate_native=args.ui_mate_native,
+                          arena_variant=args.arena_variant, include_pi=args.include_pi,
                           competition=args.competition,
                           prioritize_parked_progress=args.prioritize_parked_progress,
                           graph_metrics=args.cudagraph_metrics,
@@ -3006,13 +3067,14 @@ def main():
                           budget_clock=args.budget_clock, compaction_thinking=args.compaction_thinking,
                           drift_long=args.drift_long, kv4_drift=args.kv4_drift, kv8_prefill_check=args.kv8_prefill_check,
                           early_stop=json.loads(args.early_stop) if args.early_stop else None,
+                          pi_rlm=args.pi_rlm,
                           capacity_phase2=(args.paired_30m and not args.smoke and not args.cache_variant
                                            and not args.throughput_bench and not args.expert_quant and not args.drift_long
                                            and not args.kv4_drift
                                            and not args.expert_usage and not args.expert_prune_check
                                            and not args.expert_prune_hang_test
                                            and (args.arena_variant is None
-                                                or (args.arena_variant == 'graph-128' and args.candidate))
+                                                or (args.arena_variant == 'graph-128' and (args.candidate or args.nex)))
                                            and not args.fixed_phase2_control
                                            and not args.competition))
     digest = kaggle_files(output, study, smoke=args.smoke, kernel_suffix=args.kernel_suffix,

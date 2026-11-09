@@ -1,11 +1,8 @@
 """One independent game session: environment, scorecard, workspace and counters."""
 
 import asyncio
-import atexit
 import json
-import threading
 import time
-import weakref
 from collections import Counter
 from pathlib import Path
 
@@ -15,75 +12,31 @@ from .perception import Observation, board_hash
 
 
 class Workspace:
-    """Append-only per-game log of observations, model traffic and agent events.
-
-    v7.1 (6 October): one open, buffered handle per game (flushed at least every ``FLUSH_SECONDS``, at "finished" and at
-    exit) instead of open/write/close per event, and ``current.json`` at most every ``CURRENT_SECONDS``: each syscall
-    gives up the GIL, and under a busy fleet every re-acquire waited a switch interval (B200 run 1: env.step 8 -> 157
-    ms, trivial python calls 3-6 -> 30-70 ms over 12 h)."""
-
-    FLUSH_SECONDS = 2.0
-    CURRENT_SECONDS = 5.0
-    _open = weakref.WeakSet()
+    """Append-only per-game log of observations, model traffic and agent events."""
 
     def __init__(self, root):
         self.root = Path(root).resolve()
         self.root.mkdir(parents=True, exist_ok=True)
         self.log = self.root / "log.jsonl"
-        self._lock = threading.Lock()
-        self._file = None
-        self._flushed = float("-inf")  # the first event always flushes (a fresh VM's monotonic clock starts near 0)
-        self._current = None
-        self._current_at = float("-inf")
 
     def append(self, kind, **payload):
-        line = json.dumps({"kind": kind, "time": time.time(), **payload}, ensure_ascii=False,
-                          separators=(",", ":")) + "\n"
-        with self._lock:
-            if self._file is None:
-                self._file = self.log.open("a", buffering=1 << 16)
-                Workspace._open.add(self)
-            self._file.write(line)
-            now = time.monotonic()
-            if kind == "finished" or now - self._flushed >= self.FLUSH_SECONDS:
-                self._file.flush()
-                self._flushed = now
-        if kind == "finished":
-            self.flush()
-
-    def flush(self):
-        with self._lock:
-            if self._file is not None:
-                self._file.flush()
-            current, self._current = self._current, None
-        if current is not None:
-            self._write_current(current)
-
-    def _write_current(self, data):
-        temp = self.root / "current.tmp"
-        temp.write_text(json.dumps(data, separators=(",", ":")))
-        temp.replace(self.root / "current.json")
+        with self.log.open("a") as file:
+            file.write(
+                json.dumps(
+                    {"kind": kind, "time": time.time(), **payload},
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                )
+                + "\n"
+            )
 
     def observe(self, step, observation, action=None):
         data = {"step": step, "action": action, **observation.payload()}
         self.append("observation", **data)
-        now = time.monotonic()
-        if now - self._current_at >= self.CURRENT_SECONDS:
-            self._current_at, self._current = now, None
-            self._write_current(data)
-        else:
-            self._current = data  # written at the next flush()
-
-    @classmethod
-    def flush_all(cls):
-        for workspace in list(cls._open):
-            try:
-                workspace.flush()
-            except (OSError, ValueError):
-                pass
-
-
-atexit.register(Workspace.flush_all)
+        path = self.root / "current.json"
+        temp = self.root / "current.tmp"
+        temp.write_text(json.dumps(data, separators=(",", ":")))
+        temp.replace(path)
 
 
 class GameSession:

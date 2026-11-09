@@ -1,5 +1,6 @@
 import asyncio
 import importlib.util
+import json
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -68,7 +69,7 @@ def test_bundle_selects_cache_sized_phase2_and_documents_it(tmp_path):
     builder = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(builder)
     output, cfg = builder.build('cache-sized-test', output=tmp_path/'bundle', paired_30m=True,
-                                candidate_profile='ornith15-35b-a3b-nvfp4', capacity_phase2=True)
+                                candidate_profile='ui-mate-9b', capacity_phase2=True)
     assert cfg['phase2_admission'] == 'cache_capacity'
     assert cfg['active_limit'] == 'resolved_from_cache'
     assert cfg['windows'] == [131072] and cfg['server']['gpu_memory_utilization'] == '0.96'
@@ -80,15 +81,17 @@ def test_bundle_selects_cache_sized_phase2_and_documents_it(tmp_path):
 
 
 @pytest.mark.parametrize('options,expected', [
-    (['--arena-30m', '--candidate', 'ornith15-35b-a3b-nvfp4'], True),
-    (['--arena-30m'], True),
+    (['--arena-30m', '--candidate', 'ui-mate-9b'], True),
+    (['--arena-30m', '--include-pi'], True),
+    (['--paired-30m', '--candidate', 'ui-mate-27b', '--ui-mate-native'], True),
+    (['--paired-30m', '--nex'], True),
     (['--paired-30m', '--fixed-phase2-control'], False),
     (['--paired-30m', '--arena-variant', 'phase2-four'], False),
-    (['--arena-30m', '--candidate', 'ornith15-35b-a3b-nvfp4', '--arena-variant', 'graph-128'], True),
-    (['--arena-30m', '--candidate', 'ornith15-35b-a3b-nvfp4', '--arena-variant', 'graph-128',
+    (['--arena-30m', '--candidate', 'qwen38-27b-fp8', '--arena-variant', 'graph-128'], True),
+    (['--arena-30m', '--candidate', 'qwen38-27b-nvfp4', '--arena-variant', 'graph-128',
       '--fixed-phase2-control'], False),
     (['--arena-30m', '--arena-variant', 'reclaim-graph-128'], False),
-    (['--arena-30m', '--candidate', 'ornith15-35b-a3b-nvfp4', '--cudagraph-metrics'], True),
+    (['--arena-30m', '--candidate', 'qwen38-27b-fp8', '--cudagraph-metrics'], True),
     (['--smoke'], False),
 ])
 def test_cli_defaults_model_comparisons_to_measured_capacity(monkeypatch, tmp_path, options, expected):
@@ -106,7 +109,30 @@ def test_cli_defaults_model_comparisons_to_measured_capacity(monkeypatch, tmp_pa
     monkeypatch.setattr(sys, 'argv', ['build_arena.py', '--name', 'test', *options])
     builder.main()
     assert captured['capacity_phase2'] is expected
+    assert captured['include_pi'] is ('--include-pi' in options)
     assert captured['graph_metrics'] is ('--cudagraph-metrics' in options)
+
+
+def test_candidate_graph_variant_keeps_cache_sized_admission(tmp_path):
+    spec = importlib.util.spec_from_file_location('builder_graph', ROOT/'scripts/build_arena.py')
+    builder = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(builder)
+    _, control = builder.build('graph-control', output=tmp_path/'control', paired_30m=True,
+                               candidate_profile='qwen38-27b-fp8', capacity_phase2=True, graph_metrics=True)
+    output, candidate = builder.build('graph-candidate', output=tmp_path/'candidate', paired_30m=True,
+                                      candidate_profile='qwen38-27b-fp8', capacity_phase2=True,
+                                      arena_variant='graph-128', graph_metrics=True)
+    assert candidate['server']['cudagraph_metrics'] is True
+    assert candidate['phase2_admission'] == 'cache_capacity'
+    assert candidate['active_limit'] == 'resolved_from_cache'
+    assert json.loads((output/'configs/comparison.json').read_text()) == candidate
+    assert candidate['server'].pop('max_cudagraph_capture_size') == 128
+    candidate.pop('arena_variant')
+    candidate['name'] = control['name']
+    assert candidate == control
+    with pytest.raises(ValueError, match='full vLLM'):
+        builder.build('invalid', output=tmp_path/'invalid', paired_30m=True,
+                      sglang=True, graph_metrics=True)
 
 
 async def test_trial_installs_measured_limit_for_scheduler(tmp_path, monkeypatch):

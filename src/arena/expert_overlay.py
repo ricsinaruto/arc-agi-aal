@@ -107,9 +107,12 @@ def materialise(base_dir, overlay_dir, dest, expected_sha256, *, threads=8, log=
         for item in dest.iterdir():
             item.unlink()
     dest.mkdir(parents=True, exist_ok=True)
-    for item in sorted(base_dir.iterdir()):
-        source = overlay_dir / item.name if item.name in shards else item.resolve()
-        (dest / item.name).symlink_to(source)
+    # A base shard the overlay replaces may be absent (20 Oct: the Nebius runner skips fetching them); the farm is
+    # the same either way: base files, overlay shards over them.
+    names = {item.name for item in base_dir.iterdir()} | set(shards)
+    for name in sorted(names):
+        source = overlay_dir / name if name in shards else (base_dir / name).resolve()
+        (dest / name).symlink_to(source)
     record = {"format": FORMAT, "base_dir": str(base_dir), "overlay_dir": str(overlay_dir), "dest": str(dest),
               "manifest_sha256": expected_sha256, "shards": len(shards), "check": check, "omits_pruned": omits,
               "overlay_bytes": sum(s["bytes"] for s in shards.values()),

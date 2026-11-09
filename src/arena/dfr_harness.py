@@ -497,14 +497,7 @@ def stub_extra_images(message):
 # --- animation (theirs: inference/utils/animation.py) ----------------------------------------------------------------
 
 def normalize_frames(frames):
-    out = []
-    for frame in frames or ():
-        array = np.asarray(frame)
-        if array.dtype.kind in "iu":  # v7.1: tolist already gives python ints
-            out.append(tuple(map(tuple, array.tolist())))
-        else:
-            out.append(tuple(tuple(int(cell) for cell in row) for row in array.tolist()))
-    return out
+    return [tuple(tuple(int(cell) for cell in row) for row in np.asarray(frame).tolist()) for frame in frames or ()]
 
 
 def collapse_frames(before, frames):
@@ -520,15 +513,6 @@ def collapse_frames(before, frames):
 
 def transient_cells(chain):
     """Cells whose value changes two or more times across the chain (shown, then no longer there)."""
-    if len(chain) > 1:
-        try:
-            stack = np.asarray(chain)
-        except ValueError:
-            stack = None
-        if stack is not None and stack.ndim == 3 and stack.dtype.kind in "iu":
-            # v7.1: one array pass (same cells as the loop below for same-shape grids)
-            counts = (stack[1:] != stack[:-1]).sum(axis=0)
-            return [(int(r), int(c)) for r, c in np.argwhere(counts >= 2)]
     changes = defaultdict(int)
     for before, after in zip(chain, chain[1:]):
         for row in range(max(len(before), len(after))):

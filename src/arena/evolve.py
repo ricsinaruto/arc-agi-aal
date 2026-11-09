@@ -359,6 +359,8 @@ class Evolution:
                    "--notebook-start-epoch", str(time.time()), "--notebook-seconds", str(envelope)]
         if self.args.games_dir:
             command += ["--games-dir", self.args.games_dir]
+        if self.args.pi_dir:
+            command += ["--pi-dir", self.args.pi_dir, "--node", self.args.node]
         self.log({"event": "eval_start", "name": name, "games": len(games), "wall": wall, "harness": str(harness_dir)})
         with (folder / "process.log").open("ab") as stream:
             try:
@@ -531,6 +533,8 @@ def main(argv=None):
     parser.add_argument("--games-dir")
     parser.add_argument("--base-url", default="http://127.0.0.1:1234/v1")
     parser.add_argument("--python", default=sys.executable)
+    parser.add_argument("--pi-dir")
+    parser.add_argument("--node", default="node")
     parser.add_argument("--started-epoch", type=float, required=True)
     parser.add_argument("--max-seconds", type=float, required=True)
     args = parser.parse_args(argv)

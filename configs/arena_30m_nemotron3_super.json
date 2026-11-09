@@ -1,0 +1,106 @@
+{
+  "name": "arena-30m-nemotron3-super-v2",
+  "status": "prepared-not-launched",
+  "games_source": "configs/duck_public_notebook.json:public_game_ids",
+  "games": [
+    "tn36-ef4dde99",
+    "lf52-271a04aa",
+    "cn04-2fe56bfb",
+    "bp35-0a0ad940",
+    "wa30-ee6fef47",
+    "lp85-305b61c3",
+    "r11l-495a7899",
+    "tu93-0768757b",
+    "sp80-589a99af",
+    "m0r0-492f87ba",
+    "vc33-5430563c",
+    "ar25-0c556536",
+    "ka59-38d34dbb",
+    "sc25-635fd71a",
+    "sk48-d8078629",
+    "dc22-fdcac232",
+    "cd82-fb555c5d",
+    "ft09-0d8bbf25",
+    "g50t-5849a774",
+    "ls20-9607627b",
+    "re86-8af5384d",
+    "s5i5-18d95033",
+    "sb26-7fbdac44",
+    "su15-1944f8ab",
+    "tr87-cd924810"
+  ],
+  "wall_seconds": 1800,
+  "windows": [
+    131072
+  ],
+  "kv_margin": 0.9,
+  "active_limit": "resolved_from_cache",
+  "opening_switch_level1_games": 2,
+  "level_budget_rule": "(k+1)*T1 active seconds for level k->k+1; regrant max(1.5*spent, spent+30)",
+  "backlog_priority": "fewest active seconds, then roster order",
+  "completion_cap": 16384,
+  "reasoning_effort": "native",
+  "temperature": 0.7,
+  "generation_slots": 25,
+  "serving_profile": "nemotron3-super-120b-nvfp4-vllm",
+  "server": {
+    "max_model_len": 262144,
+    "prefix_caching": true,
+    "mtp_tokens": 0,
+    "max_num_seqs": 25,
+    "gpu_memory_utilization": "0.96",
+    "max_num_batched_tokens": 4096
+  },
+  "trials": [
+    {
+      "name": "duck-transfer",
+      "kind": "duck-transfer"
+    },
+    {
+      "name": "qwen-c",
+      "kind": "pi"
+    }
+  ],
+  "notebook_seconds": 9000,
+  "kernel_timeout": 9300,
+  "context_policy": "append-only; one tool-less model-written summary at the cap (C: Pi's native compaction at window - cap)",
+  "cache_admission": "hybrid_blocks",
+  "isolate_trial_cache": true,
+  "cache_experiment": {
+    "variant": "blocks",
+    "cpu_cache_gib": 0,
+    "kv_cache_dtype": "auto",
+    "compaction_changed": false,
+    "probe_seconds_limit": 270
+  },
+  "candidate_profile": "nemotron3-super-nvfp4",
+  "served_model": "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4",
+  "model_revision": "ff433f5493e25d631c9f12b5d55c674229923d02",
+  "model_datasets": [],
+  "startup_timeout_seconds": 2700,
+  "model_template_notes": {
+    "gameplay": "native thinking enabled (enable_thinking true); no effort dial, low_effort unused",
+    "summary": "native thinking disabled",
+    "history": "native template; older reasoning dropped by its truncate_history_thinking default",
+    "mtp": "0 speculative tokens (MTP head present but unused: speculation reported to exhaust 96 GB)",
+    "observation": "text-only"
+  },
+  "observation_mode": "text-only",
+  "phase2_admission": "cache_capacity",
+  "model_sources": [
+    "sivavoleti/nemotron-3-super-120b-a12b-nvfp4/Transformers/default/1"
+  ],
+  "serving_notes": {
+    "attention_backend": "TRITON_ATTN (documented working for this checkpoint on RTX PRO 6000)",
+    "moe_backend": "marlin (NVIDIA SM12x recipe; v1 hung in the worker on FLASHINFER_CUTLASS after 13 minutes)",
+    "reasoning_parser": "nemotron_v3 (pinned vLLM built-in)",
+    "tool_parser": "qwen3_coder",
+    "kv_cache_dtype": "bfloat16, pinned explicitly (v1 auto-selected fp8_e4m3 with scale 1.0 from the checkpoint KV scheme; 8 attention layers x 2 KV heads: ~8 KB per token)",
+    "mamba_ssm_cache_dtype": "float32 (checkpoint default; ~176 MiB per sequence)",
+    "weights": "17 shards, ~80.4 GB NVFP4/FP8 mixed"
+  },
+  "budget_clock": "busy",
+  "level_budget_policy": "fixed-2x",
+  "backlog_policy": "readmissions",
+  "prioritize_parked_progress": true
+}

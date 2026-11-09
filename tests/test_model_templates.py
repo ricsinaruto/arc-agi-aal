@@ -9,10 +9,11 @@ import jinja2
 import pytest
 
 from arc_infra.model_templates import NEX_MODEL, NEX_REVISION, template_kwargs
-from arena.serving_core.clock import Clock
-from arena.serving_core.config import Config
-from arena.serving_core.model import RequestLayer
-from arena.trial import duck_config
+from arena.trial import duck_config, qwen_config
+from qwen_baselines.clock import Clock
+from qwen_baselines.config import Config
+from qwen_baselines.evidence import Archive
+from qwen_baselines.model import RequestLayer
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -97,29 +98,37 @@ def test_pinned_qwen_parser_also_needs_native_nex_thinking_switch():
 
 @pytest.mark.parametrize('summary', [False, True])
 @pytest.mark.parametrize('effort', ['high', 'none'])
-async def test_preflight_counts_with_the_native_settings(summary, effort):
+async def test_pi_counts_and_sends_identical_native_settings(tmp_path, summary, effort):
     bodies = []
 
     def handle(request):
-        bodies.append((request.url.path, json.loads(request.content)))
-        return httpx.Response(200, json={'count': 500, 'max_model_len': 262144})
+        body = json.loads(request.content)
+        bodies.append((request.url.path, body))
+        if request.url.path == '/tokenize':
+            return httpx.Response(200, json={'count': 500, 'max_model_len': 262144})
+        return httpx.Response(200, json={'choices': [{'message': {'content': 'done'}}]})
 
     cfg = Config(model=NEX_MODEL, model_revision=NEX_REVISION, reasoning_effort=effort)
     clock = Clock(1800)
     clock.release()
+    archive = Archive(tmp_path)
     async with httpx.AsyncClient(base_url='http://local/v1/', transport=httpx.MockTransport(handle)) as client:
         layer = RequestLayer(cfg, clock, client=client)
-        assert await layer.count(layer.payload([{'role': 'user', 'content': 'Board'}], summary=summary)) == 500
-    assert [p for p, _ in bodies] == ['/tokenize']
-    assert bodies[0][1]['chat_template_kwargs'] == {'reasoning_effort': 'none' if summary else effort,
-                                                   'enable_thinking': not summary and effort != 'none'}
+        payload = layer.payload([{'role': 'user', 'content': 'Board'}], summary=summary)
+        await layer.complete_payload(payload, archive, summary=summary)
+    archive.close()
+    assert [p for p, _ in bodies] == ['/tokenize', '/v1/chat/completions']
+    assert all(b['chat_template_kwargs'] == {'reasoning_effort': 'none' if summary else effort,
+                                           'enable_thinking': not summary and effort != 'none'}
+               for _, b in bodies)
 
 
-def test_the_duck_agent_records_the_candidate_revision():
+def test_both_arena_agents_record_the_candidate_revision():
     study = json.loads((ROOT / 'configs/arena_30m.json').read_text())
     study.update(served_model=NEX_MODEL, model_revision=NEX_REVISION, reasoning_effort='high')
     kwargs = dict(window=131072, cap=16384, wall=1800, base_url='http://local/v1')
     duck = duck_config(study, ROOT, **kwargs)
-    assert duck.model == NEX_MODEL
-    assert duck.model_revision == NEX_REVISION
-    assert duck.reasoning_effort == 'high'
+    pi = qwen_config(study, 'pi', **kwargs)
+    assert duck.model == pi.model == NEX_MODEL
+    assert duck.model_revision == pi.model_revision == NEX_REVISION
+    assert duck.reasoning_effort == pi.reasoning_effort == 'high'

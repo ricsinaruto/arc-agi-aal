@@ -37,8 +37,6 @@ def validation_timeout(kind, test):
         # Four-hour preview (4 h runs of v3 and of the 256K + compaction variant): the bundle's
         # notebook_seconds (3,900 + 14,400 for int3 builds) + 300 s.
         ("arena", "competition-preview-4h"): 18600,
-        # Eight-hour preview (v6 for 8 h): notebook_seconds (3,900 + 28,800) + 300 s.
-        ("arena", "competition-preview-8h"): 33000,
         ("arena", "research-model"): 3600,
         ("arena", "full-duck-transfer"): 2100,
         ("arena", "cache-duck-transfer"): 2700,
@@ -210,7 +208,7 @@ def arena_arguments(test):
         return []
     if test == "campaign-9h":
         return ["--trial", "duck-transfer"]
-    if test in ("competition-preview", "competition-preview-1h", "competition-preview-4h", "competition-preview-8h"):
+    if test in ("competition-preview", "competition-preview-1h", "competition-preview-4h"):
         return ["--trial", "duck-transfer"]
     if test == "smoke":
         return ["--smoke"]
@@ -320,8 +318,7 @@ def reserve(run_id, kind, seconds, *, test="smoke"):
         cpu = globals().get("CPU_CEILING", 8)  # the tests exec reserve() alone
         rate = 0.000842 + cpu * 0.0000131 + 192 * 0.00000222
         bound = (seconds + 60) * rate * 1.15
-        from arc_infra.runops.records import row_cost
-        committed = data["infrastructure_reserve_usd"] + sum(row_cost(r)[0] for r in data["runs"])
+        committed = data["infrastructure_reserve_usd"] + sum(r["charged_bound_usd"] for r in data["runs"])
         if committed + bound > data["cap_usd"]:
             raise RuntimeError(f"Spend cap: ${committed:.2f} + ${bound:.2f} required")
         if any(r["run_id"] == run_id for r in data["runs"]):
@@ -515,7 +512,7 @@ def benchmark(run_id: str):
                         or study['trials'][0] != {'name': 'duck-transfer', 'kind': 'duck-transfer'}
                         or study.get('backend', 'vllm') != 'vllm'):
                     raise ValueError('Duck arena fallback requires 25 games, the test wall, Duck-transfer and vLLM')
-            if TEST in ('competition-preview', 'competition-preview-1h', 'competition-preview-4h', 'competition-preview-8h'):
+            if TEST in ('competition-preview', 'competition-preview-1h', 'competition-preview-4h'):
                 study = json.loads((source / 'configs/comparison.json').read_text())
                 clones = study.get('competition') or {}
                 if (not clones or clones.get('research_clones') or clones.get('preview_instances') != 110
@@ -1222,13 +1219,13 @@ def main(run_id: str = "", probe_only: bool = False):
               }.get(TEST, "docs/validation-20260922")
     if TEST in ("campaign-9h", "research-model", "decode-sweep", "spec-sweep"):
         folder = "docs/validation-20260930"
-    if TEST in ("competition-preview", "competition-preview-1h", "competition-preview-4h", "competition-preview-8h"):
+    if TEST in ("competition-preview", "competition-preview-1h", "competition-preview-4h"):
         folder = "docs/validation-20261001"
     record = ROOT / folder / f"modal-{run_id}.json"
     record.parent.mkdir(parents=True, exist_ok=True)
     data = {"state": "submission_intent", "run_id": run_id, "kind": KIND, "test": TEST,
             "charged_bound_usd": bound,
-            "platform_policy": ("Modal only: offline test of a Kaggle submission archive (no Kaggle GPU quota)" if TEST in ("competition-preview", "competition-preview-1h", "competition-preview-4h", "competition-preview-8h") else "Modal only: seven authorized nine-hour benchmarks plus user-requested additional nine-hour arms and <=4 one-hour research pilots" if TEST == "campaign-9h" else "kaggle-first; 30-minute queue fallback" if TEST == 'paired-30m'
+            "platform_policy": ("Modal only: offline test of a Kaggle submission archive (no Kaggle GPU quota)" if TEST in ("competition-preview", "competition-preview-1h", "competition-preview-4h") else "Modal only: seven authorized nine-hour benchmarks plus user-requested additional nine-hour arms and <=4 one-hour research pilots" if TEST == "campaign-9h" else "kaggle-first; 30-minute queue fallback" if TEST == 'paired-30m'
                                 else "kaggle-first; 10-minute queue fallback" if TEST in ('duck-30m', 'duck-60m', 'bench', 'bench-ab')
                                 else "modal probe beside the Kaggle runs" if TEST == 'duck-probe'
                                 else "modal-only; one Modal GPU job at a time" if TEST in ('level-bench', 'duck-110', 'duck-110-kernels', 'kernel-smoke', 'tweaks-smoke', 'draft-head', 'kv8-smoke', 'kernel-stack', 'hero-smoke', 'prefix-cache-smoke', 'kernel-phase6', 'kernel-phase6b', 'expert-quant-bench',

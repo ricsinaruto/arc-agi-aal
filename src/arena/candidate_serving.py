@@ -16,13 +16,13 @@ from arc_infra.serving_fork import (
     fork_identity,
     stage_fork_bundle,
 )
+from qwen_baselines.config import Config
+from qwen_baselines.jail import Jail, needed
+from qwen_baselines.serving import preflight, verify_hardware, worker_probe
 
 from .cache import BlockBudget
 from .candidate_profiles import NEX, PROFILES, from_study
 from .serving import configure, lab_overrides
-from .serving_core.config import Config
-from .serving_core.jail import Jail, needed
-from .serving_core.serving import preflight, verify_hardware, worker_probe
 
 
 def checkpoint_mount(study, manifest, input_root):
@@ -272,6 +272,11 @@ def start(study, working, input_root):
 
             stage = 'native_tool_handoff'
             record['native_tool_handoff'] = asyncio.run(check(cfg, working / 'native-tool-preflight.json'))
+        if any(trial['kind'] == 'ui-mate-native' for trial in study['trials']):
+            from ui_mate_actor.preflight import check
+
+            stage = 'native_action_handoff'
+            record['native_action_handoff'] = asyncio.run(check(cfg, working / 'native-action-preflight'))
         budget = BlockBudget.load(working, study['kv_margin'])
         (working / 'cache-layout.json').write_text(json.dumps(budget.layout, indent=2))
         record.update(status='ready', seconds=time.monotonic() - started)

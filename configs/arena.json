@@ -60,6 +60,14 @@
     {
       "name": "duck-public",
       "kind": "duck-public"
+    },
+    {
+      "name": "qwen-c",
+      "kind": "pi"
+    },
+    {
+      "name": "retrodict-r",
+      "kind": "retrodict"
     }
   ],
   "notebook_seconds": 7200,

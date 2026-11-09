@@ -4,6 +4,8 @@ overlay check and the 4-bit KV sizing. CPU only; torch parts skip without torch.
 
 import hashlib
 import json
+import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -150,3 +152,37 @@ def test_mask_aware_calibrate_build(tmp_path):
     with pytest.raises(ValueError):
         builder.build("d", output=tmp_path / "d", paired_30m=True, expert_quant=inputs, expert_quant_phase="calibrate",
                       expert_quant_settings={"bogus": 1})
+
+
+def test_overlay_farm_is_the_same_without_the_replaced_base_shards(tmp_path):
+    """20 Oct: the Nebius runner may skip fetching the base shards an omits-pruned overlay replaces."""
+    from arena import expert_overlay
+
+    base, overlay = tmp_path / "base", tmp_path / "overlay"
+    base.mkdir()
+    overlay.mkdir()
+    shards = {"layer-00000-experts-0000-0127.safetensors": b"o" * 7}
+    weight_map = {"a.w": "model-bf16-00001.safetensors", "e.w": "layer-00000-experts-0000-0127.safetensors"}
+    (base / "model.safetensors.index.json").write_text(json.dumps({"weight_map": weight_map}))
+    (base / "model-bf16-00001.safetensors").write_bytes(b"b" * 5)
+    (base / "layer-00000-experts-0000-0127.safetensors").write_bytes(b"x" * 9)
+    (base / "layer-00000-experts-0000-0127.complete.json").write_text("{}")
+    for name, body in shards.items():
+        (overlay / name).write_bytes(body)
+    mask = "f" * 64
+    manifest = {"format": expert_overlay.FORMAT, "complete": True, "omits_pruned": True, "expert_prune_sha256": mask,
+                "shards": {n: {"bytes": len(b), "sha256": hashlib.sha256(b).hexdigest()} for n, b in shards.items()}}
+    (overlay / expert_overlay.MANIFEST).write_text(json.dumps(manifest))
+    digest = hashlib.sha256((overlay / expert_overlay.MANIFEST).read_bytes()).hexdigest()
+
+    def farm(base_dir, dest):
+        expert_overlay.materialise(base_dir, overlay, dest, digest, log=lambda *_: None, expert_prune_sha256=mask)
+        return {f.name: os.readlink(f) for f in dest.iterdir()}
+
+    full = farm(base, tmp_path / "farm")
+    sparse = tmp_path / "sparse"
+    shutil.copytree(base, sparse)
+    (sparse / "layer-00000-experts-0000-0127.safetensors").unlink()
+    assert farm(sparse, tmp_path / "farm-sparse") == {
+        name: target.replace(str(base.resolve()), str(sparse.resolve())) for name, target in full.items()}
+    assert full["layer-00000-experts-0000-0127.safetensors"] == str(overlay / "layer-00000-experts-0000-0127.safetensors")

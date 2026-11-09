@@ -115,81 +115,6 @@ def install_stall_dump(seconds, cls, log=print):
     return wrapped
 
 
-MEMORY_WATCH_ENV = "ARENA_MEMORY_WATCH"  # throughput arm (3 October): "1" logs worker GPU-memory growth per step
-MEMORY_WATCH_STEP_BYTES = 64 << 20
-MEMORY_WATCH_HEARTBEAT_SECONDS = 120.0
-
-
-def _batch_summary(args, kwargs):
-    """What a step scheduled (the SchedulerOutput argument of execute_model), for attributing memory growth."""
-    so = args[0] if args else kwargs.get("scheduler_output")
-    if so is None:
-        return {}
-    out = {}
-    try:
-        counts = getattr(so, "num_scheduled_tokens", None) or {}
-        out["tokens"] = int(getattr(so, "total_num_scheduled_tokens", sum(counts.values())))
-        out["requests"] = len(counts)
-        out["max_request_tokens"] = max(counts.values()) if counts else 0
-        new = getattr(so, "scheduled_new_reqs", None) or []
-        out["new_requests"] = len(new)
-        encoder = getattr(so, "scheduled_encoder_inputs", None) or {}
-        out["encoder_inputs"] = sum(len(v) for v in encoder.values())
-        spec = getattr(so, "scheduled_spec_decode_tokens", None) or {}
-        out["spec_requests"] = len(spec)
-        out["max_context"] = max((int(getattr(r, "num_computed_tokens", 0)) for r in new), default=0)
-    except Exception as exc:  # noqa: BLE001 - diagnostics only
-        out["summary_error"] = f"{type(exc).__name__}: {str(exc)[:120]}"
-    return out
-
-
-def _memory_watched(original, state, torch, log, clock):
-    def step(self, *args, **kwargs):
-        result = original(self, *args, **kwargs)
-        if original.__name__ != "execute_model":
-            return result
-        state["steps"] += 1
-        reserved, peak = torch.cuda.memory_reserved(), torch.cuda.max_memory_allocated()
-        now = clock()
-        grew = reserved > state["reserved"] + MEMORY_WATCH_STEP_BYTES or peak > state["peak"] + MEMORY_WATCH_STEP_BYTES
-        if grew or now - state["beat"] >= MEMORY_WATCH_HEARTBEAT_SECONDS:
-            free, total = torch.cuda.mem_get_info()
-            log("ARC_MEMORY_WATCH " + json.dumps({
-                "event": "growth" if grew else "heartbeat", "step": state["steps"],
-                "reserved_mib": reserved >> 20, "allocated_mib": torch.cuda.memory_allocated() >> 20,
-                "peak_allocated_mib": peak >> 20, "free_mib": free >> 20, "total_mib": total >> 20,
-                "reserved_delta_mib": (reserved - state["reserved"]) >> 20,
-                "peak_delta_mib": (peak - state["peak"]) >> 20, **_batch_summary(args, kwargs)}), flush=True)
-            state["beat"] = now
-        state["reserved"], state["peak"] = max(state["reserved"], reserved), max(state["peak"], peak)
-        return result
-
-    step.__name__, step.__qualname__, step.__doc__ = original.__name__, original.__qualname__, original.__doc__
-    step.__wrapped__, step._arc_memory_watch = original, True
-    return step
-
-
-def install_memory_watch(cls, log=print, torch_module=None, clock=None):
-    """Diagnostics (throughput arm, 3 October): the dfr-combined servers need ~5 GiB beyond the pool and the profiled
-    activation peak once play starts (v1 OOMed at 0.96). With ``ARENA_MEMORY_WATCH=1`` every ``execute_model`` that
-    raises the worker's reserved or peak-allocated CUDA memory by more than 64 MiB logs one line (and a heartbeat
-    every 120 s) with what the step scheduled. Off (the default): nothing is wrapped. Idempotent per class."""
-    import time
-
-    torch = torch_module
-    if torch is None:
-        import torch
-    original = getattr(cls, "execute_model", None)
-    if original is None or getattr(original, "_arc_memory_watch", False):
-        return False
-    state = {"steps": 0, "reserved": torch.cuda.memory_reserved(), "peak": torch.cuda.max_memory_allocated(),
-             "beat": 0.0}
-    setattr(cls, "execute_model", _memory_watched(original, state, torch, log, clock or time.monotonic))
-    log("ARC_MEMORY_WATCH " + json.dumps({"event": "installed", "reserved_mib": state["reserved"] >> 20,
-                                           "pid": os.getpid()}), flush=True)
-    return True
-
-
 MOE_BLOCK = "vllm.model_executor.models.qwen3_next.Qwen3NextSparseMoeBlock"
 MOE_PREFIX = re.compile(r"(?:^|\.)layers\.(\d+)\.mlp$")
 
@@ -269,8 +194,6 @@ def prepare_config(vllm_config, the_plan=None, log=print, moe_block=None):
         install_moe_sizes(p["kept_counts"], moe_block or resolve(MOE_BLOCK), log=log)
     if p.get("stall_dump_seconds"):
         install_stall_dump(p["stall_dump_seconds"], worker_class(vllm_config), log=log)
-    if os.environ.get(MEMORY_WATCH_ENV) == "1":
-        install_memory_watch(worker_class(vllm_config), log=log)
     log("ARC_EXPERT_PRUNE " + json.dumps({"num_experts": p["kept_per_layer"], "from": p["experts"],
                                           "layers": len(p["kept"]), "uniform": p.get("uniform", True),
                                           "kept_total": sum(p.get("kept_counts", {}).values())}), flush=True)

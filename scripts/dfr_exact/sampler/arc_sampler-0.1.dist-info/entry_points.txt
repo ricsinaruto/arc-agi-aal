@@ -1,0 +1,2 @@
+[vllm.general_plugins]
+arc_sampler = arc_sampler:register

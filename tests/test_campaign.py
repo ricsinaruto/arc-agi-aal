@@ -426,7 +426,7 @@ def test_mtp1_full_window_cost_matches_the_measured_pilot_layout():
     from arena.cache import BlockBudget
     from arena.hero_v2 import cost_blocks
 
-    path = Path(__file__).resolve().parent / "fixtures/campaign/prune25-40-mtp1-capacity.json"
+    path = Path(__file__).resolve().parents[1] / "docs/validation-20260930/prune25-40-mtp1-capacity.json"
     layout = json.loads(path.read_text())["layout_table"]
     assert layout["num_blocks"] == 1438 and layout["lookahead"] == 1
     budget = BlockBudget(layout, .96)
@@ -488,9 +488,6 @@ def test_mtp_component_refusals():
     with pytest.raises(ValueError, match="graph_capture"):
         compose(hero(), {**components(MTP_ARM), "graph_capture": 96}, served_blocks=1638)
     with pytest.raises(ValueError, match="mtp_tokens"):
-        compose(hero(), {**components(MTP_ARM), "mtp_tokens": 3}, served_blocks=1638)
-    # MTP-2 (4 October) is allowed, with its own graph ladder (3 x sequences).
-    with pytest.raises(ValueError, match="graph_capture"):
         compose(hero(), {**components(MTP_ARM), "mtp_tokens": 2}, served_blocks=1638)
     with pytest.raises(ValueError, match="int4"):
         compose(hero(), {**components(MTP_ARM), "kv_cache": "int8", "prefix_match_unit": 16}, served_blocks=1638)
@@ -568,7 +565,7 @@ def test_int3_window_is_the_largest_passing_replay_window():
     import json
     from pathlib import Path
 
-    path = Path(__file__).resolve().parent / "fixtures/campaign/prune25-40-mtp1-int3-capacity.json"
+    path = Path(__file__).resolve().parents[1] / "docs/validation-20260930/prune25-40-mtp1-int3-capacity.json"
     data = json.loads(path.read_text())
     assert data["pool_floor_blocks"] == 1860 and data["streams"] == 40 and data["margin"] == 0.96
     windows = {int(w): v for w, v in data["windows"].items()}
@@ -677,7 +674,7 @@ def test_int3_mtp0_window_is_the_largest_passing_replay_window():
     import json
     from pathlib import Path
 
-    path = Path(__file__).resolve().parent / "fixtures/campaign/prune25-40-int3-capacity.json"
+    path = Path(__file__).resolve().parents[1] / "docs/validation-20260930/prune25-40-int3-capacity.json"
     data = json.loads(path.read_text())
     assert data["pool_floor_blocks"] == 2100 and data["streams"] == 40 and data["margin"] == 0.96
     windows = {int(w): v for w, v in data["windows"].items()}
@@ -770,7 +767,7 @@ def test_prune50_int3_streams_are_the_most_passing_replay_count():
     import json
     from pathlib import Path
 
-    path = Path(__file__).resolve().parent / "fixtures/campaign/prune50-int3-capacity.json"
+    path = Path(__file__).resolve().parents[1] / "docs/validation-20260930/prune50-int3-capacity.json"
     data = json.loads(path.read_text())
     assert data["pool_floor_blocks"] == 2658 and data["window"] == 98304 and data["margin"] == 0.96
     assert data["output_cap"] == 16384 and data["max_num_seqs"] == 80
@@ -837,7 +834,7 @@ def test_prune37_int3_replay_passes_at_60_streams():
     import json
     from pathlib import Path
 
-    data = json.loads((Path(__file__).resolve().parent / "fixtures/campaign/prune37-int3-capacity.json")
+    data = json.loads((Path(__file__).resolve().parents[1] / "docs/validation-20260930/prune37-int3-capacity.json")
                       .read_text())
     assert data["pool_floor_blocks"] == 2340 and data["window"] == 98304 and data["chosen_streams"] == 60
     counts = {int(n): v for n, v in data["streams"].items()}

@@ -56,14 +56,19 @@ async def test_probe_requires_exact_count_no_preemptions_and_real_offload(monkey
     monkeypatch.setattr(cache_probe, 'GpuMonitor', Monitor)
     monkeypatch.setattr(cache_probe, 'wait_idle', idle)
     study = {'kv_margin': 0.9, 'generation_slots': 25, 'cache_experiment': {'cpu_cache_gib': cpu_gib}}
-    if failure:
+    raises = failure not in (None, 'no_load')  # no host load is a recorded note, not a failure (22 Oct)
+    if raises:
         with pytest.raises(RuntimeError):
             await cache_probe.run(tmp_path, study, 'http://local/v1')
     else:
         await cache_probe.run(tmp_path, study, 'http://local/v1')
     result = json.loads((tmp_path / 'cache-probe/result.json').read_text())
-    assert result['state'] == ('error' if failure else 'complete')
-    if not failure:
+    assert result['state'] == ('error' if raises else 'complete')
+    if failure == 'no_load':
+        assert result['cpu_load_bytes'] == 0 and 'GPU pool held' in result['cpu_load_note']
+    elif cpu_gib:
+        assert result['cpu_load_bytes'] > 0 and 'cpu_load_note' not in result
+    if not raises:
         assert len(result['requests']) == 100 and result['gate']['reserved'] == 0
         assert resets == ['true']
     else:

@@ -1,0 +1,73 @@
+{
+  "reviewed_at": "2026-09-11T10:52:30.827204+00:00",
+  "scored_version": {
+    "url": "https://www.kaggle.com/code/wuliao0/duck-qwen3-8-anim-base?scriptVersionId=347132234",
+    "version": 1,
+    "script_version_id": 347132234,
+    "leaderboard_score_percent": 4.33,
+    "public_preview_score_percent": 9.91,
+    "public_games": 25,
+    "public_actions": 3257,
+    "public_generated_tokens": 1851878,
+    "public_gameplay_seconds": 7941,
+    "notebook_runtime_seconds": 8641,
+    "evidence": "Scored version source and rendered log inspected through Kaggle browser UI."
+  },
+  "effective_v1_settings": {
+    "model": "Qwen/Qwen3.8-Flash-Next-NVFP4",
+    "model_source": "keithtyser/qwen3-8-flash-next-nvfp4/PyTorch/radixark-modelopt-fp4/1",
+    "concurrent_whole_games": 28,
+    "max_runtime_seconds_per_game": 7920,
+    "analyzer_timeout_seconds": 900,
+    "max_actions_per_game": null,
+    "max_model_len": 32768,
+    "max_num_seqs": 8,
+    "kv_cache_memory_bytes": 5368709120,
+    "kv_cache_dtype": "auto",
+    "mtp_tokens": 3,
+    "max_batched_tokens": 8192,
+    "prefix_caching": false,
+    "async_scheduling": true,
+    "chunked_prefill": true,
+    "max_cudagraph_capture_size": 32,
+    "server_ready_seconds": 585.0552641009999,
+    "gpu_model_memory_gib": 81.8
+  },
+  "attached_source": {
+    "dataset": "https://www.kaggle.com/datasets/keithtyser/duck-qwen38-nvfp4-mtp-vllm-smoke-v1",
+    "method": "Selected files downloaded and inspected as source text; pickle disassembled only. Notebook runtime environment overrides stale bundle defaults.",
+    "features": [
+      "Live Python actions refresh the next statement observation",
+      "Object shape hashes, containment, adjacency and boundaries",
+      "Recent history capped at 30 assistant turns plus approximate context trimming",
+      "Temperature 0.6, top_p 0.95, top_k 20, uncapped output, thinking enabled",
+      "30-second Python tool, approximately 1024-token tool output budget"
+    ]
+  },
+  "local_notebook_version": {
+    "path": "wuliao0/duck-qwen3-8-anim-base.ipynb",
+    "version": 7,
+    "warning": "Latest API download; not the notebook associated with the 4.33 score. V1 was inspected directly in the browser."
+  },
+  "additional_primary_sources": [
+    "https://huggingface.co/RadixArk/Qwen3.8-Flash-Next-NVFP4",
+    "https://github.com/Tufalabs/duck-harness/blob/main/ARC3-Inference/README.md"
+  ],
+  "files_sha256": {
+    "duck-bundle/SOURCE_IDENTITY.json": "473e695998342160478e9066d8a0d45536942ef37c75ddb803f36d3e0abb397c",
+    "duck-bundle/benchmark_initial.dis.txt": "bd9c08de53791b6837ac0d9233c7b1b15949aed9312df68eac6b5fd6d153ee61",
+    "duck-bundle/benchmark_initial.pkl": "7f619ac0831bfc4d138365681fc46de2f7107b54e2d62bbb3194b65d9aec1d67",
+    "duck-bundle/serving_setup.py": "037c041c9bd9dcffa9084b32f47af9cf1bf35849d5eaf2e1a3422daac098b2e2",
+    "duck-bundle/src/ARC3-Inference/configs/inference.json": "6902224082ad6dc6c824fdef68010c9beea5b8d7097a422cbdc7c1a2172aa44e",
+    "duck-bundle/src/ARC3-Inference/inference/agent/prompts.py": "a8e203fbe288116a24f29f6880f0657873df51fee76b0af9ef2b44cc3d0186d3",
+    "duck-bundle/src/ARC3-Inference/inference/agent/python_tool_sandbox.py": "765e90cf8d141f912f6cfbba498426c9b0de9453e6e44c97d3bc8df45cf9aa91",
+    "duck-bundle/src/ARC3-Inference/inference/agent/tool_agent.py": "535ee88b81b262fa5aedb785466ade9f3183a6417656fb6733427242baac7c9d",
+    "duck-bundle/src/ARC3-Inference/inference/agent/vision_context.py": "6538fa9a115799e249a705812cbb873563f7574b55cf18fc8d3119ee1a2f96ad",
+    "duck-bundle/src/ARC3-Inference/inference/framework/solver.py": "65ddfcdbe8c24fdc31246ff018b51469827b21c38995243a36a818adbed33370",
+    "duck-bundle/src/ARC3-Inference/inference/tools/chat.py": "f9ac5aa9459ef11161020b275e0af6595b255fc35a1f8d4966a505d955e4cd31",
+    "duck-bundle/taaf-kaggle-bundle.json": "52f844965b2b80de6e6ef759dfc9ffa3258f42407e0ed1788ec28ff250a7a8cb",
+    "wuliao0/duck-qwen3-8-anim-base.ipynb": "72d6f35147b5d1c422a2959cc378727df6b688c4f478c2aa9ad3580b4a247122",
+    "wuliao0/kernel-metadata.json": "fad2f7a0b09954df1ae8bc5a366dc1877d9872ce1aca76021026ee6d80792d8a",
+    "wuliao0/source.py": "38da1b407154de17927acb2fb11daafe07f2dcb5551558a061a7927ece7c0578"
+  }
+}

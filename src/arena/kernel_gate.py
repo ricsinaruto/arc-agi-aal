@@ -364,11 +364,6 @@ async def run_quality(study, trial, *, source, output, server_dir, base_url, dea
     # and its repeat only); the reference then needs only the teacher-forced measurement.
     run_greedy_pass, run_gsm8k_pass = options.get("greedy", True) is not False, options.get("gsm8k", True) is not False
     gsm8k_seconds = int(options.get("gsm8k_pass_seconds", GSM8K["pass_seconds"]))
-    # Wide decode tiles (kernel profile, 30 September): the greedy pass at a decode batch of 33-56 rows (the only
-    # path the wide buckets serve; teacher forcing prefills), and its repeat at the same batch, so the noise bar
-    # has the same batch composition. Absent: the phase-2 concurrencies (16 and 1).
-    greedy_concurrency = int(options.get("greedy_concurrency", GREEDY["concurrency"]))
-    greedy_repeat_concurrency = int(options.get("greedy_repeat_concurrency", GREEDY["repeat_concurrency"]))
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     prompts, problems = load_inputs(source)
@@ -410,7 +405,7 @@ async def run_quality(study, trial, *, source, output, server_dir, base_url, dea
             greedy_ids = {row["index"]: row["prompt_ids"] for row in reference.get("greedy", {}).get("rows", [])
                           if "prompt_ids" in row}
         if run_greedy_pass:
-            await step("greedy", run_greedy(client, prompts["greedy"], greedy_concurrency, greedy_ids))
+            await step("greedy", run_greedy(client, prompts["greedy"], GREEDY["concurrency"], greedy_ids))
         ids = None
         if reference is not None:
             ids = {row["index"]: row["tokens"] for row in reference.get("teacher_forced", {}).get("rows", [])
@@ -424,7 +419,7 @@ async def run_quality(study, trial, *, source, output, server_dir, base_url, dea
             greedy_ids = {row["index"]: row["prompt_ids"] for row in result.get("greedy", {}).get("rows", [])
                           if "prompt_ids" in row}
             if run_greedy_pass:
-                await step("greedy_repeat", run_greedy(client, prompts["greedy"], greedy_repeat_concurrency,
+                await step("greedy_repeat", run_greedy(client, prompts["greedy"], GREEDY["repeat_concurrency"],
                                                        greedy_ids))
             await step("teacher_forced_repeat", run_teacher(
                 client, prompts["teacher_forced"], TEACHER["repeat_concurrency"],

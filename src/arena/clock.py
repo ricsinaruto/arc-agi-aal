@@ -1,8 +1,8 @@
 """Clocks: one wall clock per trial and one active-time clock per game.
 
-``ActiveClock`` is duck-typed against ``arena.serving_core.clock.Clock`` (``start``, ``release``,
-``elapsed``, ``remaining``, ``feedback``). Its ``elapsed()`` counts active seconds only, so a parked
-game's level timings exclude the pause.
+``ActiveClock`` is duck-typed against ``qwen_baselines.clock.Clock`` (``start``, ``release``,
+``elapsed``, ``remaining``, ``feedback``) so the C/R bridges and request layers accept it. Its
+``elapsed()`` counts active seconds only, so a parked game's level timings exclude the pause.
 """
 
 import asyncio
@@ -189,11 +189,8 @@ class ActiveClock:
     def charge(self, prompt_tokens, completion_tokens, purpose="gameplay"):
         """Charge one completed request's tokens (normalized clock); other clocks only record."""
         cost = None if self.normalization is None else self.normalization.cost(prompt_tokens, completion_tokens)
-        observed = self.global_clock.elapsed()
         self.charges.append({
-            "wall_seconds": round(min(observed, self.global_clock.seconds), 3),
-            # A final response can arrive after wall_end recorded the finish clock.
-            "observed_wall_seconds": round(observed, 3), "purpose": purpose,
+            "wall_seconds": round(self._inference_wall(), 3), "purpose": purpose,
             "prompt_tokens": int(prompt_tokens), "completion_tokens": int(completion_tokens),
             "cost_seconds": None if cost is None else round(cost, 3),
         })

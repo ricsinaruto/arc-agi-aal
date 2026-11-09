@@ -31,6 +31,8 @@ def main(argv=None):
     parser.add_argument("--trial", required=True)
     parser.add_argument("--server-dir", required=True)
     parser.add_argument("--games-dir")
+    parser.add_argument("--pi-dir")
+    parser.add_argument("--node", default="node")
     parser.add_argument("--analysis-python")
     parser.add_argument("--base-url", default="http://127.0.0.1:1234/v1")
     parser.add_argument("--notebook-start-epoch", required=True, type=float)
@@ -195,7 +197,7 @@ def main(argv=None):
             report = asyncio.run(
                 run_trial(
                     resolved, trial, source=args.source, games_dir=games_dir, output=folder,
-                    server_dir=args.server_dir,
+                    server_dir=args.server_dir, pi_dir=args.pi_dir, node=args.node,
                     analysis_python=args.analysis_python, base_url=args.base_url, smoke=args.smoke,
                     **extra,
                 )

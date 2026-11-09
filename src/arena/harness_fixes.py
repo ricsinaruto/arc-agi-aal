@@ -39,10 +39,6 @@ list only, never switched on by ``true``, so every build made with ``true`` (run
   section and were dropped whenever the variables filled the cap), says that anything not listed must be imported,
   says ``inspect`` needs ``import inspect`` (its header's ``inspect.getsource`` hint caused NameErrors), and names
   the python view of the receipts (``history[i].action``, ``history[i].frame.step``).
-- ``text_count`` (B200, 5 October): the exact counts (trigger and admission) are made with the images sent as the text
-  the template renders for them plus each image's token count (``arc_infra.model`` ``text_images``), so the serving
-  frontend's single multimodal thread processes each request once, not ~2.5 times (b2-run1-12h-v1 stalled at 88
-  streams from ~1,300 s: ~60 s per /tokenize). Each reply's prompt_tokens is checked against the admission count.
 """
 
 from duck_transfer.feedback import StuckTracker
@@ -50,7 +46,7 @@ from duck_transfer.feedback import StuckTracker
 FIXES = ("exact_trigger", "summary_guard", "inventory", "cap_followup", "stuck_notice", "sandbox",
          "timeout_interrupt", "prompt_text")
 # Named in a list only; ``true`` (every build so far) means ``FIXES``.
-OPTIONAL_FIXES = ("summary_headroom", "inventory_imports", "text_count")
+OPTIONAL_FIXES = ("summary_headroom", "inventory_imports")
 KNOWN_FIXES = FIXES + OPTIONAL_FIXES
 
 # Thresholds (docs/validation-20260927/hero-v2-analysis/harness.md, "Fixes implemented"): on the 182 level segments

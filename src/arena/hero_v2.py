@@ -116,18 +116,6 @@ run-B build) is byte-for-byte unchanged.
   [1, 2, 4, 8, 16, 24, 30, 32, 36, 40, 44] streams x (k + 1) tokens up to max_num_seqs (``graph_capture`` must be
   (k + 1) x max_num_seqs). The gate charges the draft tokens through the served layout's lookahead (ARC_CACHE_LAYOUT)
   and prefix cache v2's keep/demote switch themselves off under speculation.
-- ``mtp_prefix_cache``: true (throughput arm, 3 October; docs/research-throughput/LOG.md) adds the ``spec_decode`` key
-  to prefix cache v2 (arena.prefix_cache_patch): keep/demote also run under MTP-k and the hybrid the EAGLE
-  last-unit drop is off, which together restore the MTP-0 prefix hit rate under MTP-1 in the CPU scheduler replay
-  (0.878 vs 0.887; pinned MTP-1 0.322). Needs ``mtp_tokens`` and ``prefix_cache``; recorded only when on.
-- ``wide_tiles``: true (throughput arm, 3 October) adds the wide decode tiles to ``server.dense_kernels``
-  (``mid_wide``, the prune12 router shape, buckets 40-72; arc_infra.dense_wide_runtime, tuned in the kernel warmup
-  and error-checked against FP32): the decode / MTP-1 verify batches above 32 rows leave cuBLAS and the prefill tile.
-  Measured on the MTP-1 dfr serving (tp-spec-long-v1): step -0.7 / -1.2 / -0.8 ms at 24 / 30 / 34 streams (48-68 rows),
-  verify-path drift at the control's level. Needs the phase-5 mid-M plan (``kernels_phase6`` off); recorded only when on.
-- ``indexer_fp8``: true (throughput arm, 3 October) sets ``serving_kernels.indexer_fp8``: the QSA indexer's compressed
-  keys in float8 e4m3 (each block's 12-13 compressed pages halve: +5.7% blocks on the MTP-1 dfr serving, 1,458 ->
-  1,541; step time unchanged). Only the top-2,048-block selection can change. Needs int4 KV; recorded only when on.
 
 Streams: the most full windows that fit the projected served layout at the 0.9 gate (51 blocks per 64K window on the
 hero layout, by the served cost table's 1,024-token rows), capped by the server's sequences; ``max_num_seqs`` rises above the hero's 25 only when more windows fit, up
@@ -178,8 +166,7 @@ WINDOW_STEP = 1024  # the served cost table's row
 WINDOW_MAX = 261120
 BUDGET_POLICIES = ("fixed-2x", "rank", "blocks", "priority")
 FIT_FALLBACK_MIN = 14  # the hero's own 14 focus games
-PRUNE_LEVELS = {"prune-t37": "fixed-2x-mtp0-wide-kv8-hero-prune-t37",
-                "prune50-layer": "fixed-2x-mtp0-wide-kv8-hero-prune50-layer", "prune37-layer": "fixed-2x-mtp0-wide-kv8-hero-prune37-layer", "prune25-layer": "fixed-2x-mtp0-wide-kv8-hero-prune25-layer", "prune12": "fixed-2x-mtp0-wide-kv8-hero-prune12", "prune25": "fixed-2x-mtp0-wide-kv8-hero-prune25"}
+PRUNE_LEVELS = {"prune50-layer": "fixed-2x-mtp0-wide-kv8-hero-prune50-layer", "prune37-layer": "fixed-2x-mtp0-wide-kv8-hero-prune37-layer", "prune25-layer": "fixed-2x-mtp0-wide-kv8-hero-prune25-layer", "prune12": "fixed-2x-mtp0-wide-kv8-hero-prune12", "prune25": "fixed-2x-mtp0-wide-kv8-hero-prune25"}
 LIVE_PROGRESS = {"interval_seconds": 60, "score_seconds": 300}
 STALL_DUMP_SECONDS = 90
 
@@ -222,24 +209,15 @@ DEFAULT_COMPONENTS = {
 # Opt-in harness features (30 September): absent from ``requested`` / ``components`` unless requested and on.
 OPTIONAL_COMPONENTS = {"parallel_samples": None, "action_plans": False, "completion_cap": None, "level_token_allowance": None,
                        "mtp_tokens": None, "expert_int3": None, "priority": None, "drain_half": None,
-                       "dfr_harness": None, "dfr_loop": None, "mtp_prefix_cache": None, "wide_tiles": None,
-                       "indexer_fp8": None, "hx_harness": None, "tail_keep_boundary": None, "keep_reply_states": None,
-                       "tail_spec_acceptance": None}
+                       "dfr_harness": None}
 # 3-bit routed experts (30 September; docs/validation-20260930/expert-3bit.md): the group sizes with a built overlay.
 EXPERT_INT3_GROUPS = (16,)
 # MTP-1 serving (30 September; spec-decode.md section 5, the arena-spec-sweep-p25-mtp1-v3 pilot on the prune25 pool): the
 # draft stack, the decode-graph ladder in streams (each x (k + 1) verify tokens) and the fixed blocks per draft token.
-# MTP-2 (throughput arm, 4 October; docs/research-throughput/LOG.md section 13): tp-mtp2-v1 on the v4 serving, pool
-# 1,510 blocks (3,200-token int4 blocks, 17 fixed per request), +8-14% generated tok/s over MTP-1 at 24-34 streams,
-# verify-path drift at the MTP-0 noise. Needs mtp_prefix_cache in practice (keep/demote and the EAGLE drop).
-MTP_DEPTHS = (1, 2)
+MTP_DEPTHS = (1,)
 MTP_KERNELS = {"mamba_ssm_cache_dtype": "bfloat16", "draft_experts": "nvfp4", "draft_vocab": "arena16k"}
 MTP_LADDER = (1, 2, 4, 8, 16, 24, 30, 32, 36, 40, 44)
 MTP_FIXED_BLOCKS_PER_TOKEN = 4  # 4 GDN groups x one more state page per draft token
-# Wide decode tiles (throughput arm, 3 October): the dense-overlay keys the ``wide_tiles`` component adds.
-WIDE_TILES = {"mid_wide": True, "mid_wide_shapes": [[448, 2560]], "mid_wide_buckets": [40, 48, 56, 64, 72]}
-# MTP-2 verifies 3 x streams rows (90-102 at 30-34 streams): the wide buckets extend to 96.
-WIDE_TILES_MTP2 = {**WIDE_TILES, "mid_wide_buckets": [40, 48, 56, 64, 72, 80, 88, 96]}
 
 
 class ComponentUnavailable(ValueError):
@@ -325,22 +303,6 @@ def status():
                                                   "compaction (arena.context_drain)"},
         "dfr_harness": {"available": True, "note": "ported dfranzen harness features in the corrected Duck agent "
                                                    "(arena.dfr_harness)"},
-        "dfr_loop": {"available": True, "note": "v5: dfranzen's token yield, no world model, action feedback and the "
-                                                "drain system line (arena.dfr_loop)"},
-        "mtp_prefix_cache": {"available": True, "note": "prefix cache v2 under MTP-k: spec-aware keep/demote and no "
-                                                        "EAGLE last-unit drop (arena.prefix_cache_patch spec_decode)"},
-        "wide_tiles": {"available": True, "note": "wide decode tiles, mid-M buckets 40-72 + the prune12 router "
-                                                  "(arc_infra.dense_wide_runtime)"},
-        "indexer_fp8": {"available": True, "note": "float8 QSA indexer compressed keys "
-                                                   "(arc_infra.serving_kernels_patch indexer_fp8)"},
-        "hx_harness": {"available": True, "note": "harness-arm components (arena.hx_harness, 3 October)"},
-        "tail_spec_acceptance": {"available": True, "note": "request_end_tail under MTP-k also for finishes without an "
-                                                            "in-flight step (arena.prefix_cache_patch)"},
-        "keep_reply_states": {"available": True, "note": "hold the Mamba states decode crossings supersede until the "
-                                                         "request ends (arena.prefix_cache_patch keep_reply_states)"},
-        "tail_keep_boundary": {"available": True, "note": "request_end_tail keeps the request's boundary state at the "
-                                                          "MRU end (no swap to the front): fallback when the tail entry "
-                                                          "cannot serve (arena.prefix_cache_patch tail_keep_boundary)"},
     }
 
 
@@ -381,14 +343,6 @@ def normalize(components=None):
             del result["drain_half"]  # off: not recorded (earlier builds stay byte-for-byte)
         else:
             result["drain_half"] = spec
-    if "hx_harness" in result:
-        from .hx_harness import settings as hx_settings
-
-        block = hx_settings(result["hx_harness"])
-        if block is None:
-            del result["hx_harness"]  # off: not recorded (earlier builds stay byte-for-byte)
-        else:
-            result["hx_harness"] = block
     if "dfr_harness" in result:
         from .dfr_harness import settings as dfr_settings
 
@@ -397,70 +351,14 @@ def normalize(components=None):
             del result["dfr_harness"]  # off: not recorded (earlier builds stay byte-for-byte)
         else:
             result["dfr_harness"] = block
-    if "dfr_loop" in result:
-        from .dfr_loop import settings as loop_settings
-
-        block = loop_settings(result["dfr_loop"])
-        if block is None:
-            del result["dfr_loop"]  # off: not recorded (earlier builds stay byte-for-byte)
-        else:
-            result["dfr_loop"] = block
     if "mtp_tokens" in result:
         depth = result["mtp_tokens"]
         if depth in (None, 0):
             del result["mtp_tokens"]  # MTP-0: not recorded (earlier builds stay byte-for-byte)
         elif type(depth) is not int or depth not in MTP_DEPTHS:
-            raise ValueError(f"mtp_tokens is 0 or one of {MTP_DEPTHS} (the measured MTP-1 / MTP-2 benches)")
+            raise ValueError(f"mtp_tokens is 0 or one of {MTP_DEPTHS} (the measured MTP-1 pilot)")
         elif result["kv_cache"] != "int4" or result.get("parallel_samples") is not None:
             raise ValueError("mtp_tokens is validated on int4 KV without parallel samples")
-    if "tail_spec_acceptance" in result:
-        flag = result["tail_spec_acceptance"]
-        if flag in (None, False):
-            del result["tail_spec_acceptance"]  # off: not recorded (earlier builds stay byte-for-byte)
-        elif flag is not True:
-            raise ValueError("tail_spec_acceptance is on/off (true/false)")
-        elif not (result.get("request_end_tail") and result.get("mtp_prefix_cache")):
-            raise ValueError("tail_spec_acceptance needs request_end_tail and mtp_prefix_cache")
-    if "keep_reply_states" in result:
-        flag = result["keep_reply_states"]
-        if flag in (None, False):
-            del result["keep_reply_states"]  # off: not recorded (earlier builds stay byte-for-byte)
-        elif flag is not True:
-            raise ValueError("keep_reply_states is on/off (true/false)")
-        elif result["prefix_cache"] is not True:
-            raise ValueError("keep_reply_states extends prefix cache v2: it needs prefix_cache")
-    if "tail_keep_boundary" in result:
-        flag = result["tail_keep_boundary"]
-        if flag in (None, False):
-            del result["tail_keep_boundary"]  # off: not recorded (earlier builds stay byte-for-byte)
-        elif flag is not True:
-            raise ValueError("tail_keep_boundary is on/off (true/false)")
-        elif not result.get("request_end_tail"):
-            raise ValueError("tail_keep_boundary changes request_end_tail placement: it needs request_end_tail")
-    if "mtp_prefix_cache" in result:
-        flag = result["mtp_prefix_cache"]
-        if flag in (None, False):
-            del result["mtp_prefix_cache"]  # off: not recorded (earlier builds stay byte-for-byte)
-        elif flag is not True:
-            raise ValueError("mtp_prefix_cache is on/off (true/false)")
-        elif not result.get("mtp_tokens") or result["prefix_cache"] is not True:
-            raise ValueError("mtp_prefix_cache fixes prefix cache v2 under MTP: it needs mtp_tokens and prefix_cache")
-    if "wide_tiles" in result:
-        flag = result["wide_tiles"]
-        if flag in (None, False):
-            del result["wide_tiles"]  # off: not recorded (earlier builds stay byte-for-byte)
-        elif flag is not True:
-            raise ValueError("wide_tiles is on/off (true/false)")
-        elif result["kernels_phase6"]:
-            raise ValueError("wide_tiles extends the phase-5 mid-M plan (kernels_phase6 off)")
-    if "indexer_fp8" in result:
-        flag = result["indexer_fp8"]
-        if flag in (None, False):
-            del result["indexer_fp8"]  # off: not recorded (earlier builds stay byte-for-byte)
-        elif flag is not True:
-            raise ValueError("indexer_fp8 is on/off (true/false)")
-        elif result["kv_cache"] != "int4":
-            raise ValueError("indexer_fp8 is measured on the int4 KV layout only")
     if "expert_int3" in result:
         group = result["expert_int3"]
         if group is None:
@@ -719,14 +617,8 @@ def compose(hero, components=None, *, served_blocks=None):
         # length (serving_kernels_patch.kv4_block_tokens: 3,136 tokens still hold the MTP-1 conv state).
         from arc_infra.serving_kernels_patch import kv4_block_tokens
 
-        served_block = kv4_block_tokens(kv, depth)
-        if served_block != KV_MODES[kv]["block_tokens"] and not (depth == 2 and kv == "int4"):
-            raise ValueError(f"MTP-{depth} changes the {kv} block size; only MTP-1 / MTP-2 on int4 are measured")
-        if served_block != KV_MODES[kv]["block_tokens"]:
-            # MTP-2 (4 October): 3,200-token int4 blocks. The gate charges the served layout (ARC_CACHE_LAYOUT); only
-            # this module's projections (windows fit, gate blocks per stream) still count 3,136-token blocks.
-            note("mtp_block_tokens", True, {"served_block_tokens": served_block,
-                                            "projection_block_tokens": KV_MODES[kv]["block_tokens"]})
+        if kv4_block_tokens(kv, depth) != KV_MODES[kv]["block_tokens"]:
+            raise ValueError(f"MTP-{depth} changes the {kv} block size; only MTP-1 on 3,136-token blocks is measured")
         if any(kernels.get(k) not in (None, v) for k, v in MTP_KERNELS.items()):
             raise ValueError("the hero serving kernels disagree with the MTP draft stack")
         kernels.update(MTP_KERNELS)
@@ -738,11 +630,6 @@ def compose(hero, components=None, *, served_blocks=None):
         if kernels.get("moe_backend") != "marlin":
             raise ValueError("expert_int3 replaces the hero's Marlin W4A16 routed experts")
         kernels.update(moe_backend="humming", expert_int3=int3)
-    if selected.get("indexer_fp8"):
-        kernels["indexer_fp8"] = True
-        note("indexer_fp8", True, {"serving_kernels": "indexer_fp8", "evidence": (
-            "docs/research-throughput/LOG.md (tp-spec-fp8-v1: pool 1,458 -> 1,541 blocks on the MTP-1 dfr serving, "
-            "step unchanged; tp-indexer-tf-v2: cross-server teacher-forced comparison)")})
     if kernels != before_kernels:
         from arc_infra.serving_kernels_patch import validate as validate_serving_kernels
 
@@ -756,24 +643,6 @@ def compose(hero, components=None, *, served_blocks=None):
         note("kernels_phase6", True, {"plan": f"arc_infra.dense_kernels_patch.{attr}"})
     else:
         note("kernels_phase6", False, {"plan": "phase 5 (the hero's)"})
-    if selected.get("wide_tiles"):
-        from arc_infra.dense_kernels_patch import validate as validate_dense
-
-        before_dense = copy.deepcopy(server["dense_kernels"])
-        tiles = WIDE_TILES_MTP2 if (selected.get("mtp_tokens") or 0) >= 2 else WIDE_TILES
-        if 2 * (selected.get("focus_slots") or 0) > WIDE_TILES["mid_wide_buckets"][-1]:
-            tiles = {**tiles, "mid_wide_buckets": WIDE_TILES_MTP2["mid_wide_buckets"]}  # > 36 MTP-1 streams: to 96 rows
-        spec = _prune_spec(selected["expert_prune"]) if selected.get("expert_prune") else None
-        if spec is None or spec["fraction"] != 0.125:
-            # Match the router output, including the unpruned 512-expert model.
-            kept = 512 - int(512 * spec["fraction"]) if spec else 512
-            tiles = {**tiles, "mid_wide_shapes": [[kept, 2560]]}
-        wide = validate_dense({**before_dense, **tiles})
-        changed["server.dense_kernels"] = {"before": before_dense, "after": wide}
-        server["dense_kernels"] = wide
-        note("wide_tiles", True, {**copy.deepcopy(tiles), "evidence": (
-            "docs/research-throughput/LOG.md (tp-spec-long-v1: MTP-1 step 35.60 -> 34.40 ms at 30 streams, 32.66 -> "
-            "31.95 at 24, 38.50 -> 37.68 at 34; drift KL 0.054 vs 0.059, top-1 93.5% vs 93.6%)")})
 
     level = selected["expert_prune"]
     if level is not None:
@@ -786,10 +655,9 @@ def compose(hero, components=None, *, served_blocks=None):
         note("expert_prune", False, {})
 
     if selected["gptq_arc"] and int3:
-        from arena.variants import EXPERT_OVERLAY_INT3, EXPERT_OVERLAY_INT3_PRUNED
+        from arena.variants import EXPERT_OVERLAY_INT3
 
-        # A mask with its own calibrated (and possibly stripped, omits_pruned) overlay uses it.
-        overlay = dict(EXPERT_OVERLAY_INT3_PRUNED.get((level, int3)) or EXPERT_OVERLAY_INT3[int3])
+        overlay = dict(EXPERT_OVERLAY_INT3[int3])
         server["expert_overlay"] = overlay
         changed["server.expert_overlay"] = {"before": None, "after": dict(overlay)}
         note("gptq_arc", True, {"dataset": overlay["dataset"], "platform": "modal-only",
@@ -821,11 +689,6 @@ def compose(hero, components=None, *, served_blocks=None):
         patches = dict(HERO_PREFIX_CACHE)
         if selected.get("request_end_tail"):
             patches["request_end_tail"] = True
-        if selected.get("mtp_prefix_cache"):
-            patches["spec_decode"] = True
-        for key in ("tail_keep_boundary", "keep_reply_states", "tail_spec_acceptance"):
-            if selected.get(key):
-                patches[key] = True
         result["cache_experiment"]["prefix_cache"] = patches
         changed["cache_experiment.prefix_cache"] = {"before": None, "after": dict(patches)}
         note("prefix_cache", True, dict(HERO_PREFIX_CACHE))
@@ -918,12 +781,6 @@ def compose(hero, components=None, *, served_blocks=None):
                         "generated tok/s at 24-40 streams, verify-path drift within the MTP-0 noise)",
             "prefix_cache": "keep/demote switch themselves off under speculation (the chunk-alignment fix stays)",
             "gate": "the served layout's lookahead (k) charges the draft tokens; the Duck client's lookahead is k"})
-    if selected.get("mtp_prefix_cache"):
-        note("mtp_prefix_cache", True, {
-            "prefix_cache_key": "spec_decode", "patches": ["MambaManager keep/demote under MTP-k",
-                                                           "no EAGLE last-unit drop in the hybrid coordinator"],
-            "evidence": "docs/research-throughput/LOG.md (CPU replay of the pinned scheduler: MTP-1 hit rate 0.878 "
-                        "with the fix vs 0.322 pinned; MTP-0 + v2 0.887)"})
     if layout["oversubscribed"]:
         # More focus games than full windows fit: no fit check and no fallback; the exact KV gate
         # holds a request until the pool has room for its prompt + completion cap, so no request can be preempted.
@@ -1002,13 +859,6 @@ def compose(hero, components=None, *, served_blocks=None):
         changed["action_plans"] = {"before": None, "after": True}
         note("action_plans", True, {"helper": "run_plan (duck_transfer.sandbox.with_plans)",
                                     "prompt": "arena.action_plans.PROMPT"})
-    if selected.get("hx_harness"):
-        from .hx_harness import describe as hx_describe
-
-        block = copy.deepcopy(selected["hx_harness"])
-        result["hx_harness"] = block  # arena.trial passes it to every Duck agent
-        changed["hx_harness"] = {"before": None, "after": copy.deepcopy(block)}
-        note("hx_harness", True, hx_describe(block))
     if selected.get("dfr_harness"):
         from .dfr_harness import describe as dfr_describe
 
@@ -1016,13 +866,6 @@ def compose(hero, components=None, *, served_blocks=None):
         result["dfr_harness"] = block  # arena.trial passes it to every Duck agent
         changed["dfr_harness"] = {"before": None, "after": copy.deepcopy(block)}
         note("dfr_harness", True, dfr_describe(block))
-    if selected.get("dfr_loop"):
-        from .dfr_loop import describe as loop_describe
-
-        block = copy.deepcopy(selected["dfr_loop"])
-        result["dfr_loop"] = block  # arena.trial passes it to every Duck agent
-        changed["dfr_loop"] = {"before": None, "after": copy.deepcopy(block)}
-        note("dfr_loop", True, loop_describe(block))
 
     policy = selected["budget_policy"]
     if policy == "blocks":

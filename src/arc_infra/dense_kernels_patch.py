@@ -15,13 +15,6 @@ the patched file and the copied helper stay byte-identical:
 path), ``"mid_int8_buckets": [8, 16, 24, 32]`` (INT8 mid-M buckets; phase 5 has 24 and 32) and
 ``"mid_extra_candidates": [[BLOCK_N, BLOCK_K, warps, stages], ...]`` (more tuner candidates). They are served by
 ``dense_fused_runtime.py`` (copied to ``arc_dense_fused.py`` only with them), installed by one extra line.
-
-Kernel profile (30 September; docs/validation-20260930/kernel-profile.md), likewise absent unless set:
-``"mid_wide": true`` (mid-M buckets 40 / 48 / 56 for both kinds, tuned in the kernel warmup where the fixed plan has
-no tile), ``"mid_wide_shapes": [[N, K], ...]`` (extra BF16 shapes on the mid-M path, e.g. the prune12 router
-[448, 2560]) and ``"mid_wide_plan"`` (fixed wide tiles, {"bf16"|"int8": {"N,K": {"40": [BLOCK_M, BLOCK_N, BLOCK_K,
-warps, stages] | null}}}). They are served by ``dense_wide_runtime.py`` (copied to ``arc_dense_wide.py`` only with
-them), installed by its own extra line.
 """
 
 import hashlib
@@ -45,20 +38,6 @@ INSERT_PHASE6 = '''    # ARC dense kernels, phase 6 (fused split-K reduction, IN
 PHASE6_HELPER = 'arc_dense_fused.py'
 PHASE6_SOURCE = 'dense_fused_runtime.py'
 PHASE6_KEYS = ('fused_splitk', 'mid_int8_buckets', 'mid_extra_candidates')
-# Kernel profile (30 September): the wide decode tiles, installed before ``enable`` only with a wide key.
-INSERT_WIDE = '''    # ARC dense kernels, wide decode tiles (mid-M buckets 40-56, extra BF16 shapes).
-    from vllm.models.qwen3_8_flash_next.nvidia.arc_dense_wide import install as _arc_dense_wide_install
-    _arc_dense_wide_install()
-'''
-WIDE_HELPER = 'arc_dense_wide.py'
-WIDE_SOURCE = 'dense_wide_runtime.py'
-WIDE_KEYS = ('mid_wide', 'mid_wide_shapes', 'mid_wide_plan', 'mid_wide_buckets')
-WIDE_BUCKETS = (40, 48, 56)
-# Throughput arm (3 October): MTP-1 verify batches are 2 x streams rows (60-68 at 30-34 streams), past the 56 bucket.
-# ``mid_wide_buckets`` replaces the default wide buckets with any increasing subset of these (absent = the default).
-WIDE_BUCKETS_ALLOWED = (40, 48, 56, 64, 72, 80, 88, 96)
-# The prune12 router: 448 kept experts x hidden 2560, in no mid-M plan (the phase-5 plan lists the unpruned 512).
-PRUNED_ROUTER_SHAPES = ([448, 2560],)
 SETTINGS = 'arc_dense_kernels.json'
 MARKER = 'dense-kernels-patch.json'
 # The large projection families where phase 1 measured weight-only 8-bit faster than BF16.
@@ -156,72 +135,11 @@ def validate_phase6(spec, mid):
     return result
 
 
-def validate_wide(spec, mid):
-    """The wide-tile keys of a ``server.dense_kernels`` value, canonical and without the absent/false ones."""
-    on = spec.get('mid_wide', False)
-    shapes = spec.get('mid_wide_shapes') or []
-    plan = spec.get('mid_wide_plan') or {}
-    wide_buckets = spec.get('mid_wide_buckets')
-    if type(on) is not bool:
-        raise ValueError('dense_kernels.mid_wide must be a boolean')
-    if wide_buckets is not None and (not isinstance(wide_buckets, list) or not wide_buckets
-                                     or any(type(b) is not int or b not in WIDE_BUCKETS_ALLOWED for b in wide_buckets)
-                                     or wide_buckets != sorted(set(wide_buckets))):
-        raise ValueError(f'dense_kernels.mid_wide_buckets must be an increasing list from {WIDE_BUCKETS_ALLOWED}')
-    allowed = tuple(wide_buckets) if wide_buckets is not None else WIDE_BUCKETS
-    if not isinstance(shapes, list) or any(not (isinstance(s, list) and len(s) == 2
-                                               and all(type(v) is int and v > 0 for v in s)) for s in shapes):
-        raise ValueError('dense_kernels.mid_wide_shapes must be [N, K] lists')
-    if not isinstance(plan, dict) or set(plan) - set(MID_KINDS):
-        raise ValueError(f'dense_kernels.mid_wide_plan takes only {MID_KINDS}')
-    canonical_plan = {}
-    for kind in MID_KINDS:
-        entries = plan.get(kind) or {}
-        if not isinstance(entries, dict):
-            raise ValueError(f'dense_kernels.mid_wide_plan.{kind} must map "N,K" to buckets')
-        out = {}
-        for key, buckets in entries.items():
-            parts = key.split(',') if isinstance(key, str) else []
-            if len(parts) != 2 or not all(p.isdigit() and int(p) > 0 for p in parts) or not isinstance(buckets, dict):
-                raise ValueError(f'dense_kernels.mid_wide_plan.{kind}: bad shape key {key!r}')
-            entry = {}
-            for m, cfg in buckets.items():
-                if not (isinstance(m, str) and m.isdigit() and int(m) in allowed):
-                    raise ValueError(f'dense_kernels.mid_wide_plan.{kind}.{key}: bucket {m!r} not in {allowed}')
-                if cfg is not None and not (isinstance(cfg, list) and len(cfg) == 5
-                                            and all(type(v) is int and v > 0 for v in cfg) and cfg[0] in (32, 64)):
-                    raise ValueError(f'dense_kernels.mid_wide_plan.{kind}.{key}.{m}: [BLOCK_M (32|64), BLOCK_N, '
-                                     'BLOCK_K, warps, stages] or null')
-                entry[m] = None if cfg is None else list(cfg)
-            out[key] = {m: entry[m] for m in sorted(entry, key=int)}
-        if out:
-            canonical_plan[kind] = {k: out[k] for k in sorted(out)}
-    if (shapes or canonical_plan or wide_buckets is not None) and not on:
-        raise ValueError('dense_kernels.mid_wide_shapes / mid_wide_plan / mid_wide_buckets extend mid_wide; enable it')
-    if on and not mid:
-        raise ValueError('dense_kernels.mid_wide extends mid_m; enable it')
-    result = {}
-    if on:
-        result['mid_wide'] = True
-    if shapes:
-        result['mid_wide_shapes'] = [list(s) for s in sorted({tuple(s) for s in shapes})]
-    if canonical_plan:
-        result['mid_wide_plan'] = canonical_plan
-    if wide_buckets is not None:
-        result['mid_wide_buckets'] = list(wide_buckets)
-    return result
-
-
-def wide(spec):
-    """True when an (already validated) setting uses a wide-tile key (helper and install line needed)."""
-    return any(key in spec for key in WIDE_KEYS)
-
-
 def validate(spec):
     """Normalize a ``server.dense_kernels`` value; None/absent/all-off means no overlay."""
     if spec is None:
         return None
-    if not isinstance(spec, dict) or set(spec) - {'skinny', 'int8_weights', 'mid_m', *PHASE6_KEYS, *WIDE_KEYS}:
+    if not isinstance(spec, dict) or set(spec) - {'skinny', 'int8_weights', 'mid_m', *PHASE6_KEYS}:
         raise ValueError('dense_kernels takes only "skinny" (bool), "int8_weights" (list of families), "mid_m" and '
                          f'the phase-6 keys {PHASE6_KEYS}')
     skinny = spec.get('skinny', False)
@@ -235,9 +153,8 @@ def validate(spec):
     if type(mid) is not bool:
         mid = validate_mid_plan(mid)
     phase6 = validate_phase6(spec, mid)
-    wide_keys = validate_wide(spec, mid)
     if not skinny and not families:
-        if mid or phase6 or wide_keys:
+        if mid or phase6:
             raise ValueError('dense_kernels.mid_m and the phase-6 keys extend the skinny and INT8 paths; enable one')
         return None
     # Canonical order, so equal settings always serialize identically; an absent or false mid_m is left out, so the
@@ -246,7 +163,6 @@ def validate(spec):
     if mid:
         result['mid_m'] = mid
     result.update(phase6)
-    result.update(wide_keys)
     return result
 
 
@@ -255,7 +171,7 @@ def phase6(spec):
     return any(key in spec for key in PHASE6_KEYS)
 
 
-def patched_source(original, with_phase6=False, with_wide=False):
+def patched_source(original, with_phase6=False):
     if hashlib.sha256(original).hexdigest() != ORIGINAL_SHA256:
         raise RuntimeError('Dense-kernel overlay rejected an unrecognized vLLM low_latency_gemm.py')
     text = original.decode()
@@ -264,11 +180,6 @@ def patched_source(original, with_phase6=False, with_wide=False):
     insert = INSERT.replace('    from vllm.models.qwen3_8_flash_next.nvidia.arc_dense_kernels import enable',
                             INSERT_PHASE6 + '    from vllm.models.qwen3_8_flash_next.nvidia.arc_dense_kernels import '
                             'enable', 1) if with_phase6 else INSERT
-    if with_wide:
-        # After the phase-6 install (it may rebind MID_INT8_BUCKETS / MID_CANDIDATES), before enable.
-        insert = insert.replace('    from vllm.models.qwen3_8_flash_next.nvidia.arc_dense_kernels import enable',
-                                INSERT_WIDE + '    from vllm.models.qwen3_8_flash_next.nvidia.arc_dense_kernels import '
-                                'enable', 1)
     result = text.replace(ANCHOR, insert + ANCHOR)
     compile(result, RELATIVE, 'exec')
     return result.encode()
@@ -282,7 +193,6 @@ def apply(site, output, spec):
     target = Path(site) / RELATIVE
     helper = Path(__file__).with_name('dense_kernels_runtime.py').read_bytes()
     extra = Path(__file__).with_name(PHASE6_SOURCE).read_bytes() if phase6(spec) else None
-    extra_wide = Path(__file__).with_name(WIDE_SOURCE).read_bytes() if wide(spec) else None
     settings = (json.dumps(spec, sort_keys=True) + '\n').encode()
     original = target.read_bytes()
     marker = Path(output) / MARKER
@@ -295,17 +205,13 @@ def apply(site, output, spec):
                     and target.with_name(HELPER).read_bytes() == helper
                     and target.with_name(SETTINGS).read_bytes() == settings
                     and (extra is None or (target.with_name(PHASE6_HELPER).is_file()
-                                           and target.with_name(PHASE6_HELPER).read_bytes() == extra))
-                    and (extra_wide is None or (target.with_name(WIDE_HELPER).is_file()
-                                                and target.with_name(WIDE_HELPER).read_bytes() == extra_wide))):
+                                           and target.with_name(PHASE6_HELPER).read_bytes() == extra))):
                 return identity
         raise RuntimeError('Dense-kernel overlay found a modified low_latency_gemm.py')
-    patched = patched_source(original, with_phase6=extra is not None, with_wide=extra_wide is not None)
+    patched = patched_source(original, with_phase6=extra is not None)
     target.with_name(HELPER).write_bytes(helper)
     if extra is not None:
         target.with_name(PHASE6_HELPER).write_bytes(extra)
-    if extra_wide is not None:
-        target.with_name(WIDE_HELPER).write_bytes(extra_wide)
     target.with_name(SETTINGS).write_bytes(settings)
     target.write_bytes(patched)
     identity = {'original_sha256': ORIGINAL_SHA256,
@@ -314,8 +220,6 @@ def apply(site, output, spec):
                 'settings': spec}
     if extra is not None:
         identity['phase6_helper_sha256'] = hashlib.sha256(extra).hexdigest()
-    if extra_wide is not None:
-        identity['wide_helper_sha256'] = hashlib.sha256(extra_wide).hexdigest()
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.write_text(json.dumps(identity, indent=2) + '\n')
     print('ARC_DENSE_KERNELS_PATCH ' + json.dumps(identity, sort_keys=True), flush=True)

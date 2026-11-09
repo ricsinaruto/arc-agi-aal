@@ -1,119 +1,10 @@
-"""Object view and transition summaries (pure, host-side)."""
-
-import io
-import pickle
-import threading
+"""Object view, transition summaries and grid-dump suppression (pure, host-side)."""
 
 import numpy as np
-import pytest
 
-from arc_infra.objects import component_count, object_view, segment_host
-from arc_infra.transition import summarize
-
-
-def test_segment_frames_survive_partial_pipe_reads_and_writes():
-    from arc_infra.segment_worker import _read, _write
-
-    class FragmentedPipe(io.BytesIO):
-        def read(self, size=-1):
-            return super().read(min(size, 7))
-
-        def write(self, data):
-            return super().write(data[:13])
-
-    pipe = FragmentedPipe()
-    replies = [("ok", {"payload": "x" * 70_000}), ("error", "worker failure")]
-    for reply in replies:
-        _write(pipe, reply)
-    pipe.seek(0)
-    assert [_read(pipe), _read(pipe)] == replies
-    with pytest.raises(EOFError, match="segment worker closed"):
-        _read(pipe)
-
-
-@pytest.mark.parametrize("cut", [0, 2, -1])
-def test_segment_pipe_truncation_is_not_a_valid_reply(cut):
-    from arc_infra.segment_worker import HEADER, _read
-
-    data = pickle.dumps(("ok", {"nodes": []}))
-    with pytest.raises(EOFError, match="segment worker closed"):
-        _read(io.BytesIO((HEADER.pack(len(data)) + data)[:cut]))
-
-
-def test_segment_fallback_is_reported_and_sticks(monkeypatch, caplog):
-    from arc_infra import transition
-
-    class BrokenPool:
-        calls = 0
-
-        def segment(self, board, limit):
-            self.calls += 1
-            raise EOFError("segment worker closed")
-
-    pool = BrokenPool()
-    monkeypatch.setattr(transition, "SEGMENT_WORKERS", 1)
-    monkeypatch.setattr(transition, "_POOL", {"pool": pool, "failed": None})
-    grid = np.zeros((64, 64), dtype=np.uint8)
-    first = transition.segment_offloaded(grid, limit=200)
-    assert transition.segment_offloaded(grid, limit=200) == first
-    assert pool.calls == 1
-    assert "Segmentation pool failed; using in-process fallback: EOFError" in caplog.text
-
-
-def test_segment_worker_failure_wakes_waiting_callers(monkeypatch):
-    from arc_infra import segment_worker
-
-    entered, release = threading.Event(), threading.Event()
-
-    class FailedWorker:
-        stdin = io.BytesIO()
-        stdout = None
-
-        def kill(self):
-            pass
-
-    def fail_read(stream):
-        entered.set()
-        assert release.wait(2)
-        raise EOFError("worker exited")
-
-    pool = segment_worker.SegmentPool(1)
-    monkeypatch.setattr(pool, "_spawn", FailedWorker)
-    monkeypatch.setattr(segment_worker, "_read", fail_read)
-    waiting = threading.Event()
-    wait = pool.lock.wait
-
-    def note_wait(*args, **kwargs):
-        waiting.set()
-        return wait(*args, **kwargs)
-
-    monkeypatch.setattr(pool.lock, "wait", note_wait)
-    errors = []
-
-    def call():
-        try:
-            pool.segment(np.zeros((64, 64), dtype=np.uint8), 200)
-        except Exception as exc:
-            errors.append(exc)
-
-    first = threading.Thread(target=call, daemon=True)
-    second = threading.Thread(target=call, daemon=True)
-    try:
-        first.start()
-        assert entered.wait(2)
-        second.start()
-        assert waiting.wait(2)
-        release.set()
-        first.join(2)
-        second.join(2)
-        assert not first.is_alive() and not second.is_alive()
-        assert {type(error) for error in errors} == {EOFError, RuntimeError}
-        assert all("worker exited" in str(error) for error in errors)
-        with pytest.raises(RuntimeError, match="worker exited"):
-            pool._take()
-    finally:
-        release.set()
-        pool.close()
+from qwen_baselines.objects import component_count, object_view, segment_host
+from qwen_baselines.output_filter import suppress_dump
+from qwen_baselines.transition import summarize
 
 
 def board(*blocks, fill=0):
@@ -159,3 +50,23 @@ def test_transition_summary_matches_objects_by_hash():
     assert same["objects"]["counts"] == {"appeared": 0, "disappeared": 0, "moved": 0}
     assert not same["objects"]["background_reshaped"]
     assert "objects" not in summarize(before, after, before_objects={"skipped": 5000}, after_objects=segment_host(after))
+
+
+def test_grid_dumps_are_suppressed_and_long_output_truncated():
+    grid = board((5, 10, 10, 14, 14))
+    hex_rows = "\n".join("".join("0123456789ABCDEF"[v] for v in row) for row in grid)
+    filtered, info = suppress_dump("before\n" + hex_rows + "\nafter")
+    assert filtered == "before\n[grid dump suppressed: 64 rows; read small crops instead]\nafter"
+    assert info == {"suppressed_rows": 64}
+    numpy_rows = np.array2string(grid, max_line_width=400, threshold=10**6)
+    assert suppress_dump(numpy_rows)[1] == {"suppressed_rows": 64}
+    list_rows = repr(grid.tolist()).replace("], [", "],\n[")
+    assert suppress_dump(list_rows)[1] == {"suppressed_rows": 64}
+    crop = "\n".join("".join("0123456789ABCDEF"[v] for v in row[8:16]) for row in grid[8:16])
+    assert suppress_dump(crop) == (crop, None)
+    short_rows = "\n".join(["0" * 64] * 10)
+    assert suppress_dump(short_rows) == (short_rows, None)
+    text, info = suppress_dump("x" * 7000)
+    assert text.startswith("x" * 4000) and text.endswith("read small crops instead]")
+    assert info == {"truncated_chars": 7000}
+    assert suppress_dump("hello\n4096\n") == ("hello\n4096\n", None)

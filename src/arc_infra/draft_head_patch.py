@@ -74,11 +74,6 @@ def validate(spec):
     return {'dump': dump, 'overlay': overlay}
 
 
-# Files this module edits, for the CPU patch check (arc_infra.runops.patchcheck). No sha here: model.py and mtp.py
-# may already carry the serving-kernels edits at boot (stacked), and edits() guards each against its accepted set.
-TARGETS = ({'relative': MODEL['relative']}, {'relative': 'vllm/models/qwen3_8_flash_next/nvidia/mtp.py'})
-
-
 def edits(spec):
     """``{relative: (accepted sha256s, [edits])}`` for an (already validated) setting."""
     chosen = {}

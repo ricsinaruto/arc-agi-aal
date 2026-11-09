@@ -1,10 +1,7 @@
 """Fleet rosters, session HTTP semantics, scoring summary and engine telemetry."""
 
 import asyncio
-import gc
-import json
 import sys
-import weakref
 from pathlib import Path
 
 import httpx
@@ -61,32 +58,6 @@ async def test_cache_salt_is_stable_and_request_semantics_unchanged():
     assert observed[0]["cache_salt"] != observed[2]["cache_salt"]
     assert {k: v for k, v in observed[2].items() if k != "cache_salt"} == payload
     assert len(records) == 3 and all(r["status"] == 200 for r in records)
-
-
-@pytest.mark.parametrize("url", ["chat/completions", "/tokenize", "/other"])
-@pytest.mark.parametrize("status", [200, 503])
-async def test_consumed_responses_release_without_cyclic_collection(url, status):
-    body = {"choices": [{"finish_reason": "stop"}], "usage": {}, "count": 100}
-    async with httpx.AsyncClient(
-        base_url="http://model/",
-        transport=httpx.MockTransport(lambda request: httpx.Response(
-            status, stream=httpx.ByteStream(json.dumps(body).encode()), headers={"x-test": "yes"})),
-    ) as shared:
-        client = SessionHTTP(shared, 0, "game", [])
-        enabled = gc.isenabled()
-        gc.disable()
-        try:
-            response = await client.post(url, json={"messages": []}, timeout=3.0)
-            assert response.status_code == status and response.json() == body
-            assert response.headers["x-test"] == "yes" and response.elapsed.total_seconds() >= 0
-            assert await response.aread() == response.content
-            assert response.is_closed and response.is_stream_consumed
-            reference = weakref.ref(response)
-            del response
-            assert reference() is None
-        finally:
-            if enabled:
-                gc.enable()
 
 
 @pytest.mark.parametrize("failures", [1, 4])

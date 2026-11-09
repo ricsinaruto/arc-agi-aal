@@ -128,11 +128,6 @@ EXPERT_PRUNE_VARIANTS = {
     "fixed-2x-mtp0-wide-kv8-hero-prune50-layer": {
         "fraction": 0.5, "source": "data/expert_prune/prune50-layer.json", "mask": "configs/expert-prune/prune50-layer.json",
         "sha256": "e2c395c875a30aef633aff326aee2642f3100f141501eac51c67d7684b8165b7", "served_blocks": 2468},
-    # Tuning-family masks (throughput arm phase 5, 4 October; LOG section 18). served_blocks projected on prune12's
-    # 1,245 measured int8 blocks + the further experts' NVFP4 bytes (2,764,800 B / 21,196,800 B per int8 block).
-    "fixed-2x-mtp0-wide-kv8-hero-prune-t37": {
-        "fraction": 0.375, "source": "data/expert_prune/prune-t37.json", "mask": "configs/expert-prune/prune-t37.json",
-        "sha256": "95ca64d4043600139655305ef75ef802b4f6fe22a0ac5003f956215d6b2efb81", "served_blocks": 2046},
 }
 
 
@@ -171,11 +166,6 @@ EXPERT_OVERLAY_GPTQ_ARC = {"dataset": "richardcsaky/arc-expert-gptq-arc-v1",
 EXPERT_OVERLAY_INT3 = {16: {"dataset": "richardcsaky/arc-expert-int3-g16-v1",
                             "manifest_sha256": "7fca7969efba1d510c59b8430cfe3c357b54f9213ff2f5c58dd24ec4179cc944",
                             "check": "size"}}
-# Mask-specific int3 overlays, by (hero_v2 expert_prune level, group): GPTQ-ARC calibrated on that mask's kept experts.
-# v7 (5 October): the throughput arm's dev t37 overlay (tp-p5-t37dev-v1, manifest as served there).
-EXPERT_OVERLAY_INT3_PRUNED = {("prune-t37", 16): {"dataset": "richardcsaky/arc-expert-int3-g16-tuning-t37-v1",
-                                                  "manifest_sha256": "50eb3a2d2e6273b2b849f24919284319d8d0433e4c110004e8ed74440a542e57",
-                                                  "check": "size"}}
 
 
 # Depthwise scheduling -> the composed variant whose serving (server
@@ -426,8 +416,8 @@ def apply_variant(study, name):
             study.get('backend', 'vllm') != 'vllm' or study.get('candidate_profile')):
         raise ValueError('Reclaimed graph comparison requires the Flash vLLM profile')
     if (len(study["games"]) + len(study.get("games_excluded", [])) != 25 or study["wall_seconds"] != 1800
-            or [t["kind"] for t in study["trials"]] != ["duck-transfer", "pi"]):
-        raise ValueError("Variants require the paired Duck control (configs/arena_30m.json), 25 games and 1800 seconds")
+            or [t["kind"] for t in study["trials"]] not in (["duck-transfer", "pi"], ["pi-rlm"])):
+        raise ValueError("Variants require both Duck/Pi (or the Pi RLM trial), 25 games and 1800 seconds each")
     if (study["active_limit"] != 2 or study["windows"] != [131072]
             or study.get("max_level_grant_seconds") is not None
             or study.get("max_level_grant_t1_multiple") is not None

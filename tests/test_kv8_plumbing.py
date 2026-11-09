@@ -36,7 +36,7 @@ def test_option_is_validated_and_off_leaves_the_recorded_settings_unchanged():
     assert patch.validate(patch.PHASE4) == patch.PHASE4 and "kv_cache_8bit" not in patch.validate(patch.PHASE4)
     assert patch.validate({**patch.PHASE4, "kv_cache_8bit": None}) == patch.PHASE4
     spec = patch.validate(KV8)
-    assert spec == KV8 and list(spec) == [k for k in patch.OPTIONS if k not in patch.TWEAK_OPTIONS + ("kv_cache_4bit", "kv8_prefill", "expert_int3", "indexer_fp8", "draft_moe_backend")]
+    assert spec == KV8 and list(spec) == [k for k in patch.OPTIONS if k not in patch.TWEAK_OPTIONS + ("kv_cache_4bit", "kv8_prefill", "expert_int3")]
     assert patch.targets(spec) == [patch.MTP, patch.B12X, patch.SAMPLER, patch.STATES, patch.QSA]
     assert patch.server_flags(spec) == ["--mamba-ssm-cache-dtype", "bfloat16", "--kv-cache-dtype", "int8_per_token_head"]
     only = patch.validate({"kv_cache_8bit": "fp8"})

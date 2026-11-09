@@ -1,0 +1,67 @@
+{
+ "bf16": "all",
+ "bf16b": "all",
+ "s2": {
+  "bf16": [
+   "3:attn_out",
+   "7:attn_out",
+   "11:attn_out",
+   "15:attn_out",
+   "19:attn_out",
+   "23:attn_out",
+   "27:attn_out",
+   "31:attn_out",
+   "35:attn_out",
+   "39:attn_out",
+   "43:attn_out",
+   "47:attn_out"
+  ]
+ },
+ "inproj": {
+  "fp8": [
+   "*:gdn_in_proj_qkvz",
+   "*:qsa_qkv"
+  ]
+ },
+ "gdnout": {
+  "fp8": [
+   "0:attn_out",
+   "1:attn_out",
+   "2:attn_out",
+   "4:attn_out",
+   "5:attn_out",
+   "6:attn_out",
+   "8:attn_out",
+   "9:attn_out",
+   "10:attn_out",
+   "12:attn_out",
+   "13:attn_out",
+   "14:attn_out",
+   "16:attn_out",
+   "17:attn_out",
+   "18:attn_out",
+   "20:attn_out",
+   "21:attn_out",
+   "22:attn_out",
+   "24:attn_out",
+   "25:attn_out",
+   "26:attn_out",
+   "28:attn_out",
+   "29:attn_out",
+   "30:attn_out",
+   "32:attn_out",
+   "33:attn_out",
+   "34:attn_out",
+   "36:attn_out",
+   "37:attn_out",
+   "38:attn_out",
+   "40:attn_out",
+   "41:attn_out",
+   "42:attn_out",
+   "44:attn_out",
+   "45:attn_out",
+   "46:attn_out"
+  ]
+ },
+ "fp8all": null
+}

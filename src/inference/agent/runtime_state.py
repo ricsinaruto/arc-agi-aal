@@ -8,6 +8,7 @@ from typing import Any
 
 from inference.utils.grid_utils import format_grid_ascii
 
+
 RUNTIME_STATE_FILENAME = "tool_runtime_state.json"
 
 
@@ -125,15 +126,10 @@ def write_runtime_state(
     history: list[HistoryEntry],
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "current_frame": frame_to_payload(current_frame),
+        "history": [history_entry_to_payload(entry) for entry in history],
+    }
     tmp_path = path.with_suffix(f"{path.suffix}.tmp")
-    # A long game must not duplicate every grid and a pretty-printed JSON string at shutdown.
-    with tmp_path.open("w", encoding="utf-8", buffering=1 << 16) as output:
-        output.write('{"current_frame":')
-        output.write(json.dumps(frame_to_payload(current_frame), separators=(",", ":")))
-        output.write(',"history":[')
-        for index, entry in enumerate(history):
-            if index:
-                output.write(",")
-            output.write(json.dumps(history_entry_to_payload(entry), separators=(",", ":")))
-        output.write("]}")
+    tmp_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     tmp_path.replace(path)

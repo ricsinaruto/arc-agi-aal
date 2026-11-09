@@ -8,7 +8,7 @@ import pytest
 from test_arena_core import Now, make_games
 
 from arena.scheduler import Scheduler
-from arena.trial import duck_config
+from arena.trial import duck_config, qwen_config
 from arena.variants import NGRAM8_SPECULATION, NGRAM_SPECULATION, VARIANTS, apply_variant
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -90,8 +90,9 @@ def test_interventions_preserve_checkpoint_serving_sampling_and_both_agents(name
     elif name in ('context-64k', 'reclaim-context-64k'):
         kwargs = dict(window=result['windows'][0],cap=result['completion_cap'],wall=1800,base_url='http://model/v1')
         duck = duck_config(result,ROOT,**kwargs)
-        assert duck.max_model_len == 65536
-        assert result['server']['max_model_len'] == 262144 and result['active_limit'] == 2
+        pi = qwen_config(result,'pi',**kwargs)
+        assert duck.max_model_len == pi.compaction_tokens+pi.output_tokens_cap == 65536
+        assert pi.context_window == 262144 and result['active_limit'] == 2
         if name == 'reclaim-context-64k':
             assert result['cache_experiment']['reclaim_skipped_blocks'] is True
             assert result['cache_experiment']['compaction_changed'] is True
@@ -380,7 +381,7 @@ def test_capped_allocation_does_not_idle_when_no_backlog_exists():
 def test_combined_or_nonpaired_interventions_rejected():
     with pytest.raises(ValueError,match='unmodified'):
         apply_variant(apply_variant(CONTROL,'phase2-four'),'context-64k')
-    with pytest.raises(ValueError,match='paired Duck control'):
+    with pytest.raises(ValueError,match='both Duck/Pi'):
         apply_variant({**CONTROL,'trials':[{'kind':'pi'}]},'control')
     with pytest.raises(ValueError,match='requires vLLM'):
         apply_variant({**CONTROL,'backend':'sglang'},'graph-128')
@@ -397,7 +398,7 @@ def test_variant_bundle_records_exact_intervention_and_keeps_model_identity(tmp_
     spec = importlib.util.spec_from_file_location('variant_builder',ROOT/'scripts/build_arena.py')
     builder=importlib.util.module_from_spec(spec)
     spec.loader.exec_module(builder)
-    candidate = None
+    candidate = None if name.startswith(('reclaim-', 'fixed-2x-', 'hero-')) else 'ui-mate-9b'
     output,study=builder.build('variant-'+name,output=tmp_path/name,paired_30m=True,
                                candidate_profile=candidate,arena_variant=name)
     assert study.get('candidate_profile') == candidate
