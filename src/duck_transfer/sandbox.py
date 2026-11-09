@@ -644,6 +644,8 @@ class StatefulSandbox:
         self.inventory_answers_animation = False
         # arena hx_harness toolbox (``arena.hx_harness.with_toolbox``): the child's last registry / observer report.
         self.hx_state = None
+        # arena sim_check (``arena.sim_check.with_simcheck``): the child's last model-check report.
+        self.sc_state = None
         # Diagnostics only; native model LRU caches retain their exact behavior.
         self.cache_telemetry_seconds = 60
 
@@ -851,6 +853,12 @@ class StatefulSandbox:
                         # arena dfr_harness: stale-state / terminal refusals raised in the child (nothing executed).
                         self.dfr_guards.extend(guards)
                         self._event("duck_python_dfr_guards", guards=guards)
+                    simcheck = message.get("simcheck")
+                    if isinstance(simcheck, dict):
+                        # arena sim_check: the model-check report of this call (events, ledger counts, fit, claims).
+                        self.sc_state = simcheck
+                        if simcheck.get("events"):
+                            self._event("duck_python_simcheck", events=simcheck["events"])
                     hx = message.get("hx")
                     if isinstance(hx, dict):
                         # arena hx_harness: registered tools / observers and the last observer outputs.

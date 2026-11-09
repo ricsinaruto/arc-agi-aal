@@ -48,15 +48,3 @@ def modal_apps(modal_bin=None, timeout=60):
     if not isinstance(rows, list) or not rows:
         return None
     return [{k.lower().replace(" ", "_"): v for k, v in a.items()} for a in rows]
-
-
-# dashboards show the local time (this machine's zone, UTC+1 in winter), labelled by zone name
-import datetime as _dt
-def local(t=None):
-    """A datetime in local time: from an epoch, a "YYYY-MM-DD HH:MM[:SS]" UTC string, an aware datetime, or now."""
-    if t is None: return _dt.datetime.now().astimezone()
-    if isinstance(t, (int, float)): return _dt.datetime.fromtimestamp(t).astimezone()
-    if isinstance(t, str): return _dt.datetime.fromisoformat(t[:19].replace("T", " ")).replace(tzinfo=_dt.timezone.utc).astimezone()
-    return t.astimezone()
-def tz():
-    return local().strftime("%Z")

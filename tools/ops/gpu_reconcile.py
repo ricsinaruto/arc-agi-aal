@@ -12,19 +12,6 @@ def gpus(s, kind):
     m = re.search(rf"(\d+)\s*x\s*{kind}", s or "", re.I)
     return int(m.group(1)) if m else (1 if kind.lower() in (s or "").lower() else 0)
 
-def owner_hint(app):
-    """'; likely <run> (records.py ledger <run> --set app_id=...)' for an arc-* app no record names, else ''."""
-    try:
-        import datetime
-        sys.path.insert(0, os.path.join(ROOT, "src"))
-        from arc_infra.runops import records
-        t = datetime.datetime.fromisoformat(app["created_at"]).timestamp()
-        run = records.likely_owner(app.get("description"), t)
-    except Exception:  # noqa: BLE001 - a hint only
-        return ""
-    return f"; likely {run} (newest open record without an app id: records.py ledger {run} --set app_id='\"{app['app_id']}\"')" if run else ""
-
-
 def modal_live():
     norm = paths.modal_apps("modal")
     if norm is None:
@@ -53,14 +40,9 @@ def modal_gpus():
         return None
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument("--b300-cap", type=int, default=8); ap.add_argument("--rtx-cap", type=int, default=10); ap.add_argument("--scope", choices=["modal", "nebius", "all"], default="all")
+    ap = argparse.ArgumentParser(); ap.add_argument("--b300-cap", type=int, default=8); ap.add_argument("--rtx-cap", type=int, default=8); ap.add_argument("--scope", choices=["modal", "nebius", "all"], default="all")
     a = ap.parse_args()
     qd = paths.read_json(f"{ROOT}/docs/modal-queue.json"); q = qd["live"]
-    budget = paths.read_json(f"{ROOT}/docs/budget.json") or {}
-    sys.path.insert(0, os.path.join(ROOT, "src"))
-    from arc_infra.runops.records import is_external
-    EXT = lambda run: is_external(run, budget)  # noqa: E731  collaborators' runs (budget.json external_runs): never counted
-    q = [r for r in q if not EXT(r.get("run"))]
     cpu_apps = set(qd.get("cpu_apps", []))  # registered CPU-only apps
     try:  # the local checkout can lag origin by minutes: an arm's row pushed before its launch must count (23 Oct)
         subprocess.run(["git", "-C", ROOT, "fetch", "-q", "origin", "main"], timeout=30, capture_output=True)
@@ -85,11 +67,11 @@ def main():
             n = live.get("B300", 0) + live.get("B200", 0)
             if not r and aid not in cpu_apps:
                 issues.append(("note", f"modal app {aid} ({app['description']}) has no queue row; counted as "
-                                       f"{', '.join(f'{v} {k}' for k, v in live.items()) or 'CPU'}{owner_hint(app)}"))
+                                       f"{', '.join(f'{v} {k}' for k, v in live.items()) or 'CPU'}"))
         else:  # API unreadable: the row's GPUs; an unregistered app is a note, not a refusal
             if not r:
                 if aid not in cpu_apps:
-                    issues.append(("note", f"modal app {aid} ({app['description']}) has no queue row (GPU unknown){owner_hint(app)}"))
+                    issues.append(("note", f"modal app {aid} ({app['description']}) has no queue row (GPU unknown)"))
                 continue
             n = gpus(r.get("gpu"), "B300") + gpus(r.get("gpu"), "B200")
         b300 += n
@@ -108,7 +90,7 @@ def main():
         for name in vms:
             if not name.startswith("arc-"): continue
             known = any(same(name.lower(), row) for row in rows)
-            if re.match(r"arc-(b2-)?hx\d+-", name.lower()) or EXT(name[4:]):  # a collaborator's hx<N>- VM (harness is parked; the dash loop may add a row): outside our 8
+            if re.match(r"arc-(b2-)?hx\d+-", name.lower()):  # a collaborator's hx<N>- VM (harness is parked; the dash loop may add a row): outside our 8
                 issues.append(("note", f"nebius VM {name} is a collaborator's (not counted)"))
                 continue
             rtx += 1

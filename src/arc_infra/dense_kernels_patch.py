@@ -56,7 +56,7 @@ WIDE_KEYS = ('mid_wide', 'mid_wide_shapes', 'mid_wide_plan', 'mid_wide_buckets')
 WIDE_BUCKETS = (40, 48, 56)
 # Throughput arm (3 October): MTP-1 verify batches are 2 x streams rows (60-68 at 30-34 streams), past the 56 bucket.
 # ``mid_wide_buckets`` replaces the default wide buckets with any increasing subset of these (absent = the default).
-WIDE_BUCKETS_ALLOWED = (40, 48, 56, 64, 72, 80, 88, 96)
+WIDE_BUCKETS_ALLOWED = tuple(range(40, 193, 8))  # to 2 x 96 sequences
 # The prune12 router: 448 kept experts x hidden 2560, in no mid-M plan (the phase-5 plan lists the unpruned 512).
 PRUNED_ROUTER_SHAPES = ([448, 2560],)
 SETTINGS = 'arc_dense_kernels.json'

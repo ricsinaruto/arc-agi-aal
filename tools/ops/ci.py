@@ -6,10 +6,6 @@ Modal CPU with the shared image (runops.ciimage via test_modal.py); a red head b
   ci.py require [REF] [--compile DIR ...]   bundle builders: exit 0 if REF (default HEAD of the cwd checkout) is green
                                 and each DIR byte-compiles (python -m compileall); red -> exit 1 with the failures;
                                 no result yet -> runs it now (blocking, ~5 min)
-  ci.py gate --builder NAME [REF] [--compile DIR ...]   every launch/rl, launch/pth bundle builder, run in the source
-                                checkout: blocks on uncommitted src/ scripts/ files, an unpushed or red REF (as require).
-                                ARC_CI_SKIP="<reason, >= 12 chars>" overrides it; each override is a row in
-                                runs/ops/ci/overrides.jsonl and shows on the dashboard for 6 h
   ci.py status                  latest verdict per watched branch (exit 1 if any red)
 
 Results: runs/ops/ci/<sha>.json {"sha", "ref", "verdict": green|red|error, "summary", "failed": [...], "t"} (main
@@ -29,11 +25,8 @@ import paths  # noqa: E402
 
 ROOT = paths.ROOT_PATH
 OUT = ROOT / "runs/ops/ci"
-OVERRIDES = OUT / "overrides.jsonl"
-CODE_DIRS = ("src", "scripts")  # what the builders copy into bundles
 PY = str(ROOT / ".venv/bin/python")
-BRANCHES = ("main", "rl-async", "sft-heal", "nebius", "nebius-opd", "trunk/rl", "trunk/sft")  # trunk/rl: RL builds from it (v6j);
-# rl-launch / pth-launch dropped 25 Oct: idle ~19 h, their launchers live on trunk/rl
+BRANCHES = ("main", "rl-async", "sft-heal", "nebius", "nebius-opd", "rl-launch", "pth-launch")
 
 
 def git(*a, cwd=ROOT, check=False):
@@ -135,8 +128,8 @@ def compile_dirs(dirs):
     return bad
 
 
-def require(ref, dirs=(), cwd=None):
-    sha = git("rev-parse", ref, cwd=cwd or Path.cwd()) or ref
+def require(ref, dirs=()):
+    sha = git("rev-parse", ref, cwd=Path.cwd()) or ref
     probs = compile_dirs(dirs)
     r = result(sha)
     if r is None:
@@ -150,40 +143,6 @@ def require(ref, dirs=(), cwd=None):
     if r and r["verdict"] != "green":
         probs.append(f"{sha[:10]} is {r['verdict']}: {r['summary']}\n  " + "\n  ".join(r["failed"][:30]))
     return probs
-
-
-def gate(builder, ref="HEAD", cwd=None, dirs=(), env=None):
-    """Problems blocking a bundle build from the checkout ``cwd`` ([] = go). ARC_CI_SKIP overrides, logged."""
-    env = os.environ if env is None else env
-    cwd = Path(cwd or Path.cwd()).resolve()
-    sha = git("rev-parse", ref, cwd=cwd) or ref
-    reason = (env.get("ARC_CI_SKIP") or "").strip()
-    if reason:
-        if len(reason) < 12:
-            return [f"ARC_CI_SKIP={reason!r}: give the reason in words (>= 12 chars), it is logged"]
-        row = {"t": time.time(), "utc": time.strftime("%Y-%m-%d %H:%M", time.gmtime()), "builder": builder, "sha": sha,
-               "branch": git("rev-parse", "--abbrev-ref", "HEAD", cwd=cwd), "cwd": str(cwd), "reason": reason}
-        OUT.mkdir(parents=True, exist_ok=True)
-        with open(OVERRIDES, "a") as f:
-            f.write(json.dumps(row) + "\n")
-        print(f"CI GATE OVERRIDDEN for {builder} @ {sha[:10]}: {reason} (logged to {OVERRIDES})", file=sys.stderr)
-        return []
-    dirty = [x.split(maxsplit=1)[1] for x in git("status", "--porcelain", "--", *CODE_DIRS, cwd=cwd).splitlines() if x.strip()]
-    if dirty:  # CI tests the commit; the builder would copy the working tree
-        return [f"{cwd}: uncommitted files under {', '.join(CODE_DIRS)} (commit and push first): " + ", ".join(dirty[:8])]
-    return require(sha, dirs, cwd=cwd)
-
-
-def overrides(since):
-    rows = []
-    for x in (OVERRIDES.read_text().splitlines() if OVERRIDES.is_file() else []):
-        try:
-            r = json.loads(x)
-        except ValueError:
-            continue
-        if r.get("t", 0) >= since:
-            rows.append(r)
-    return rows
 
 
 def status(extra=()):
@@ -208,10 +167,6 @@ def main():
     q = sub.add_parser("require")
     q.add_argument("ref", nargs="?", default="HEAD")
     q.add_argument("--compile", nargs="*", default=[])
-    g = sub.add_parser("gate")
-    g.add_argument("ref", nargs="?", default="HEAD")
-    g.add_argument("--builder", required=True)
-    g.add_argument("--compile", nargs="*", default=[])
     s = sub.add_parser("status")
     s.add_argument("--branch", action="append", default=[])
     a = ap.parse_args()
@@ -228,13 +183,6 @@ def main():
             print("CI RED: bundle build blocked\n" + "\n".join(probs))
             sys.exit(1)
         print("ci green")
-    elif a.cmd == "gate":
-        probs = gate(a.builder, a.ref, dirs=a.compile)
-        if probs:
-            print(f"CI GATE: {a.builder} bundle build blocked\n" + "\n".join(probs) +
-                  '\n(override, logged: ARC_CI_SKIP="<reason>")', file=sys.stderr)
-            sys.exit(1)
-        print("ci gate: go")
     elif a.cmd == "status":
         sys.exit(1 if status(a.branch) else 0)
 

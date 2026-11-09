@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 import httpx
 import numpy as np
+import pytest
 
 from arc_infra.config import Config
 from arc_infra.perception import Observation
@@ -130,3 +131,18 @@ def tool_reply(code, *, call_id="call", content="World model: probe.", usage=Non
             "usage": usage or {"completion_tokens": 50, "prompt_tokens": 2000},
         },
     )
+
+
+@pytest.fixture(autouse=True)
+def _restore_environ():
+    """Every test leaves the trainer knobs (HEAL_*, RL1_*) as it found them: spawned multirank ranks inherit the
+    parent's env, and a leaked HEAL_FRESH_HOLDOUT (24 Oct) held chains out of a later test's stream queue, which then
+    waited forever. Other keys stay process-wide (duck_transfer.loader applies DUCK_ENV once, on purpose)."""
+    import os
+
+    knob = lambda k: k.startswith(("HEAL_", "RL1_"))  # noqa: E731
+    saved = {k: v for k, v in os.environ.items() if knob(k)}
+    yield
+    for k in [k for k in os.environ if knob(k) and k not in saved]:
+        del os.environ[k]
+    os.environ.update(saved)

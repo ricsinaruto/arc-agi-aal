@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import sys
+import time
 
 import httpx
 import pytest
@@ -198,3 +199,22 @@ async def test_cancelled_gpu_sampler_reaps_its_subprocess(tmp_path, monkeypatch)
     with pytest.raises(asyncio.CancelledError):
         await task
     assert processes[0].returncode is not None
+
+
+async def test_cpu_snapshot_is_shared_capped_and_off_the_loop(monkeypatch):
+    import threading
+
+    from arc_infra import metrics
+
+    calls = []
+
+    def fake_snapshot():
+        calls.append(threading.current_thread() is threading.main_thread())
+        return {"epoch": time.time()}
+
+    monkeypatch.setattr(metrics, "cpu_snapshot", fake_snapshot)
+    monkeypatch.setattr(metrics, "_cpu_shared", {"row": None, "task": None})
+    rows = await asyncio.gather(*(metrics.shared_cpu_snapshot(60) for _ in range(5)))
+    assert calls == [False] and all(r is rows[0] for r in rows)  # one walk, in a worker thread, for every monitor
+    assert await metrics.shared_cpu_snapshot(60) is rows[0] and len(calls) == 1  # inside the cap: the cached row
+    assert await metrics.shared_cpu_snapshot(0) is None  # off

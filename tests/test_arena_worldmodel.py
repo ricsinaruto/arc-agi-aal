@@ -66,7 +66,7 @@ def test_check_sim_plan_and_run_plan():
 def test_levelup_notice_once_and_the_variant():
     from arena.duck import WORLDMODEL_NOTICE, ArenaDuckMixin
 
-    agent = SimpleNamespace(harness_v2=None, worldmodel_pending=2, worldmodel_notices=0, steps=7,
+    agent = SimpleNamespace(harness_v2=None, worldmodel_pending=2, worldmodel_notices=0, steps=7, sc_on=lambda: False,
                             workspace=SimpleNamespace(append=lambda *a, **k: None))
     first = ArenaDuckMixin.turn_notice(agent)
     assert first == WORLDMODEL_NOTICE.format(cleared=2) and first.startswith("LEVEL 2 CLEARED")

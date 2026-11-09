@@ -205,3 +205,28 @@ def test_verified_model_mount_is_explicit_and_versioned(tmp_path):
         checkpoint_mount({}, manifest, tmp_path)
 
 
+
+
+def test_qwen36_fp8_command_is_fp8_mtp2_triton_experts_own_template(tmp_path, monkeypatch):
+    import json
+
+    from arc_infra.model_templates import allowed_efforts, template_kwargs
+    from arena.candidate_profiles import QWEN36_FP8
+    from arena.compaction import PREFILL_TEMPLATE_MODELS
+
+    recipe = import_fork(tmp_path, monkeypatch)
+    candidate.configure_candidate(recipe, QWEN36_FP8)
+    command = recipe.server_command(tmp_path / 'model', tuning=recipe.resolve_vllm_tuning())
+    assert command[command.index('--quantization') + 1] == 'fp8'
+    spec = json.loads(command[command.index('--speculative-config') + 1])
+    assert spec['num_speculative_tokens'] == 2, spec
+    assert '--moe-backend' not in command and QWEN36_FP8.env == ()
+    assert command[command.index('--chat-template') + 1] == str(tmp_path / 'model' / 'chat_template.jinja')
+    assert command[command.index('--served-model-name') + 1] == 'Qwen/Qwen3.6-35B-A3B-FP8'
+    assert allowed_efforts(QWEN36_FP8.model) == ('native',) and QWEN36_FP8.effort == 'native'
+    assert template_kwargs(QWEN36_FP8.model, {'enable_thinking': False, 'reasoning_effort': 'xhigh'}) == {
+        'enable_thinking': False, 'preserve_thinking': True}
+    assert QWEN36_FP8.model in PREFILL_TEMPLATE_MODELS
+    inventory = json.loads(QWEN36_FP8.manifest.read_text())
+    assert (inventory['repo'], inventory['revision']) == (QWEN36_FP8.model, QWEN36_FP8.revision)
+    assert {'config.json', 'chat_template.jinja', 'mtp.safetensors', 'layers-39.safetensors'} <= inventory['files'].keys()

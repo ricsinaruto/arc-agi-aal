@@ -7,6 +7,11 @@ MINICPM_MODEL = "openbmb/MiniCPM5-2B"
 QWEN36_MODEL = "nvidia/Qwen3.6-35B-A3B-NVFP4"
 QWEN35_122B_MODEL = "nvidia/Qwen3.5-122B-A10B-NVFP4"
 ORNITH_35B_MODEL = "ornith-ai/Ornith-1.5-35B-A3B-NVFP4"
+# Qwen3.5-4B (RL restart, 11 October): served with the Qwen3.8 (Flash) chat template ("flash style", the
+# model re-reads its earlier reasoning), so it takes the default (Flash) request controls below. Its own template
+# (UI-Mate-9B's byte for byte) has no effort line and drops reasoning from before the last user turn.
+QWEN35_4B_MODEL = "Qwen/Qwen3.5-4B"
+QWEN36_FP8_MODEL = "Qwen/Qwen3.6-35B-A3B-FP8"
 # Qwen3.8-27B fine-tune with the Qwen3.8 template byte for byte: the default (Flash / Qwen3.8) request controls.
 HOLO4_27B_MODEL = "Hcompany/Holo4-27B-NVFP4"
 NEMOTRON_SUPER_MODEL = "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4"
@@ -50,7 +55,7 @@ def allowed_efforts(model):
     if model == GLM53_FLASH_MODEL:
         return ("max", "high", "low")
     if model in (*UI_MATE_MODELS, MINICPM_MODEL, QWEN36_MODEL, QWEN35_122B_MODEL, ORNITH_35B_MODEL,
-                 *NEMOTRON_MODELS, DOTS3_MODEL):
+                 *NEMOTRON_MODELS, DOTS3_MODEL, QWEN36_FP8_MODEL, QWEN35_4B_MODEL):
         return ("native",)
     return ("high", "none") if model == NEX_MODEL else ("xhigh", "medium", "low")
 
@@ -67,6 +72,10 @@ def template_kwargs(model, kwargs):
         # older reasoning is dropped from the prompt); both stay at their defaults. Ornith's has only
         # this switch and renders every earlier reasoning block (no preserve_thinking gate).
         return {'enable_thinking': kwargs.get('enable_thinking', True)}
+    if model in (QWEN36_FP8_MODEL, QWEN35_4B_MODEL):
+        # Its own template: no effort dial; earlier reasoning is rendered only with preserve_thinking,
+        # which Qwen3.6 is trained for and which keeps the reasoning history the harness always keeps.
+        return {'enable_thinking': kwargs.get('enable_thinking', True), 'preserve_thinking': True}
     if model in UI_MATE_MODELS:
         # These templates have an on/off switch, not an effort dial. Keep the
         # Qwen response parser in the same mode and omit unsupported effort.

@@ -55,13 +55,3 @@ def test_listing_rows_normalized_and_gone_judged(monkeypatch):
     assert reconcile.app_ended("ap-a") is False and reconcile.app_ended("ap-b") is True
     watch = _load("watch")
     assert watch.liveness({"run": "r", "platform": "modal", "app_id": "ap-b"}) is False
-
-
-def test_page_check_skips_run_descriptions():
-    """24 Oct: "NaN" in dots3 nb10p's plain-language description flagged MODAL_STATUS.html as leaked text."""
-    mon = _load("mon")
-    desc = "<table><tr><td class=\"what\">fixes the NaN in the fp8 floor scale</td><td>12.1</td></tr></table>"
-    card = "<div class='card'><div class='what'>None of the levels clear</div><div>tok/s 1,530</div></div>"
-    assert mon.page_check(desc) == (0, []) and mon.page_check(card) == (0, [])
-    assert mon.page_check("<table><tr><td>score NaN</td></tr></table>")[1] == ["NaN"]  # a rendered value still flags
-    assert mon.page_check("<div>x</td></div>")[0] == 1

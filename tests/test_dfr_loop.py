@@ -195,6 +195,51 @@ async def test_no_world_model(tmp_path):
     assert agent._analyzer._summarized_knowledge["world_model"] == ""  # "World model: probe." was not parsed
 
 
+async def test_no_world_model_on_the_v71p_stack(tmp_path):
+    """Audit fixes + notes + drain: no block, no label sentence in the follow-up, no cross-level carry; notes stay."""
+    from arena import harness_fixes as hf
+
+    labels = "World model: walls are X.\nGoal model: reach G.\nCross-level notes: UP moves the block."
+
+    class Labelled(Transport):
+        async def post(self, url, **kwargs):
+            self.payloads.append(copy.deepcopy(kwargs["json"]))
+            code = self.replies.pop(0) if self.replies else "action(['UP'])"
+            if code is None:
+                return httpx.Response(200, request=httpx.Request("POST", "http://local/v1/chat/completions"), json={
+                    "choices": [{"finish_reason": "stop", "message": {"role": "assistant", "content": labels}}],
+                    "usage": {"completion_tokens": 50, "prompt_tokens": 7000}})
+            return tool_reply(code, call_id=f"c{len(self.payloads)}", content=labels,
+                              usage={"completion_tokens": 50, "prompt_tokens": 7000})
+
+    transport = Labelled("note('rule', 'UP moves the block')\naction(['UP'])", None, "action(['RIGHT'])")
+    agent, env, game, gate = arena_agent(tmp_path, transport, ArenaTransferDuckAgent)
+    agent.apply_harness_fixes([*hf.FIXES, "solvable_line", "death_turn_v2", "findings_keep"])
+    agent.apply_context_drain(True)
+    agent.apply_dfr_harness(True)
+    agent.apply_hx_harness({"toolbox": True, "memo": True})
+    agent.apply_dfr_loop(loop.settings({"prompt_fix": True, "no_world_model": True, "inventory_animation": True}))
+    obs = [observation(board()), observation(board((10, 10)), levels=1), observation(board((10, 10), (20, 20)), levels=1),
+           observation(board((30, 30)), levels=1), observation(board((40, 40)), levels=1)]
+    env.observations = iter(obs[1:])
+    env.observation_space = raw(obs[0])
+    agent.config.max_actions = 3
+    result = await agent.run()
+    assert result["error"] is None
+    system = transport.payloads[0]["messages"][0]["content"]
+    assert "BEFORE EXECUTING NEW ACTIONS" not in system and hf.SOLVABLE_LINE in system and "note(key, text)" in system
+    turns = [texts(turn) for turn in user_turns(transport.payloads[-1])]
+    everything = "\n".join(turns)
+    for gone in ("Working world model", "end of world model", "Prior-level hypotheses", "Cross-level notes",
+                 "World model:", "Goal model:"):
+        assert gone not in everything, gone
+    sent = [m["content"] for p in transport.payloads for m in p["messages"] if m["role"] == "user"]
+    followup = next(t for t in sent if isinstance(t, str) and t.startswith(hf.PUBLIC_FOLLOWUP_PREFIX))
+    assert "update lines" not in followup and "Call the `python` tool with code that inspects" in followup
+    assert dfr.LEVEL_START_USER_PROMPT in turns[1] and "rule: UP moves the block" in turns[1]  # note() block stays
+    assert all(value == "" for value in agent._analyzer._summarized_knowledge.values())
+
+
 async def test_action_feedback(tmp_path):
     start, death, restart = board(), board((20, 20), (30, 30)), board()
     obs = [observation(start), observation(board((20, 20))), observation(death, state="GAME_OVER"),
@@ -299,3 +344,22 @@ async def test_inventory_answers_a_lazy_animation_view(tmp_path):
         else:
             assert inventory is None and sandbox.restarts == 1  # the v3/v4 reset
         sandbox.close()
+
+
+def test_the_no_think_loop_threshold_spares_short_distinct_replies():
+    from arena.loop_rule import LoopDetector, settings
+
+    def fires(mean_completion, tokens, same=False):
+        detector = LoopDetector(settings({"mean_completion": mean_completion}))
+        fired = []
+        for i in range(25):
+            words = ("rows", "walls", "the red key", "door state", "timer bar")[i % 5]
+            code = "print(1)" if same else ("print(objects(color=3))", "crop(0, 9, 0, 20)", "changes()", "at(4, 4)")[i % 4]
+            fired.append(detector.note(7, tokens, {"content": "" if same else f"Last result showed {words}; next {i}.",
+                                                   "tool_calls": [{"function": {"arguments": code}}]}))
+        return [f for f in fired if f]
+
+    assert fires(300, 226) and fires(300, 226)[0]["reason"] == "short"   # the thinking threshold clears every such game
+    assert not fires(50, 226)                                              # 226-token replies that differ are play
+    assert fires(50, 226, same=True)[0]["reason"] == "similar"            # the same call twenty times still fires
+    assert fires(50, 30)[0]["reason"] == "short"

@@ -40,7 +40,7 @@ def test_the_heap_keeper_freezes_on_its_interval_and_records_gen2_pauses():
         keeper.tick(10)
         assert keeper.stats["freezes"] == 0
         keeper.tick(600)
-        assert keeper.stats["freezes"] == 1 and keeper.stats["frozen"] > 0  # the permanent generation grows and shrinks with other threads
+        assert keeper.stats["freezes"] == 1 and 0 < keeper.stats["frozen"] <= gc.get_freeze_count()  # other threads may freeze more after
         keeper.tick(900)
         assert keeper.stats["freezes"] == 1
         gc.collect()

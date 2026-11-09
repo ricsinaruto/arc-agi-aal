@@ -13,7 +13,8 @@ selects some (``FLAGS``; ``yield_tokens`` is a positive integer or 0/False):
   python snippet executed NO actions ..." or "Your previous exchange this turn produced no tool call ..."). A
   resumption is not a new turn for the stuck notice or the refusal count.
 - ``no_world_model``: his ARC3_MEMORY_SECTIONS=off: no carried block, no "MUST give the revised world model" lines,
-  no cross-level hypothesis carry, his world-model-free system line and new-level prompt.
+  no cross-level hypothesis carry, his world-model-free system line and new-level prompt; ours (9 October): the
+  no-tool-call follow-up loses its sentence on the labelled lines. ``note()`` and its block are untouched.
 - ``action_feedback``: his receipts: the per-call echo line printed by ``action()``, ``action_trace`` for every batch,
   game over and refusal, the game-over opener's per-action trace, ``last_action_call_result`` (alias of
   ``last_action_result``), per-action ``.result`` with ``automatic``, ``run_elapsed_seconds`` /
@@ -77,6 +78,27 @@ PUBLIC_IMAGE_LINE = (
     "- The newest user turn includes an image of the board as it was before this turn's actions (labelled with its "
     "step); earlier turns keep only a note that their image was omitted.\n"
 )
+FRACTION_LINE = (
+    "- Each user turn includes an image of the board as it was before that turn's actions (labelled with its step). "
+    "When context fills, the oldest 90% is replaced with your summary; the newest 10% stays verbatim, rounded to "
+    "complete observation/tool exchanges. The persistent Python interpreter and its variables survive. "
+    "The degenerate-loop escape hatch can clear the conversation while preserving Python state.\n"
+)
+
+
+def fraction_line(keep, playbook=False):
+    """``FRACTION_LINE`` for another keep fraction (hx7); byte-identical at 0.1. ``playbook``: the dropped part is
+    replaced by the model's playbook, not by a summary."""
+    kept = round(float(keep) * 100)
+    text = FRACTION_LINE.replace("oldest 90%", f"oldest {100 - kept}%").replace("newest 10%", f"newest {kept}%")
+    if playbook:
+        old = "is replaced with your summary"
+        if text.count(old) != 1:
+            raise ValueError("dfr_loop: pinned fraction line changed")
+        text = text.replace(old, "is dropped and your playbook, as you last wrote it, takes its place")
+    return text
+
+
 DRAIN_LINE = (
     "- Each user turn includes an image of the board as it was before that turn's actions (labelled with its step). "
     "Earlier turns, their images and your earlier replies stay in the context verbatim until the context fills; then "
@@ -141,6 +163,11 @@ WORLD_MODEL_SYSTEM = {
 WORLD_MODEL_DISCIPLINE_RE = re.compile(r"- Maintain a compact working world model: what the level contains, .*?"
                                        r"keep that text short\.\n")
 EMPTY_WORLD_MODEL_LINE = "end of world model. "
+# The public no-tool-call follow-up's sentence on the labelled lines (nothing parses them under no_world_model).
+FOLLOWUP_LABELS = (
+    "If helpful, include short world-model update lines such as `World model:`, `Goal model:`, `Action model:`, "
+    "`Recent findings:`, `Open questions:`, `Plan:`, or `Cross-level notes:`. "
+)
 
 
 def world_model_free(text):

@@ -52,7 +52,8 @@ def main(argv=None):
     probe.model = study.get("served_model", probe.model)
     probe.serving_backend = study.get("backend", "vllm")
     record = load_record(
-        output, study, hardware=hardware(), api_validation=asyncio.run(validate_api(probe)),
+        output, study, hardware=hardware(),
+        api_validation={"skipped": "no_server"} if study.get("no_server") else asyncio.run(validate_api(probe)),
         notebook_start=args.notebook_start_epoch,
     )
     competition = study.get('competition') if trial.get('competition', True) else None
@@ -81,10 +82,12 @@ def main(argv=None):
         # The level bench sizes its own wall from what is left (arena.level_bench.LevelBench.wall_seconds).
         if (not competition
                 and trial["kind"] not in ("level-bench", "expert-quant", "expert-usage", "server-check",
-                                          "prune-quality")
+                                          "prune-quality", "train-probe", "rl-loop")
                 and hard_end - time.time() < wall + 480):
             raise TimeoutError("Insufficient time for a full arena trial")
-        if study.get("backend") == "sglang":
+        if study.get("no_server"):  # train-only: nothing to isolate or wait for
+            pass
+        elif study.get("backend") == "sglang":
             from .sglang import isolate
 
             execution["isolation"] = asyncio.run(isolate(args.base_url))
@@ -171,6 +174,26 @@ def main(argv=None):
             execution["report"] = {k: report.get(k) for k in ("status", "errors", "skipped")}
             execution["status"] = report["status"]
             raise _Done
+        if trial["kind"] == "train-probe":
+            # Training-cost probe (RL step 0, 11 October): stops the server, then timed training steps on the served
+            # checkpoint (arena.train_probe); ends inside the trial's wall.
+            from .train_probe import run_train_probe
+
+            report = run_train_probe(study, trial, source=args.source, output=folder, server_dir=args.server_dir,
+                                     deadline_epoch=min(hard_end - 90, execution["started_epoch"] + wall))
+            execution["report"] = {k: report.get(k) for k in ("status", "errors", "elapsed_seconds")}
+            execution["status"] = report["status"]
+            raise _Done
+        if trial["kind"] == "rl-loop":
+            # RL step 1 (13 October): play rounds, same-card updates, evals, stop rules (arena.rl_loop)
+            from .rl_loop import run_rl_loop
+
+            report = asyncio.run(run_rl_loop(
+                study, trial, source=args.source, games_dir=games_dir, output=folder, server_dir=args.server_dir,
+                analysis_python=args.analysis_python, base_url=args.base_url, deadline_epoch=hard_end - 300))
+            execution["report"] = {k: v for k, v in report.items() if k not in ("settings",)}
+            execution["status"] = report["status"]
+            raise _Done
         if trial["kind"] == "level-bench":
             from .level_bench import run_level_bench
 
@@ -220,7 +243,7 @@ def main(argv=None):
     # failed session or preemptions must not fail the notebook afterwards.
     acceptable = {'complete', 'complete_with_preemptions', 'error'} if competition and is_rerun() else {'complete'}
     if trial["kind"] in ("serving-bench", "level-bench", "draft-head", "expert-quant", "expert-usage",
-                         "server-check", "prune-quality"):
+                         "server-check", "prune-quality", "train-probe", "rl-loop"):
         acceptable = {'complete', 'complete_with_errors'}
     if execution["status"] not in acceptable:
         raise SystemExit(1)

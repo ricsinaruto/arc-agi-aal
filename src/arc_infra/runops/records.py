@@ -5,8 +5,8 @@ Caps and per-arm allowances live in docs/budget.json.
 
 Out of git (24 Oct, phase D + item 4): the records and both views are machine-local and untracked in the main checkout
 (every agent's ROOT); records.py is the only writer. A direct edit of a view is overwritten at the next write and
-flagged on the dashboard (``dropped_legacy``). ``snapshot`` copies ended records to docs/runs-settled/ (local, untracked; the dash
-loop writes it daily).
+flagged on the dashboard (``dropped_legacy``). ``snapshot`` copies ended records to docs/runs-settled/ (tracked; the dash
+loop commits it daily).
 
 Record: {"run", "arm", "state", "end_cause", "attempt", "attempts": [...], "ledger": [{"block", "order", "row"}],
          "queue": {"section", "order", "row"}, "description": {"order", "text"}, "cpu_app": {"order"},
@@ -82,65 +82,6 @@ def attempt_id(run, n):
     return run if n <= 1 else f"{run}/attempt-{n}"
 
 
-def attach(run, launch_output, root=None):
-    """The first Modal app id in a launcher's output (``modal run --detach`` prints the app URL) -> the run's queue and
-    ledger rows. Returns the app id, or None when the output has none (the caller fails loudly)."""
-    m = re.search(r"\bap-[A-Za-z0-9]{20,}", launch_output or "")
-    if not m:
-        return None
-    set_ledger(run, root, app_id=m.group(0))
-    return m.group(0)
-
-
-def likely_owner(app_name, created_epoch, root=None, recs=None, window=3600):
-    """For a live ``arc-*`` Modal app no record names: the newest open Modal record without a real app id that was
-    reserved up to ``window`` s before the app was created (25 Oct: sft-stream-check-eosA-v1, arc-rl1, took three
-    agents to name). None when nothing fits or the app is not ours."""
-    if not str(app_name or "").startswith("arc-"):
-        return None
-    best = None
-    for r in records(root) if recs is None else recs:
-        if state_of(r) == "ended" or not r.get("ledger"):
-            continue
-        row = r["ledger"][-1]["row"]
-        if str(row.get("platform") or "").lower() != "modal" or str(row.get("app_id") or "").startswith("ap-"):
-            continue
-        t = float(row.get("start_epoch") or 0)
-        if created_epoch - window <= t <= created_epoch + 120 and (best is None or t > best[0]):
-            best = (t, r["run"])
-    return best and best[1]
-
-
-def out_id(run, root=None, rec=None):
-    """The current attempt's output name (its volume/bucket folder, e.g. validation/<out>/): the attempt's recorded
-    ``out_id`` if a launcher set one, else ``run`` for attempt 1 and ``<run>-attempt<N>`` after (modal_rl1's
-    convention; v6k 25 Oct: knobs put to validation/<run>/ went to an empty folder). An unknown run maps to itself."""
-    rec = get(run, root) if rec is None else rec
-    if not rec:
-        return run
-    n = int(rec.get("attempt") or 1)
-    att = (rec.get("attempts") or [{}])[-1]
-    return att.get("out_id") or (run if n <= 1 else f"{run}-attempt{n}")
-
-
-SHARED_VOLUME = "arc-prolong-runs"  # every run before 28 Oct ~15:00; a record without "volume" lives here
-
-
-def run_volume_name(run):
-    """one Modal v2 volume per run record (attempts and preflight legs share it): arc-run-<run>, Modal's
-    name rules (letters, digits, - _ ., at most 64 characters; a longer id keeps its head plus a hash)."""
-    import hashlib
-    import re as _re
-    base = "arc-run-" + _re.sub(r"[^A-Za-z0-9._-]", "-", run)
-    return base if len(base) <= 64 else base[:55] + "-" + hashlib.sha1(run.encode()).hexdigest()[:8]
-
-
-def volume_of(run, root=None, rec=None):
-    """The Modal volume holding the run's outputs: its record's "volume", else the shared arc-prolong-runs."""
-    rec = get(run, root) if rec is None else rec
-    return (rec or {}).get("volume") or SHARED_VOLUME
-
-
 def runs_dir(root=None):
     return _root(root) / "docs" / "runs"
 
@@ -188,40 +129,9 @@ def update(run, fn, root=None):
     return rec
 
 
-ARM_ALIASES = {"throughput": "arc3sub"}  # the throughput arm is arc3sub; old rows/launchers may say throughput
-
-
-def canon_arm(arm):
-    return ARM_ALIASES.get(arm, arm)
-
-
 def records(root=None):
     d = runs_dir(root)
     return [json.loads(p.read_text()) for p in sorted(d.glob("*.json"))] if d.is_dir() else []
-
-
-def rename_arm(old, new, root=None, dry=False):
-    """Rewrite every record's arm fields old -> new (record, ledger rows, queue row), each under its own lock.
-    Returns the runs changed."""
-    changed = []
-    for p in sorted(runs_dir(root).glob("*.json")):
-        try:
-            rec = json.loads(p.read_text())
-        except ValueError:
-            continue
-        rows = [rec, (rec.get("queue") or {}).get("row") or {}] + [e.get("row") or {} for e in rec.get("ledger") or []]
-        if not any(r.get("arm") == old for r in rows) or not rec.get("run"):
-            continue
-        changed.append(rec["run"])
-        if not dry:
-            def fn(r):
-                for d in [r, (r.get("queue") or {}).get("row") or {}] + [e.get("row") or {} for e in r.get("ledger") or []]:
-                    if d.get("arm") == old:
-                        d["arm"] = new
-            update(rec["run"], fn, root)
-    if changed and not dry:
-        publish(root)
-    return changed
 
 
 def billed_path(root=None):  # Modal's bill to date: a generated, untracked view (dash loop, hourly)
@@ -289,11 +199,7 @@ def write_views(root=None):
     flock the legacy writers take (a replaced inode would swallow a waiting writer's edit)."""
     root = _root(root)
     with _legacy_locked(root) as files:
-        q, s = _write_views_locked(root, files)
-        state_dir = root / "runs/ops/records"  # the generated copy sync compares with: a build between two syncs is not an
-        if state_dir.is_dir():                 # edit (28 Oct: launch.sh's build flagged sft-layers-p75-v1 as dropped)
-            _write(state_dir / "last-queue.json", q)
-            _write(state_dir / "last-spend.json", s)
+        _write_views_locked(root, files)
 
 
 @contextlib.contextmanager
@@ -312,8 +218,6 @@ def _legacy_locked(root):
 
 
 def _write_views_locked(root, files):
-    """Write the views from ONE build and return it: the caller stores the same build as sync's baseline (28 Oct: a
-    second build() after a record write that landed in between left view != baseline, flagged as a dropped edit)."""
     queue, spend = build(root)
     for name, data in (("modal-queue.json", queue), ("spend.json", spend)):
         f = files[name]
@@ -324,7 +228,6 @@ def _write_views_locked(root, files):
             f.write(text)
             f.truncate()
             f.flush()
-    return queue, spend
 
 
 # --- migration (one-off at cut-over; also the sync of legacy edits during it) -----------------------------------------
@@ -381,7 +284,7 @@ def arm_rules(root=None):
 def arm_for(run, rules):
     """The arm of the longest matching prefix ("b2-mfu" beats "b2-"), or None."""
     hits = [k for k in rules if run.lower().startswith(k.lower())]
-    return canon_arm(rules[max(hits, key=len)]) if hits else None
+    return rules[max(hits, key=len)] if hits else None
 
 
 def migrate(root=None, arm_rules=None):
@@ -426,14 +329,6 @@ def gpus_of(row):
             n = int(next(g for g in m.groups() if g)) if m else int(row.get("gpu_count") or 1)
             out[kind] = n
     return out
-
-
-def is_external(run, budget):
-    """A collaborator's run (arc2-twin, session "chev"): budget.json "external_runs" {"ids": [...],
-    "prefixes": [...]}. Never counted against our allowances or caps, never touched."""
-    ext = (budget or {}).get("external_runs") or {}
-    run = str(run or "")
-    return run in (ext.get("ids") or []) or any(run.startswith(p) for p in ext.get("prefixes") or [])
 
 
 def live_gpus(recs, arm=None, exempt_long=False, arms=None):
@@ -510,11 +405,8 @@ def gate(arm, gpu, gpu_count, bound_usd, *, platform, long_run_24h=False, allowa
     allowance only (e.g. throughput's c100 300K quality reads); the global caps still apply. An allowance with
     "usd_mode": "warn" reports its dollar overage instead of refusing. Returns the warnings (list of str)."""
     warnings = []
-    arm = canon_arm(arm)
-    recs = [dict(r, arm=canon_arm(r.get("arm"))) if r.get("arm") in ARM_ALIASES else r  # old names count as the new
-            for r in (records(root) if recs is None else recs)]
+    recs = records(root) if recs is None else recs
     budget = load_budget(root) if budget is None else budget
-    recs = [r for r in recs if not is_external(r.get("run"), budget)]  # collaborators' runs count nowhere
     want = gpus_of({"gpu": gpu, "gpu_count": gpu_count})
     allow = (budget.get("allowances") or {}).get(arm)
     if allow is None:
@@ -540,8 +432,8 @@ def gate(arm, gpu, gpu_count, bound_usd, *, platform, long_run_24h=False, allowa
             if allow.get("usd_mode") != "warn":
                 raise GateError(msg)
             warnings.append(msg + " (warn-only)")
-    if platform == "modal" and want:
-        check_modal_slots(sum(want.values()), recs, modal_live(root) if modal is False else modal)
+    if platform == "modal" and want and arm not in MODAL_RESERVED_ARMS:
+        check_modal_slots(arm, sum(want.values()), recs, modal_live(root) if modal is False else modal)
     caps = budget.get("caps") or {}
     every = live_gpus(recs, exempt_long=long_run_24h)
     for kind, n in want.items():
@@ -564,7 +456,7 @@ def gate(arm, gpu, gpu_count, bound_usd, *, platform, long_run_24h=False, allowa
     return warnings
 
 
-MODAL_GPU_CAP = 10  # Modal GPUs at once, all types and arms (the RL+PTH reserve is gone)
+MODAL_GPU_CAP, MODAL_RESERVED, MODAL_RESERVED_ARMS = 10, 6, ("rl", "sft")  # Modal's 10 GPUs; RL+PTH keep 6
 
 
 def modal_live(root=None):
@@ -584,20 +476,45 @@ def modal_live(root=None):
 
 
 def modal_slots(recs, live=None):
-    """Live Modal GPUs. ``live``: modal_live() (every app, whoever runs it); None: the live Modal queue rows of the records."""
+    """(total, reserved-arm, other) live Modal GPUs. ``live``: modal_live() (apps attributed to arms through the app_id
+    on their records; an unknown app counts as other); None: the live Modal queue rows of the records."""
     if live is None:
-        return sum(sum(gpus_of(r["queue"]["row"]).values()) for r in recs if (r.get("queue") or {}).get("section") == "live"
-                   and str(r["queue"]["row"].get("platform") or "").lower() == "modal")
-    return sum(int(v) for info in live.values() for v in (info.get("gpus") or {}).values())
+        rows = [r for r in recs if (r.get("queue") or {}).get("section") == "live"
+                and str(r["queue"]["row"].get("platform") or "").lower() == "modal"]
+        res = sum(sum(gpus_of(r["queue"]["row"]).values()) for r in rows if r.get("arm") in MODAL_RESERVED_ARMS)
+        other = sum(sum(gpus_of(r["queue"]["row"]).values()) for r in rows if r.get("arm") not in MODAL_RESERVED_ARMS)
+        return res + other, res, other
+    arm_of = {}
+    for r in recs:
+        for row in [(r.get("queue") or {}).get("row") or {}] + [e["row"] for e in r.get("ledger") or []]:
+            for key in ("app_id", "modal_app_id"):
+                if str(row.get(key) or "").startswith("ap-"):
+                    arm_of[row[key]] = r.get("arm")
+    res = other = 0
+    for app, info in live.items():
+        n = sum(int(v) for v in (info.get("gpus") or {}).values())
+        if arm_of.get(app) in MODAL_RESERVED_ARMS:
+            res += n
+        else:
+            other += n
+    return res + other, res, other
 
 
-def check_modal_slots(n, recs, live=None):
-    """A Modal GPU launch is refused when the live Modal GPUs (all types, all arms) + n would exceed MODAL_GPU_CAP."""
-    if n <= 0:
+def modal_others_limit(reserved_live):
+    """GPUs every non-RL/PTH Modal job may hold together: 4, never cutting into RL+PTH's 6 (less if RL+PTH hold more)."""
+    return MODAL_GPU_CAP - max(reserved_live, MODAL_RESERVED)
+
+
+def check_modal_slots(arm, n, recs, live=None):
+    """a non-RL/PTH Modal GPU launch is refused when the other arms' live Modal GPUs (all types) + n
+    would exceed 10 - max(6, RL/PTH live)."""
+    if arm in MODAL_RESERVED_ARMS or n <= 0:
         return
-    total = modal_slots(recs, live)
-    if total + n > MODAL_GPU_CAP:
-        raise GateError(f"modal slots: {total} GPUs live on Modal + {n} > {MODAL_GPU_CAP}: wait or run on Nebius")
+    total, res, other = modal_slots(recs, live)
+    if other + n > modal_others_limit(res):
+        raise GateError(f"modal slots: {other} other-arm GPUs live on Modal ({res} RL/PTH, {total} total) + {n} > "
+                        f"{modal_others_limit(res)} "
+                        f"(Modal's cap is {MODAL_GPU_CAP}; RL+PTH keep {MODAL_RESERVED}): wait or run on Nebius")
 
 
 @contextlib.contextmanager
@@ -607,12 +524,10 @@ def _gate_lock(root=None):
 
 
 def reserve(run, *, arm, platform, gpu, gpu_count=1, bound_usd, max_seconds, authorization, what, kind=None,
-            block=None, long_run_24h=False, allowance_exempt=None, root=None, volume=None, **row):
+            block=None, long_run_24h=False, allowance_exempt=None, root=None, **row):
     """Gate, then the ledger row (state reserved) and the live queue row, atomically against other launches. A run
-    whose record has ended gets attempt N+1 (``<run>/attempt-N``) in the same record; an open one is refused.
-    ``volume="run"``: the run gets its own Modal volume (run_volume_name); an existing record keeps the volume it has."""
+    whose record has ended gets attempt N+1 (``<run>/attempt-N``) in the same record; an open one is refused."""
     block = ("nebius" if platform == "nebius" else "") if block is None else block
-    arm = canon_arm(arm)
     with _gate_lock(root):
         old = get(run, root)
         n = 1
@@ -630,17 +545,10 @@ def reserve(run, *, arm, platform, gpu, gpu_count=1, bound_usd, max_seconds, aut
 
         def fill(rec):
             rec["arm"] = arm
-            if volume and not rec.get("volume"):  # attempts and resumes read the volume the run started on
-                rec["volume"] = run_volume_name(run) if volume == "run" else volume
             if n > 1 and not rec.get("attempts"):  # a pre-attempts record: its history becomes attempt 1
                 rec["attempts"] = [{"n": 1, "state": "ended", "end_cause": rec.get("end_cause") or "unclassified",
                                     "start_epoch": rec["ledger"][-1]["row"].get("start_epoch"),
                                     "end_epoch": rec["ledger"][-1]["row"].get("end_epoch")}]
-            last = (rec.get("ledger") or [{}])[-1].get("row") or {}
-            if n > 1 and last.get("state") in OPEN_STATES:  # a drop leaves its row open for a late settle; no later now
-                cause = rec.get("end_cause") or "unclassified"
-                last.update(state="ended", end_cause=cause, end_epoch=last.get("end_epoch") or round(now))
-                rec["attempts"][-1].update(end_cause=cause, end_epoch=rec["attempts"][-1].get("end_epoch") or round(now))
             rec.update(state="reserved", attempt=n)
             rec.pop("end_cause", None)
             rec.setdefault("attempts", []).append({"n": n, "state": "reserved", "start_epoch": round(now)})
@@ -680,7 +588,7 @@ def require_reservation(run, root=None, max_age_s=6 * 3600, modal=False):
     row = (rec.get("queue") or {}).get("row") or rec["ledger"][-1]["row"]
     if str(row.get("platform") or rec["ledger"][-1]["row"].get("platform") or "").lower() == "modal":
         others = [r for r in records(root) if r.get("run") != run]  # its own row is not up yet
-        check_modal_slots(sum(gpus_of(row).values()), others, modal_live(root) if modal is False else modal)
+        check_modal_slots(rec.get("arm"), sum(gpus_of(row).values()), others, modal_live(root) if modal is False else modal)
     return rec
 
 
@@ -690,19 +598,6 @@ def publish(root=None):
         sync(root)
 
 
-def _share_app(rec, fields):
-    """The queue row and the latest ledger row carry one app_id: a set on either writes both (24 Oct: a queue-only
-    set left gpu_reconcile/mon reading "no queue row"). A real app id or state=running marks an open run running."""
-    app = fields.get("app_id")
-    if app is not None:
-        if rec.get("ledger"):
-            rec["ledger"][-1]["row"]["app_id"] = app
-        if rec.get("queue"):
-            rec["queue"]["row"]["app_id"] = app
-    if str(app or "").startswith("ap-") or str(fields.get("state") or "").lower() == "running":
-        _mark_running(rec)  # the record's state; the launcher's own ledger row state is left as written
-
-
 def set_queue(run, root=None, section="live", **fields):
     def fn(rec):
         if state_of(rec) == "ended" and not rec.get("queue"):  # settled: a late what/next edit must not re-open a bare live row
@@ -710,7 +605,6 @@ def set_queue(run, root=None, section="live", **fields):
         q = rec.get("queue") or {"section": section, "order": _now_order(), "row": {"run": run}}
         q["row"].update(fields)
         rec["queue"] = q
-        _share_app(rec, fields)
 
     rec = update(run, fn, root)
     publish(root)
@@ -732,12 +626,7 @@ def set_ledger(run, root=None, **fields):
     def fn(rec):
         if not rec.get("ledger"):
             raise GateError(f"{run}: no ledger row (records.py reserve first)")
-        if state_of(rec) == "ended":
-            raise GateError(f"{run}: the attempt is settled; `records.py settle RUN STATE --cause ... --set k=v` "
-                            "corrects a closed row")
         rec["ledger"][-1]["row"].update(fields)
-        if state_of(rec) != "ended":
-            _share_app(rec, {"app_id": fields["app_id"]} if "app_id" in fields else {})
         if go:
             _mark_running(rec)
 
@@ -786,8 +675,6 @@ def settle(run, state, *, end_cause=None, root=None, **fields):
         if rec.get("ledger"):
             rec["ledger"][-1]["row"].update(state=state, end_cause=end_cause, end_epoch=end, **fields)
         rec.update(state="ended", end_cause=end_cause)
-        if fields.get("arm"):  # a misattributed record: the correction moves the record too
-            rec["arm"] = fields["arm"]
         if rec.get("attempts"):
             rec["attempts"][-1].update(state="ended", end_cause=end_cause, end_epoch=end)
         rec.pop("queue", None)
@@ -795,42 +682,6 @@ def settle(run, state, *, end_cause=None, root=None, **fields):
     rec = update(run, fn, root)
     publish(root)
     return rec
-
-
-def settle_attempt(run, n, state, *, end_cause, root=None, **fields):
-    """Close or correct earlier attempt ``n`` of a run: its ledger row and attempts entry only; the record, its queue
-    row and the current attempt stay as they are (settle handles those). end_epoch defaults to what the row has, else
-    the next attempt's start."""
-    end_cause = check_cause(end_cause)
-
-    def fn(rec):
-        if n >= int(rec.get("attempt") or 1):
-            raise GateError(f"{run}: attempt {n} is not an earlier attempt (current {rec.get('attempt') or 1}); use settle")
-        row = next((e["row"] for e in rec.get("ledger") or [] if e["row"].get("run_id") == attempt_id(run, n)), None)
-        entry = next((a for a in rec.get("attempts") or [] if a.get("n") == n), None)
-        if row is None or entry is None:
-            raise GateError(f"{run}: no attempt {n} (records.py show {run})")
-        after = next((a for a in rec["attempts"] if a.get("n") == n + 1), {})
-        end = fields.pop("end_epoch", None) or row.get("end_epoch") or after.get("start_epoch")
-        row.update(state=state, end_cause=end_cause, end_epoch=round(float(end)), **fields)
-        entry.update(state="ended", end_cause=end_cause, end_epoch=round(float(end)))
-
-    rec = update(run, fn, root)
-    publish(root)
-    return rec
-
-
-def set_calibration(run, data, root=None):
-    """The VM's boot calibration on its attempt (it stays with that VM: a relaunch gets its own)."""
-    def fn(rec):
-        attempts = rec.get("attempts") or []
-        (attempts[-1] if attempts else rec)["calibration"] = data
-    return update(run, fn, root)
-
-
-def calibration(rec):
-    """The latest attempt's boot calibration, or None."""
-    return next((a["calibration"] for a in reversed(rec.get("attempts") or []) if a.get("calibration")), rec.get("calibration"))
 
 
 def unclassified(root=None, recs=None):
@@ -944,7 +795,8 @@ def sync(root=None, state_dir=None, arm_rules=None):
         if dropped:
             with open(state_dir / "dropped-legacy.jsonl", "a") as f:
                 f.write(json.dumps({"t": time.time(), "runs": dropped}) + "\n")
-        q, s = _write_views_locked(root, files)
+        _write_views_locked(root, files)
+        q, s = build(root)
         _write(last_q, q)
         _write(last_s, s)
     return dropped
@@ -969,7 +821,7 @@ def dropped_legacy(root=None, since=0.0):
 
 
 def snapshot(root=None):
-    """Ended records -> docs/runs-settled/<run>.json (local, untracked; written only when changed). Returns the count."""
+    """Ended records -> docs/runs-settled/<run>.json (tracked in git; written only when changed). Returns the count."""
     d = _root(root) / "docs" / "runs-settled"
     d.mkdir(parents=True, exist_ok=True)
     n = 0
@@ -1007,67 +859,12 @@ def apply_queue_ops(ops, root=None):
                 had_live = bool(q) and q["section"] == "live"
                 rec.pop("queue", None)
                 if had_live and rec.get("ledger") and state_of(rec) != "ended":  # gone without a settle
-                    rec.update(state="ended", end_cause="unclassified", dropped_epoch=round(time.time()))
+                    rec.update(state="ended", end_cause="unclassified")
                     if rec.get("attempts"):
                         rec["attempts"][-1].update(state="ended", end_cause="unclassified")
 
         update(run, fn, root)
     if ops:
-        publish(root)
-
-
-STALE_GRACE = 3 * 3600  # past its reservation (start + max_seconds) by this much, with nothing live: never coming
-
-
-def reserved_epoch(rec):
-    """When the run's current attempt was reserved: its attempt or row start, else a launcher's ms ledger order; None
-    for a record migrated from the old ledger (small order, no times)."""
-    row = ((rec.get("ledger") or [{}])[-1]).get("row") or {}
-    order = ((rec.get("ledger") or [{}])[-1]).get("order") or 0
-    t = ((rec.get("attempts") or [{}])[-1]).get("start_epoch") or row.get("start_epoch") or row.get("launched_epoch")
-    if not t and row.get("launched_utc"):
-        import datetime
-        t = datetime.datetime.fromisoformat(str(row["launched_utc"]).replace("Z", "+00:00")).timestamp()
-    return float(t) if t else (order / 1000 if order > 1e12 else None)
-
-
-def stale_open(recs, *, live_runs, live_apps, now=None, grace=STALE_GRACE):
-    """Open records nothing runs behind (2 Nov 47 rows open for weeks): state reserved/running, no queue row,
-    no live VM (``live_runs``: lower-cased run ids) or Modal app (``live_apps``: app ids), and either past their
-    reservation by ``grace`` or migrated with no times at all. Callers pass live sets only from a listing that worked."""
-    now, out = now or time.time(), []
-    for rec in recs:
-        if rec.get("queue") or not rec.get("ledger"):
-            continue
-        row = rec["ledger"][-1]["row"]
-        if state_of(rec) == "ended":  # dropped by reconcile without a settle: its row waits for one, not forever
-            if row.get("state") in OPEN_STATES and rec.get("dropped_epoch") and now > rec["dropped_epoch"] + grace:
-                out.append(rec["run"])
-            continue
-        if str(rec["run"]).lower() in live_runs or str(row.get("run_id", "")).lower() in live_runs:
-            continue
-        if {row.get("app_id"), (rec.get("queue") or {}).get("app_id")} & set(live_apps):
-            continue
-        t = reserved_epoch(rec)
-        if t is None or now > t + float(row.get("max_seconds") or row.get("attempt_seconds") or 86400) + grace:
-            out.append(rec["run"])
-    return out
-
-
-def close_stale(runs, *, note, root=None):
-    """End each run (stale_open) and its open ledger row: state reconciled, cause unclassified (the outcome was never
-    recorded), end_epoch its reservation's end when known. Spend counts the row at its bound (no actual), as before."""
-    for run in runs:
-        def fn(rec):
-            row = rec["ledger"][-1]["row"]
-            t = reserved_epoch(rec)
-            end = rec.get("dropped_epoch") or (round(t + float(row.get("max_seconds") or 0)) if t else None)
-            row.update(state="reconciled", end_cause="unclassified", note=note, **({"end_epoch": end} if end else {}))
-            rec.update(state="ended", end_cause="unclassified")
-            if rec.get("attempts"):
-                rec["attempts"][-1].update(state="ended", end_cause="unclassified", **({"end_epoch": end} if end else {}))
-        update(run, fn, root)
-    if runs:
         publish(root)
 
 

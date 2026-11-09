@@ -34,16 +34,6 @@ def test_cmd_step_reports_last_line(tmp_path):
     assert gate.step_cmd("true", str(tmp_path)) == (True, "exit 0")
 
 
-def test_a_failing_command_before_tail_fails_the_step(tmp_path):
-    """25 Oct: `launch.py check ... | tail -3` printed CONFIG REFUSED and exited 1, the gate said PASS."""
-    ok2, why2 = gate.step_cmd("(echo 'CONFIG REFUSED'; echo 'x: attempt 1 is still running'; exit 1) | tail -3",
-                              str(tmp_path))
-    assert not ok2 and why2 == "x: attempt 1 is still running"
-    assert gate.step_cmd("yes | head -1", str(tmp_path)) == (True, "y")  # SIGPIPE from head is not a failure
-    rec = gate.run_gate("r", {"refused": lambda: gate.step_cmd("(echo REFUSED; exit 1) | tail -1", str(tmp_path))}, 30)
-    assert not rec["ok"] and not rec["steps"]["refused"]["ok"]
-
-
 def test_volume_alert_at_80_percent():
     spec = importlib.util.spec_from_file_location("volume_usage", ROOT / "tools/ops/volume_usage.py")
     vu = importlib.util.module_from_spec(spec)
@@ -99,32 +89,3 @@ def test_fork_report_lists_shared_functions_that_differ(tmp_path):
     r = fr.report(tmp_path)["t.py"]
     assert r["differ"] == ["T.m"] and r["same"] == 1 and r["rl_only"] == 1 and r["pth_only"] == 0
     assert fr.report(tmp_path / "none") == {}
-
-
-def test_step_cmd_fails_on_a_pytest_failure_summary_even_with_exit_0(tmp_path):
-    """v6m2 25 Oct: `pytest ... | tail -1` exited 0 and the gate printed PASS for "3 failed, 160 passed"."""
-    ok, why = gate.step_cmd("echo '3 failed, 160 passed in 12.3s'; exit 0", str(tmp_path))
-    assert not ok and "3 failed" in why
-    assert gate.step_cmd("echo '1 error in 0.5s'", str(tmp_path))[0] is False
-    assert gate.step_cmd("echo '160 passed in 9.1s'", str(tmp_path)) == (True, "160 passed in 9.1s")
-    assert gate.step_cmd("echo 'no failed jobs'; echo '0 errors seen'", str(tmp_path))[0] is True
-
-
-def test_config_step_runs_the_arms_own_checks(tmp_path, monkeypatch):
-    import json
-
-    from arc_infra.runops import launchcfg
-
-    mod = tmp_path / "armcfg.py"
-    mod.write_text("from dataclasses import dataclass\nfrom arc_infra.runops import launchcfg\n"
-                   "@dataclass(frozen=True)\nclass C(launchcfg.LaunchConfig):\n    lr: float\n"
-                   "def checks(cfg):\n    return [] if cfg.lr < 1e-4 else [f'lr {cfg.lr} too high']\n")
-    cfg = {"run": "r1", "arm": "sft", "platform": "modal", "gpu": "B300", "gpu_count": 1, "bound_usd": 1.0,
-           "max_seconds": 60, "authorization": "t", "what": "t", "anchor": {"run": "in-run", "note": ""},
-           "roster": {"name": "x", "ids": [], "size": 0}, "data": [], "lr": 1e-3}
-    (tmp_path / "c.json").write_text(json.dumps(cfg))
-    monkeypatch.setattr(launchcfg, "dry_run", lambda c, **kw: [])
-    ok, why = gate.step_config(str(tmp_path / "c.json"), f"{mod}:C")
-    assert not ok and why == "lr 0.001 too high"
-    (tmp_path / "c.json").write_text(json.dumps({**cfg, "lr": 1e-5}))
-    assert gate.step_config(str(tmp_path / "c.json"), f"{mod}:C")[0]

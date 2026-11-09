@@ -165,7 +165,7 @@ def bits(r):
         m.append("<div class='m' style='color:#e03131'><b>vs expectations:</b> " + "; ".join(r["deviations"][:4]) + "</div>")
     else:
         m.append("<div class='m'>on track against the expectations for this point</div>")
-    m.append(f"<div class='m'>read {paths.local(r['utc']):%H:%M} {paths.tz()}</div>")
+    m.append(f"<div class='m'>read {r['utc'][11:]} UTC</div>")
     return m
 
 

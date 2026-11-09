@@ -18,12 +18,21 @@ agent where the score comes from, one level at a time, and runs many attempts at
 - Attempts still running at the bench wall are cancelled and recorded as censored: they are excluded
   from every headline metric (their tokens are reported separately).
 
+Stuck-level bench (hx4, 7 October): ``arms`` runs every start point once per arm and pass, interleaved, so arms are
+paired inside one run on one server. An arm is ``{"name", "warm", "history", "reset", "study"}``: ``warm`` gives the attempt
+what the recorded source agent carried into the level (the point's ``warm``: its cross-level notes and ``note()``
+entries); ``history`` puts the replayed prefix into the sandbox's ``history`` / ``transitions`` (the earlier levels'
+frames, as the source agent had them); ``reset`` starts a point recorded inside a level from that level's first
+board; ``study`` overrides study keys for that arm's agents (harness blocks such as ``hx_harness``). Without ``arms`` there is one cold arm. Attempts run the study's full harness (context drain, dfr,
+hx, loop rule), as the arena trial does.
+
 Model-agnostic: the gate's capacity comes from the served layout (hybrid blocks on the Flash vLLM
 profile, the SGLang pool, the vLLM ``GPU KV cache size`` line) or from ``capacity_tokens`` for an
 external endpoint; the serving profile (MTP off or on) is a study/server setting, recorded here.
 """
 
 import asyncio
+import copy
 import json
 import math
 import random
@@ -43,6 +52,8 @@ from .duck import ArenaTransferDuckAgent
 from .gate import GateSlot, KVGate
 from .level_points import check_replay, level_score
 from .scheduler import GameRecord
+from .trim_bed import ScriptedResponse, record_settings, reply_record
+from .trim_bed import settings as trim_settings
 
 DEFAULTS = {
     "split": "dev",                 # dev | holdout | all
@@ -50,6 +61,19 @@ DEFAULTS = {
     "concurrency": 16,              # attempts running at once (and gate slots)
     "window": 49152,                # agent context per attempt (compaction at window - cap)
     "token_budget": 40000,          # completion tokens per attempt (every purpose)
+    "level_token_cap": None,        # play-through: an attempt ends after this many tokens on one level without a clear
+    "token_budget_by_level": None,  # {"<level number>": tokens}: the budget of starts on that level (else token_budget)
+    "token_budget_by_point": None,  # {"<point id>": tokens}: the budget of that start (before the level's)
+    # {"top_logprobs", "token_ids"}: every live reply is stored in the attempt's rollout.jsonl with the request it
+    # answered, its sampled token ids and the engine's log-probabilities (arena.rollout_record); a clear is replayed
+    # from a fresh game
+    "rollout": None,
+    # {temperature, top_p, top_k, presence_penalty, ...}: sent on every request of every attempt in place of the
+    # harness's own sampler (RL step 0 on Qwen3.6, the model card's recommended settings)
+    "sampling": None,
+    # RL step 1 evals (13 Oct): every request of the attempt of pass k carries vLLM seed seed_base + k, so eval
+    # attempts are paired across rounds (common random numbers); None: unseeded
+    "seed_base": None,
     "attempt_wall_seconds": 1800,   # safety cap per attempt
     "passes": 3,                    # seeded permutations of the start points, in order
     "order_seed": 0,
@@ -59,10 +83,45 @@ DEFAULTS = {
     "start_points": "configs/level_bench_start_points.json",
     "capacity_tokens": None,        # external endpoint: gate capacity in tokens (no server log)
     "serving": None,                # recorded label of the serving profile (e.g. "mtp0")
+    "arms": None,                   # [{"name", "warm": bool, "history": bool, "study": {...}}]; None: one cold arm
+    "first_pass": 0,                # index of the first pass (a later run extends an earlier one's passes)
+    "lead_token_budget": 80000,     # lead points: tokens to get through the lead-in level(s), else "lead_out"
+    # {"multiple": m, "floor": f}: an attempt also ends ("action_cap") once it has executed max(f, ceil(m x the
+    # level's human baseline)) actions of its own (checked before each request, as the token budget is); None: off
+    "action_cap": None,
 }
+ARM_KEYS = ("name", "warm", "history", "reset", "study", "points", "games", "enter", "thinking", "levels",
+            "passes", "seed_base")  # points: start | deep | lead |
+# None; games: None or a list of 4-character game prefixes the arm is limited to; enter (lead points): what the harness
+# takes away at the target level's first board, before the agent's first request on it (``ENTER``)
+ENTER = (None, "clear", "restart", "both")  # clear: the conversation and the carried world model (python session
+# kept); restart: the python session (interpreter restarted: the agent's variables, functions and registered tools are
+# gone; the conversation stays); both: both. The agent's note() entries (hx memo) are a third store: every arm keeps
+# them (a restarted interpreter starts with them). A play-through point applies the removal at every level entry.
+ENTER_CLEAR_NOTE = (
+    "[Context cleared by the harness] You have just completed level {done} and are at the first board of level "
+    "{level}. The conversation before this point was removed by the harness (routine, not a failure). Your python "
+    "session is unchanged: `history`, `transitions`, your variables, functions and registered tools are all still "
+    "there."
+)
+ENTER_RESTART_NOTE = (
+    "[Python session restarted by the harness] Your python interpreter was restarted (routine, not a failure): the "
+    "variables, functions and registered tools you defined are gone. Your note() entries, `history`, `transitions` "
+    "and `current_frame` are provided as before."
+)
+ENTER_BOTH_NOTE = (
+    "[Context cleared and python session restarted by the harness] You have just completed level {done} and are at "
+    "the first board of level {level}. The conversation before this point was removed and your python interpreter was "
+    "restarted (routine, not a failure): the variables, functions and registered tools you defined are gone. Your "
+    "note() entries, `history`, `transitions` and `current_frame` are provided as before."
+)
+HX_NOTES_EMPTY = '"sim_seen": 0, "notes": {}}'  # the pinned empty note store of the hx child block
 SPLITS = ("dev", "holdout", "all")
 UNSUPPORTED = ("cross_game_notes", "explorer", "background_lane", "commit", "llm_backlog", "audition_pool")
-HEADLINE_EXCLUDED = ("censored", "error", "replay_mismatch")
+HEADLINE_EXCLUDED = ("censored", "error", "replay_mismatch", "lead_out", "recorded")
+
+
+SAMPLING_KEYS = {"temperature", "top_p", "top_k", "min_p", "presence_penalty", "frequency_penalty", "repetition_penalty"}
 
 
 def settings(raw):
@@ -82,6 +141,50 @@ def settings(raw):
     for key in ("attempt_wall_seconds", "launch_cutoff_seconds", "min_wall_seconds"):
         if type(merged[key]) not in (int, float) or merged[key] < 0:
             raise ValueError(f"level_bench.{key} must be a non-negative number")
+    if type(merged["first_pass"]) is not int or merged["first_pass"] < 0:
+        raise ValueError("level_bench.first_pass must be a non-negative integer")
+    if merged["arms"] is not None:
+        arms = merged["arms"]
+        if (not isinstance(arms, list) or not arms or any(not isinstance(a, dict) or set(a) - set(ARM_KEYS)
+                                                           or not a.get("name") for a in arms)
+                or len({a["name"] for a in arms}) != len(arms)
+                or any(a.get("points") not in (None, "start", "deep", "lead", "game") for a in arms)
+                or any(a.get("enter") not in ENTER or (a.get("enter") and a.get("points") not in ("lead", "game"))
+                       for a in arms)):
+            raise ValueError("level_bench.arms is a list of {name, warm, history, study} with distinct names "
+                             "(enter only on lead-point or play-through arms)")
+        if any(type(a.get("thinking", True)) is not bool
+               or (a.get("levels") is not None and (not isinstance(a["levels"], list) or not a["levels"]))
+               or (a.get("passes") is not None and (type(a["passes"]) is not int or a["passes"] < 1))
+               or (a.get("seed_base") is not None and (type(a["seed_base"]) is not int or a["seed_base"] < 0))
+               for a in arms):
+            raise ValueError("level_bench arm: thinking is true/false, levels a list of level numbers, passes >= 1")
+    sampling = merged["sampling"]
+    if sampling is not None and (not isinstance(sampling, dict) or not sampling or set(sampling) - SAMPLING_KEYS
+                                 or any(type(v) not in (int, float) or isinstance(v, bool) for v in sampling.values())):
+        raise ValueError(f"level_bench.sampling is {{key: number}} over {sorted(SAMPLING_KEYS)}")
+    cap = merged["level_token_cap"]
+    if cap is not None and (type(cap) is not int or cap < 1):
+        raise ValueError("level_bench.level_token_cap is a positive integer or null")
+    by_level = merged["token_budget_by_level"]
+    if by_level is not None and (not isinstance(by_level, dict) or not by_level or any(
+            not str(k).isdigit() or type(v) is not int or v < 1 for k, v in by_level.items())):
+        raise ValueError("level_bench.token_budget_by_level is {level number: positive integer} or null")
+    if merged["rollout"] is not None:
+        from .rollout_record import settings as rollout_settings
+
+        merged["rollout"] = rollout_settings(merged["rollout"])
+    by_point = merged["token_budget_by_point"]
+    if by_point is not None and (not isinstance(by_point, dict) or not by_point or any(
+            type(v) is not int or v < 1 for v in by_point.values())):
+        raise ValueError("level_bench.token_budget_by_point is {point id: positive integer} or null")
+    cap = merged["action_cap"]
+    if cap is not None and (not isinstance(cap, dict) or set(cap) != {"multiple", "floor"}
+                            or type(cap["floor"]) is not int or cap["floor"] < 1
+                            or type(cap["multiple"]) not in (int, float) or cap["multiple"] <= 0):
+        raise ValueError("level_bench.action_cap is {multiple: > 0, floor: integer >= 1} or null")
+    if merged["seed_base"] is not None and (type(merged["seed_base"]) is not int or merged["seed_base"] < 0):
+        raise ValueError("level_bench.seed_base must be a non-negative integer")
     if merged["games"] is not None and (not isinstance(merged["games"], list) or not merged["games"]):
         raise ValueError("level_bench.games must be a non-empty list of game prefixes")
     if merged["capacity_tokens"] is not None and (type(merged["capacity_tokens"]) is not int
@@ -103,13 +206,52 @@ def load_points(path, cfg):
     return sorted(points, key=lambda p: p["id"])
 
 
-def plan(points, passes, seed):
-    """``[(pass, point)]``: each pass a seeded permutation of the points (sorted by id first)."""
+# thinking False: the arm's gameplay requests go out with enable_thinking off (the template's empty think block);
+# levels: None or the level numbers the arm plays; passes: None or the number of passes (from pass 0) the arm plays
+COLD = {"name": "base", "warm": False, "history": False, "reset": False, "study": {}, "points": None, "games": None,
+        "enter": None, "thinking": True, "levels": None, "passes": None, "seed_base": None}
+
+
+def token_budget(cfg, point):
+    by_point, by_level = cfg.get("token_budget_by_point") or {}, cfg.get("token_budget_by_level") or {}
+    return int(by_point.get(point.get("id"), by_level.get(str(point.get("level")), cfg["token_budget"])))
+
+
+def action_cap(cfg, point):
+    """The attempt's own-action limit on this start point, or None."""
+    cap = cfg.get("action_cap")
+    if cap is None:
+        return None
+    return max(cap["floor"], math.ceil(cap["multiple"] * float(point.get("baseline_actions") or 0)))
+
+
+def point_kind(point):
+    """``lead``: the agent plays ``lead_levels`` levels itself before the target level (it arrives with its own tools
+    and conversation); ``deep``: a board inside the level; ``start``: the level's first board; ``game``: a
+    play-through point (``through``: a fresh game played for the whole token budget, every level counted)."""
+    return ("game" if point.get("through") else "lead" if point.get("lead_levels") else
+            "deep" if point.get("deep_tokens") else "start")
+
+
+def plan(points, passes, seed, arms=None, first_pass=0):
+    """``[(pass, point, arm)]``: each pass a seeded permutation of the points (sorted by id first); within a pass the
+    arms rotate from point to point, so a run cut short stays balanced. An arm with ``points`` takes only level-start
+    or only in-level (``deep_tokens``) points."""
+    arms = [{**COLD, **a} for a in arms] if arms else [COLD]
     out = []
-    for index in range(passes):
+    for index in range(first_pass, first_pass + passes):
         order = list(points)
         random.Random(f"{seed}:{index}").shuffle(order)
-        out.extend((index, point) for point in order)
+        for turn in range(len(arms)):
+            for place, point in enumerate(order):
+                arm = arms[(place + turn + index) % len(arms)]
+                if (arm["points"] in (None, point_kind(point))
+                        and (not arm["games"] or str(point.get("game", ""))[:4] in arm["games"])
+                        and (not arm["levels"] or point.get("level") in arm["levels"])
+                        and (arm["passes"] is None or index < arm["passes"])):
+                    out.append((index, point, arm))
+    if any(point.get("priority") for _, point, _ in out):  # e.g. per-start budgets: the longest attempts start first
+        out.sort(key=lambda work: -float(work[1].get("priority") or 0))
     return out
 
 
@@ -120,15 +262,16 @@ class ReplayMismatch(RuntimeError):
 class PrefixArcade:
     """The arcade the attempt's agent sees: ``make`` replays the start point's prefix first."""
 
-    def __init__(self, arc, point):
+    def __init__(self, arc, point, keep=False):
         self.arc, self.point, self.replay = arc, point, None
+        self.trace = [] if keep else None  # (action text, raw) per replayed step, for the history arm
 
     def make(self, game_id, **kwargs):
         env = self.arc.make(game_id, **kwargs)
         if env is None:
             return None
         started = time.monotonic()
-        ok, detail, _ = check_replay(env, self.point)
+        ok, detail, _ = check_replay(env, self.point, self.trace)
         self.replay = {"ok": ok, "detail": detail, "actions": len(self.point["prefix"]),
                        "seconds": round(time.monotonic() - started, 3)}
         if not ok:
@@ -141,13 +284,212 @@ class LevelBenchAgent(ArenaTransferDuckAgent):
 
     bench_start = 0
     bench_budget = None
-    bench_outcome = None  # cleared | budget | censored
+    bench_outcome = None  # cleared | budget | action_cap | censored
+    bench_action_cap = None  # own actions that end the attempt (level_bench.action_cap), or None
     bench_clear = None
 
-    def bench_setup(self, *, start_level, budget):
+    bench_warm = None     # {"cross_level_notes", "notes"}: what the source agent carried into the level
+    bench_trace = None    # the PrefixArcade whose replayed steps become the sandbox history
+    bench_offset = 0      # prefix actions counted in ``steps`` (history arm)
+    bench_reset = False   # reset arm: a start point inside a level begins from the level's first board
+    bench_lead = 0        # lead point: levels the agent plays before the target level
+    bench_lead_budget = None
+    bench_enter = None    # {"completion_tokens", "steps"} at the target level's first board (lead points)
+    bench_enter_mode = None     # ``ENTER``: what is taken away at that board
+    bench_enter_applied = None  # the workspace records of that (one per level entry)
+    bench_enter_due = False     # a level entry whose removal is not applied yet
+    bench_enter_note = None     # restart: the one-off line of the next user turn
+    bench_through = False       # play-through point: no stop at a level clear
+    bench_level_cap = None      # play-through: tokens on one level before the attempt ends (None: no cap)
+    bench_levels = None         # play-through: [{"level", "completion_tokens", "steps"}] per cleared level
+    # hx7 trim bed (arena.trim_bed)
+    bench_record = None         # collector: {"stop_tokens"}; the gameplay replies go to script.jsonl
+    bench_script = None         # the point's recorded replies, answered before any live request
+    bench_script_at = 0
+    bench_script_end = None     # {"completion_tokens", "steps", "levels", "ok", "detail"} at the first live request
+    bench_actions = None        # every action the attempt executed, in order (record and replay)
+    bench_restore = None        # arena.restore: a recorded attempt replayed to a request, then live (F-small)
+    bench_restore_state = None  # the state check at the first live request
+
+    def bench_setup(self, *, start_level, budget, warm=None, trace=None, reset=False, level_start=None, prefix=0,
+                    lead=0, lead_budget=None, enter=None, through=False, script=None, record=None, action_cap=None,
+                    level_cap=None):
         self.bench_start, self.bench_budget = int(start_level), int(budget)
+        self.bench_level_cap = level_cap
+        self.bench_action_cap = action_cap
+        self.bench_lead, self.bench_lead_budget, self.bench_enter = int(lead or 0), lead_budget, None
+        self.bench_through, self.bench_levels = bool(through), []
+        if through and (self.bench_lead or prefix or start_level):
+            raise ValueError("level bench: a play-through point is a fresh game")
+        if enter and (not (self.bench_lead or through) or self.drain is None):
+            raise ValueError("level bench: an enter arm needs a lead or play-through point and drain_half")
+        self.bench_enter_mode, self.bench_enter_applied, self.bench_enter_note = enter, [], None
+        self.bench_enter_due, self.bench_bootstrap = False, None
         self.bench_outcome = self.bench_clear = None
+        self.bench_record, self.bench_script = record_settings(record), script or None
+        self.bench_script_at, self.bench_script_end, self.bench_actions = 0, None, []
+        # A trim before the first live request (its summary) counts against the budget: the base is the script's own.
+        self.bench_script_tokens = sum(int(r["usage"].get("completion_tokens") or 0)
+                                       for r in (script or {}).get("replies", []))
+        if (self.bench_record or self.bench_script) and not through:
+            raise ValueError("level bench: a recorded or scripted attempt is a play-through point")
+        if self.bench_record and self.bench_script:
+            raise ValueError("level bench: an attempt records or replays, not both")
+        self.bench_warm, self.bench_trace, self.bench_reset = warm or None, trace, bool(reset)
+        self.bench_level_start = level_start  # prefix actions before the level's first board (None: all of them)
+        self.bench_prefix = int(prefix)
+        notes = (warm or {}).get("notes")
+        if notes and getattr(self, "hx", None) and self.hx["memo"]:
+            empty = HX_NOTES_EMPTY
+            if self.sandbox.bootstrap.count(empty) != 1:
+                raise ValueError("level bench: pinned hx notes store changed")
+            self.sandbox.bootstrap = self.sandbox.bootstrap.replace(
+                empty, '"sim_seen": 0, "notes": %r}' % {str(k)[:40]: str(v)[:400] for k, v in list(notes.items())[:12]})
         return self
+
+    def warm_text(self):
+        warm = self.bench_warm or {}
+        parts = [warm.get("cross_level_notes") or (warm.get("knowledge") or {}).get("cross_level_notes") or ""]
+        if warm.get("notes"):
+            parts.append("Your notes from the earlier levels: " + " | ".join(f"{k}: {v}" for k, v in warm["notes"].items()))
+        return "\n".join(p for p in parts if p)
+
+    def fresh_beliefs(self):
+        """Before the first reply the abandoned attempt is the recorded source agent's: its carried beliefs."""
+        if self.bench_warm and not self.gameplay_replies:
+            warm = self.bench_warm
+            knowledge = dict(warm.get("knowledge") or {})
+            if warm.get("cross_level_notes") and not knowledge.get("cross_level_notes"):
+                knowledge["cross_level_notes"] = warm["cross_level_notes"]
+            return knowledge, dict(warm.get("notes") or {})
+        return super().fresh_beliefs()
+
+    async def before_first_turn(self):
+        await super().before_first_turn()
+        inside = self.bench_level_start is not None and self.bench_level_start != self.bench_prefix
+        if inside and self.steps == self.level_start_step:
+            self.level_start_step = -1  # no replayed history: the level did not start at this board
+        if self.bench_reset and inside and self.obs.state == "NOT_FINISHED":
+            # A start point inside a level: this arm begins from the level's first board.
+            from arc_infra.plans import Action
+
+            await self.step(Action("RESET"))
+            self.write_duck_state("RESET")
+            self.level_start_step = self.steps  # the reset counts as one of the attempt's actions
+
+    async def before_turn(self):
+        await super().before_turn()
+        if (self.bench_enter_mode and self.bench_enter_due and self.bench_outcome is None
+                and self.obs.state == "NOT_FINISHED"):
+            self.bench_enter_due = False
+            await self.bench_enter_apply()
+
+    async def bench_enter_apply(self):
+        """The enter arm's removal, between turns (event loop, worker idle), before the first user turn of the entered
+        level is built: ``clear`` blanks the carried world model and leaves ``[system, note + python inventory,
+        that turn's observation]`` at the next request (the fresh-context path of ``drain_context``); ``restart``
+        discards the interpreter (the next call starts a new one, which receives the whole ``history`` again and
+        starts with the note() entries of the old one)."""
+        mode = self.bench_enter_mode
+        level = max(1, min(self.obs.total_levels, self.obs.levels + 1))
+        notes = dict(((self.sandbox.hx_state or {}).get("notes")) or {})
+        record = {"mode": mode, "level": level, "session_calls": self.sandbox.calls, "notes": len(notes)}
+        if mode in ("restart", "both"):
+            inventory = await asyncio.to_thread(self.sandbox.inventory)
+            record.update(functions=len((inventory or {}).get("functions") or []),
+                          values=len((inventory or {}).get("values") or []))
+            with self.sandbox.lock:
+                self.sandbox._discard("bench_enter")
+                if self.bench_bootstrap is None:
+                    self.bench_bootstrap = self.sandbox.bootstrap
+                if self.bench_bootstrap.count(HX_NOTES_EMPTY) == 1:
+                    self.sandbox.bootstrap = self.bench_bootstrap.replace(
+                        HX_NOTES_EMPTY, '"sim_seen": 0, "notes": %r}' % notes)
+                elif notes:
+                    raise ValueError("level bench: pinned hx notes store changed")
+            self.sandbox.hx_state = {"notes": notes} if notes else None
+            self.inventory_restarts_seen = self.sandbox.restarts  # the note below says it; no second remark
+        if mode in ("clear", "both"):
+            analyzer = getattr(self, "_analyzer", None)
+            knowledge = getattr(analyzer, "_summarized_knowledge", None) or {}
+            record["world_model_chars"] = sum(len(str(v)) for v in knowledge.values())
+            for key in list(knowledge):
+                knowledge[key] = ""
+            if self.fresh_stats is None:
+                self.fresh_stats = {"attempts": 0, "resets": 0, "tokens_freed": 0}
+            note = ENTER_BOTH_NOTE if mode == "both" else ENTER_CLEAR_NOTE
+            self.fresh_pending = note.format(done=level - 1, level=level)
+        else:
+            self.bench_enter_note = ENTER_RESTART_NOTE
+        self.bench_enter_applied.append(record)
+        self.workspace.append("level_bench_enter_apply", step=self.steps, **record)
+
+    def fresh_context(self, messages, tools, measure):
+        """After a ``both`` removal the note must not say the interpreter was untouched."""
+        from .context_drain import PYTHON_NOTE
+
+        both = (self.fresh_pending or "").startswith(ENTER_BOTH_NOTE[:40])
+        result = super().fresh_context(messages, tools, measure)
+        if both and len(result) > 1 and isinstance(result[1].get("content"), str):
+            text = result[1]["content"].replace(PYTHON_NOTE.strip(), "", 1)
+            result[1] = {**result[1], "content": "\n\n".join(part.strip() for part in text.split("\n\n") if part.strip())}
+        return result
+
+    def turn_notice(self):
+        notice = super().turn_notice()
+        if self.bench_enter_note is not None:
+            notice, self.bench_enter_note = "\n".join(filter(None, (self.bench_enter_note, notice))), None
+        return notice
+
+    def analyzer(self, loop):
+        analyzer = super().analyzer(loop)
+        text = self.warm_text()
+        knowledge = dict((self.bench_warm or {}).get("knowledge") or {})
+        if self.fresh is not None and self.fresh["at_start"]:
+            text, knowledge = "", {}  # the fresh attempt's note carries the beliefs as suspects
+        if text or knowledge:
+            ensure = analyzer._ensure_session
+
+            def ensure_session(state_path):
+                fresh = analyzer._session_runtime_dir != state_path.parent
+                ensure(state_path)
+                if fresh:  # the session start clears the carried world model
+                    for key, value in knowledge.items():
+                        if key in analyzer._summarized_knowledge and key != "cross_level_notes":
+                            analyzer._summarized_knowledge[key] = str(value)
+                    if text:
+                        analyzer._summarized_knowledge["cross_level_notes"] = text
+
+            analyzer._ensure_session = ensure_session
+        return analyzer
+
+    def write_duck_state(self, action="", result=None):
+        trace = self.bench_trace.trace if self.bench_trace is not None else None
+        if trace and not self.duck_history and not action:
+            # History arm: the replayed steps 0..n-1 as history entries, then the level's first board as step n.
+            from arc_infra.perception import Observation
+            from inference.agent.runtime_state import Frame, HistoryEntry
+
+            from .level_points import decode_action
+
+            labels, previous = [], None
+            for index, (text, raw) in enumerate(trace):
+                label = ""
+                if text is not None:
+                    name, x, y = decode_action(text)
+                    label = f"MOUSE(row={y}, col={x})" if name == "ACTION6" else self.model_action(name)
+                labels.append(label)
+                previous = Observation.from_raw(raw, previous)
+                if index < len(trace) - 1:
+                    self.duck_history.append(HistoryEntry(action=label, frame=Frame(
+                        grid=tuple(map(tuple, previous.board.tolist())), step=index,
+                        level=max(1, min(previous.total_levels, previous.levels + 1)))))
+            self.bench_offset = self.steps = len(trace) - 1
+            self.level_start_step = self.steps if self.bench_level_start is None else int(self.bench_level_start)
+            self.bench_trace.trace = None  # the raw observations are no longer needed
+            if labels[-1]:
+                return super().write_duck_state(labels[-1])
+        return super().write_duck_state(action, result)
 
     def remaining(self):
         if self.bench_outcome is not None:
@@ -156,26 +498,191 @@ class LevelBenchAgent(ArenaTransferDuckAgent):
 
     def bench_gate(self):
         """Before every request: an attempt past its budget (or finished) sends nothing more."""
-        if self.bench_outcome is None and self.game.clock.completion_tokens() >= self.bench_budget:
+        tokens = self.game.clock.completion_tokens()
+        if self.bench_outcome is None and self.bench_lead and self.bench_enter is None:
+            if tokens >= self.bench_lead_budget:
+                self.bench_outcome = "lead_out"
+                self.workspace.append("level_bench_lead_out", step=self.steps, completion_tokens=tokens)
+        elif self.bench_outcome is None and tokens - self.bench_base_tokens() >= self.bench_budget:
             self.bench_outcome = "budget"
-            self.workspace.append("level_bench_budget", step=self.steps,
-                                  completion_tokens=self.game.clock.completion_tokens())
+            self.workspace.append("level_bench_budget", step=self.steps, completion_tokens=tokens)
+        elif (self.bench_outcome is None and self.bench_through and self.bench_level_cap
+              and tokens - (self.bench_levels[-1]["completion_tokens"] if self.bench_levels else 0) >= self.bench_level_cap):
+            self.bench_outcome = "level_cap"
+            self.workspace.append("level_bench_level_cap", step=self.steps, level=len(self.bench_levels) + 1,
+                                  completion_tokens=tokens)
+        elif (self.bench_outcome is None and self.bench_action_cap is not None
+              and self.steps - self.bench_offset >= self.bench_action_cap):
+            self.bench_outcome = "action_cap"
+            self.workspace.append("level_bench_action_cap", step=self.steps, actions=self.steps - self.bench_offset,
+                                  completion_tokens=tokens)
         if self.bench_outcome is not None:
             raise GameplayRequestExpired(f"Level-bench attempt finished: {self.bench_outcome}")
 
+    def bench_base_tokens(self):
+        """Completion tokens that do not count against the budget: the lead-in or the replayed script."""
+        if self.bench_restore is not None:
+            return self.bench_restore["tokens"]
+        if self.bench_script is not None:
+            return self.bench_script_tokens
+        return (self.bench_enter or {}).get("completion_tokens", 0)
+
+    def bench_dir(self):
+        return Path(self.workspace.log).parent
+
+    def bench_board(self):
+        from arc_infra.perception import board_hash
+
+        return board_hash(self.obs.board) if self.obs is not None and self.obs.board is not None else None
+
+    def bench_script_finish(self):
+        """The first live request of a scripted attempt: the replay must have reproduced the recording."""
+        stop = self.bench_script["stop"]
+        now = {"steps": self.steps, "levels": int(self.obs.levels), "board_hash": self.bench_board()}
+        problems = [f"{key} {now[key]} != {stop[key]}" for key in now if now[key] != stop[key]]
+        if self.bench_actions != self.bench_script["actions"]:
+            problems.append("actions differ")
+        self.bench_script_end = {"completion_tokens": self.bench_script_tokens, **now,
+                                 "requests": self.bench_script_at, "ok": not problems,
+                                 "detail": "; ".join(problems) or "ok", "compactions": self.game.compactions}
+        self.workspace.append("level_bench_script_end", step=self.steps, **self.bench_script_end)
+        if problems:
+            self.bench_outcome = "replay_mismatch"
+
+    def bench_restore_live(self):
+        return self.bench_restore is not None and self.rollout.restore_at > self.bench_restore["request"]
+
+    def bench_restore_check(self):
+        """At the restored attempt's first live request: the game and the action list as the recording had them."""
+        stop = self.bench_restore["stop"]
+        now = {"steps": self.steps, "levels": int(self.obs.levels), "board_hash": self.bench_board()}
+        problems = [f"{key} {now[key]} != {stop[key]}" for key in now if now[key] != stop[key]]
+        if self.bench_actions != self.bench_restore["actions"]:
+            problems.append(f"actions differ ({len(self.bench_actions)} vs {len(self.bench_restore['actions'])})")
+        self.bench_restore_state = {**now, "ok": not problems, "detail": "; ".join(problems) or "ok",
+                                    "pinned": {k: getattr(self, f"bench_pin_{k}", 0) for k in ("changed", "dropped", "filled")}}
+        self.workspace.append("level_bench_restore_state", **self.bench_restore_state)
+        if problems:
+            self.bench_outcome = "replay_mismatch"
+
     async def chat(self, messages, tools):
+        if (self.bench_restore is not None and self.bench_restore_state is None
+                and self.rollout.restore_at == self.bench_restore["request"]):
+            if self.bench_restore.get("pin_actions"):
+                await self.bench_pin_fill()
+            self.bench_restore_check()
+        if (self.bench_restore is not None and self.bench_restore.get("check_only") and self.bench_outcome is None
+                and self.bench_restore_live()):
+            self.bench_outcome = "restored"
+        if (self.bench_script is not None and self.bench_script_end is None
+                and self.bench_script_at >= len(self.bench_script["replies"])):
+            self.bench_script_finish()
+        if self.bench_record is not None and self.bench_outcome is None:
+            # The measure the arms' trims use (harness_fixes exact_trigger: the tokenizer's count).
+            estimate = (await self.exact_gameplay_tokens(messages, tools) if self.fix("exact_trigger")
+                        else self.estimate_prompt_tokens(messages, tools))
+            if estimate >= self.bench_record["stop_tokens"]:
+                stop = {"estimate": estimate, "requests": self.bench_script_at, "steps": self.steps,
+                        "levels": int(self.obs.levels), "board_hash": self.bench_board(),
+                        "completion_tokens": self.game.clock.completion_tokens(), "messages": len(messages)}
+                (self.bench_dir() / "script_stop.json").write_text(json.dumps(
+                    {"stop": stop, "actions": self.bench_actions}))
+                self.bench_outcome = "recorded"
+                self.workspace.append("level_bench_recorded", **stop)
         self.bench_gate()
         return await super().chat(messages, tools)
+
+    async def request_completion(self, payload, *args, **kwargs):
+        gameplay = (self.request_purpose or ("summary" if not payload.get("tools") else "gameplay")) == "gameplay"
+        script = self.bench_script
+        if gameplay and script is not None and self.bench_script_at < len(script["replies"]):
+            import copy
+
+            # What the served request would have left behind for the summary request's shared prefix.
+            self.last_gameplay_prefix = {"chat_template_kwargs": copy.deepcopy(payload.get("chat_template_kwargs") or {}),
+                                         "tools": payload.get("tools")}
+            self.bench_script_at += 1
+            return ScriptedResponse(script["replies"][self.bench_script_at - 1])
+        response = await super().request_completion(payload, *args, **kwargs)
+        if gameplay and self.bench_record is not None and response.status_code == 200:
+            with (self.bench_dir() / "script.jsonl").open("a") as file:
+                file.write(json.dumps(reply_record(response.json()), separators=(",", ":")) + "\n")
+            self.bench_script_at += 1
+        return response
 
     async def aside_request(self, *args, **kwargs):
         self.bench_gate()
         return await super().aside_request(*args, **kwargs)
 
+    def bench_pinned(self, action):
+        """Restore action pinning (17 Oct, gate v3: 16-19 of 20 deep restores diverged when re-executed tool code chose
+        other actions): before the restored attempt goes live, every step takes the recording's next action; steps past
+        the recorded list are dropped (None)."""
+        from arc_infra.plans import Action
+
+        recorded = self.bench_restore["actions"]
+        index = len(self.bench_actions or [])
+        if index >= len(recorded):
+            self.bench_pin_dropped = getattr(self, "bench_pin_dropped", 0) + 1
+            return None
+        name, *xy = recorded[index].split()
+        pinned = Action(name, int(xy[0]), int(xy[1])) if name == "ACTION6" else Action(name)
+        if action is not None and recorded[index] != action.name + (f" {action.x} {action.y}" if action.name == "ACTION6" else ""):
+            self.bench_pin_changed = getattr(self, "bench_pin_changed", 0) + 1
+        return pinned
+
+    async def bench_pin_fill(self):
+        """Recorded actions the re-executed code never issued, played before the restore check."""
+        recorded = self.bench_restore["actions"]
+        while len(self.bench_actions) < len(recorded):
+            self.bench_pin_filled = getattr(self, "bench_pin_filled", 0) + 1
+            await self.step(self.bench_pinned(None))
+
     async def step(self, action):
+        if (self.bench_restore is not None and self.bench_restore.get("pin_actions") and self.bench_actions is not None
+                and not self.bench_restore_live() and self.bench_restore_state is None):
+            if action is not None:
+                action = self.bench_pinned(action)
+            if action is None:
+                return
         await super().step(action)
-        if self.bench_outcome is None and self.obs.levels > self.bench_start:
+        if self.bench_actions is not None:
+            self.bench_actions.append(action.name + (f" {action.x} {action.y}" if action.name == "ACTION6" else ""))
+        if self.bench_restore is not None:  # a segment: the restored level, live, until it clears
+            if (self.bench_outcome is None and self.bench_restore_live()
+                    and self.obs.levels > self.bench_restore["stop"]["levels"]):
+                self.bench_outcome = "won" if self.obs.state == "WIN" else "cleared"
+                self.bench_clear = {"actions": self.steps - self.bench_restore["level_start_step"],
+                                    "completion_tokens": self.game.clock.completion_tokens() - self.bench_restore["tokens"],
+                                    "wall_seconds": round(self.game.clock.global_clock.elapsed(), 3),
+                                    "requests": len(self.game.requests)}
+                self.workspace.append("level_bench_clear", step=self.steps, **self.bench_clear)
+            return
+        if self.bench_through:
+            if self.bench_outcome is None and self.obs.levels > len(self.bench_levels):
+                mark = {"completion_tokens": self.game.clock.completion_tokens(), "steps": self.steps}
+                for level in range(len(self.bench_levels) + 1, self.obs.levels + 1):
+                    self.bench_levels.append({"level": level, **mark})
+                    self.workspace.append("level_bench_level", step=self.steps, level=level, **mark)
+                if self.obs.state == "WIN" or self.obs.levels >= self.obs.total_levels:
+                    self.bench_outcome = "won"
+                    self.bench_clear = {"actions": self.steps, "completion_tokens": mark["completion_tokens"],
+                                        "wall_seconds": round(self.game.clock.global_clock.elapsed(), 3),
+                                        "requests": len(self.game.requests)}
+                    self.workspace.append("level_bench_clear", step=self.steps, **self.bench_clear)
+                else:
+                    self.bench_enter_due = True
+            return
+        target = self.bench_start + self.bench_lead
+        if self.bench_outcome is None and self.bench_lead and self.bench_enter is None and self.obs.levels >= target:
+            self.bench_enter = {"completion_tokens": self.game.clock.completion_tokens(), "steps": self.steps}
+            self.bench_enter_due = True
+            self.workspace.append("level_bench_enter", step=self.steps, **self.bench_enter)
+        if self.bench_outcome is None and self.obs.levels > target:
+            enter = self.bench_enter or {"completion_tokens": 0, "steps": self.bench_offset}
             self.bench_outcome = "cleared"
-            self.bench_clear = {"actions": self.steps, "completion_tokens": self.game.clock.completion_tokens(),
+            self.bench_clear = {"actions": self.steps - enter["steps"],
+                                "completion_tokens": self.game.clock.completion_tokens() - enter["completion_tokens"],
                                 "wall_seconds": round(self.game.clock.global_clock.elapsed(), 3),
                                 "requests": len(self.game.requests)}
             self.workspace.append("level_bench_clear", step=self.steps, **self.bench_clear)
@@ -251,6 +758,24 @@ def summarize(attempts, *, wall_seconds=None, budget=None):
         bucket["tokens"] += a["completion_tokens"]
     for bucket in depth.values():
         bucket["clears_per_10k_tokens"] = round(bucket["clears"] * 1e4 / bucket["tokens"], 4) if bucket["tokens"] else None
+    arms = {}
+    for a in done:
+        row = arms.setdefault(a.get("arm") or "base", {"attempts": 0, "clears": 0, "tokens": 0, "points_cleared": set()})
+        row["attempts"] += 1
+        row["clears"] += a["cleared"]
+        row["tokens"] += a["completion_tokens"]
+        if a["cleared"]:
+            row["points_cleared"].add(a["point"])
+    for a in done:
+        if "levels" in a:  # play-through attempts: levels and score per arm
+            row = arms[a.get("arm") or "base"]
+            row["levels"] = row.get("levels", 0) + a["levels"]
+            row["game_score_sum"] = round(row.get("game_score_sum", 0.0) + a["game_score"], 3)
+    for row in arms.values():
+        row["points_cleared"] = sorted(row["points_cleared"])
+        row["clear_rate"] = round(row["clears"] / row["attempts"], 4)
+        row["clear_rate_95"] = wilson(row["clears"], row["attempts"])
+        row["clears_per_mtok"] = round(row["clears"] * 1e6 / row["tokens"], 3) if row["tokens"] else None
     requests = sum(a["gameplay_requests"] for a in done)
     return {
         "token_budget": budget,
@@ -273,6 +798,7 @@ def summarize(attempts, *, wall_seconds=None, budget=None):
         "censored_completion_tokens": sum(a["completion_tokens"] for a in attempts if a["outcome"] == "censored"),
         "tokens_per_second": round(all_tokens / wall_seconds, 1) if wall_seconds else None,
         "by_depth": depth,
+        "by_arm": dict(sorted(arms.items())),
         "per_level": dict(sorted(per_level.items())),
     }
 
@@ -345,10 +871,11 @@ class LevelBench:
             raise ValueError("The attempt window must exceed the completion cap")
         capacity, budget, choice = gate_capacity(self.study, cfg, self.server_dir, window)
         points = load_points(self.source / cfg["start_points"], cfg)
-        work = plan(points, cfg["passes"], cfg["order_seed"])
+        work = plan(points, cfg["passes"], cfg["order_seed"], cfg["arms"], cfg["first_pass"])
         bench_wall = GlobalClock(self.wall_seconds())
         agent_cfg = duck_config(self.study, self.source, window=window, cap=self.cap,
                                 wall=cfg["attempt_wall_seconds"], base_url=self.base_url)
+        agent_cfg.max_actions = 10 ** 6  # replayed history counts as steps; the token budget ends the attempt
         agent_cfg.parallel_games = cfg["concurrency"]
         agent_cfg.max_num_seqs = max(agent_cfg.max_num_seqs, cfg["concurrency"])
         from duck_transfer import loader
@@ -358,6 +885,7 @@ class LevelBench:
         gate = KVGate(capacity, slots=cfg["concurrency"], log=self.gate_log, budget=budget)
         arc = self.arc or make_arcade("offline", self.games_dir, self.output / "recordings")
         card = arc.open_scorecard(tags=["level-bench", self.trial["name"]])
+        self.checks = (arc, card)
         shared = httpx.AsyncClient(base_url=self.base_url.rstrip("/") + "/", trust_env=False, transport=self.transport,
                                    limits=httpx.Limits(max_connections=256, max_keepalive_connections=128))
         monitor = GpuMonitor(self.output, self.base_url)
@@ -369,7 +897,7 @@ class LevelBench:
                   "reasoning_effort": self.study.get("reasoning_effort")}
         self.log(json.dumps(header), flush=True)
         (self.output / "level-bench-plan.json").write_text(json.dumps(
-            {**header, "plan": [{"pass": p, "point": pt["id"]} for p, pt in work]}, indent=1))
+            {**header, "plan": [{"pass": p, "point": pt["id"], "arm": arm["name"]} for p, pt, arm in work]}, indent=1))
         await monitor.sample()
         bench_wall.release()
         monitor.start = bench_wall.start
@@ -429,6 +957,10 @@ class LevelBench:
                   "gate": {**gate.snapshot(), "choice": choice}, "engine": engine, "wall_seconds": round(elapsed, 1),
                   "planned_attempts": len(work), "launched_attempts": next_index, "points": len(points),
                   "summary": summary, "task_errors": errors, "config": self.config_dict, "attempts": rows}
+        if cfg["rollout"]:
+            from .rollout_record import totals
+
+            report["rollout"] = totals(rows)
         (self.output / "level-bench.json").write_text(json.dumps(report, indent=1))
         self.log(json.dumps({"event": "level_bench_result", **{k: summary[k] for k in (
             "attempts_completed", "attempts_censored", "attempts_failed", "clears", "clear_rate",
@@ -436,19 +968,22 @@ class LevelBench:
             "tokens_per_second")}, "preemptions": engine.get("preemptions")}), flush=True)
         return report
 
-    def make_attempt(self, index, pass_index, point, *, gate, arc, card, shared, agent_cfg, window):
-        label = f"a{index:03d}-{point['id']}-p{pass_index}"
+    def make_attempt(self, index, pass_index, point, arm, *, gate, arc, card, shared, agent_cfg, window):
+        label = f"a{index:03d}-{point['id']}-p{pass_index}" + (f"-{arm['name']}" if self.cfg["arms"] else "")
         clock = GlobalClock(self.cfg["attempt_wall_seconds"])
-        game = GameRecord(label, index, ActiveClock(clock, budget_clock="inference"))
+        game = GameRecord(label, index, ActiveClock(clock, budget_clock=self.study.get("budget_clock", "inference")))
         game.ready = asyncio.Event()
         slot = GateSlot(gate, game, cap=self.cap, window=window)
         entry = {"game_id": point["game"], "replica": 0, "instance_id": label}
+        if not arm["thinking"]:
+            agent_cfg = copy.copy(agent_cfg)
+            agent_cfg.enable_thinking = False
         client = SessionClient(agent_cfg, shared, slot, entry, self.requests)
-        prefix_arc = PrefixArcade(arc, point)
+        prefix_arc = PrefixArcade(arc, point, keep=bool(arm["history"]) and bool(point["prefix"]))
         agent = LevelBenchAgent(point["game"], prefix_arc, card, client, agent_cfg,
                                 self.output / "attempts" / label, self.analysis_python,
                                 time.monotonic() + self.cfg["attempt_wall_seconds"] + 3600)
-        study = self.study
+        study = {**self.study, **(arm.get("study") or {})}
         agent.attach(game, window=window, cap=self.cap, memory=study.get("memory_block") or None,
                      escalation=study.get("model_escalation") or None, snapshot=study.get("game_snapshot") or None,
                      procedure=study.get("stuck_procedure") or None, critical_errors=bool(study.get("critical_errors")),
@@ -456,12 +991,49 @@ class LevelBench:
                      adaptive_thinking=study.get("adaptive_thinking") or None,
                      worldmodel_notice=bool(study.get("worldmodel_notice")),
                      harness_fixes=study.get("harness_fixes") or None,
-                     dfr_harness=study.get("dfr_harness") or None)
+                     parallel_samples=study.get("parallel_samples") or None,
+                     action_plans=bool(study.get("action_plans")),
+                     context_drain=study.get("drain_half") or None,
+                     dfr_harness=study.get("dfr_harness") or None, dfr_loop=study.get("dfr_loop") or None,
+                     hx_harness=study.get("hx_harness") or None, loop_rule=study.get("loop_rule") or None,
+                     fresh_attempt=study.get("fresh_attempt") or None)
         agent.compaction_keep_observations = int(study.get("compaction_keep_observations", 1))
+        agent.compaction_keep_fraction = study.get("compaction_keep_fraction")
+        agent.compaction_summary_cap = study.get("compaction_summary_cap")
+        agent.compaction_full_prefix = bool(study.get("compaction_full_prefix"))
         agent.compaction_thinking = study.get("compaction_thinking", DEFAULT_COMPACTION_THINKING)
-        agent.bench_setup(start_level=point["level_index"], budget=self.cfg["token_budget"])
-        return {"index": index, "pass": pass_index, "point": point, "label": label, "game": game, "clock": clock,
-                "agent": agent, "arcade": prefix_arc, "censored": False}
+        agent.trim = trim_settings(study.get("trim"))
+        if self.cfg["rollout"]:
+            from .rollout_record import RolloutHTTP
+
+            client.client = agent.rollout = RolloutHTTP(client.client, agent, self.cfg["rollout"])
+        if point.get("restore"):
+            from .restore import load as load_restore
+
+            if getattr(agent, "rollout", None) is None:
+                raise ValueError("level bench: a restored attempt needs the rollout record")
+            spec = point["restore"]
+            agent.bench_restore = {**load_restore(spec["attempt"], int(spec["request"])),
+                                   "check_only": bool(spec.get("check_only")), "hint": spec.get("hint"),
+                                   "pin_actions": bool(spec.get("pin_actions"))}
+            agent.rollout.restore = agent.bench_restore
+        agent.sampling_override = dict(self.cfg["sampling"] or {})
+        seed_base = arm["seed_base"] if arm.get("seed_base") is not None else self.cfg["seed_base"]
+        if seed_base is not None:  # an arm's own seed_base (RL: seeded eval attempts inside a training bench)
+            agent.sampling_override["seed"] = int(seed_base) + int(pass_index)
+        agent.bench_setup(start_level=point["level_index"],
+                          budget=int((point.get("restore") or {}).get("budget") or point.get("budget")
+                                     or token_budget(self.cfg, point)),
+                          warm=point.get("warm") if arm["warm"] else None,
+                          trace=prefix_arc if prefix_arc.trace is not None else None,
+                          reset=arm["reset"], level_start=point.get("level_start_actions"), enter=arm.get("enter"),
+                          through=bool(point.get("through")), script=point.get("script"),
+                          record=study.get("trim_record"),
+                          prefix=len(point["prefix"]), lead=point.get("lead_levels", 0),
+                          lead_budget=self.cfg["lead_token_budget"], action_cap=action_cap(self.cfg, point),
+                          level_cap=self.cfg["level_token_cap"] if point.get("through") else None)
+        return {"index": index, "pass": pass_index, "point": point, "arm": arm["name"], "label": label, "game": game,
+                "clock": clock, "agent": agent, "arcade": prefix_arc, "censored": False}
 
     async def play(self, attempt):
         agent, game, clock = attempt["agent"], attempt["game"], attempt["clock"]
@@ -482,6 +1054,11 @@ class LevelBench:
                 self.log(json.dumps({"event": "level_bench_attempt", **{k: attempt["row"][k] for k in (
                     "label", "outcome", "completion_tokens", "tokens_to_clear", "actions", "level_score",
                     "gameplay_requests", "wall_seconds")}}), flush=True)
+                try:  # per finished try, so a stop or crash keeps what was played (level-bench.json comes at the end)
+                    with open(self.output / "level-bench.partial.jsonl", "a") as file:
+                        file.write(json.dumps(attempt["row"], default=str) + "\n")
+                except Exception as exc:  # noqa: BLE001
+                    self.log(json.dumps({"event": "level_bench_partial_failed", "error": str(exc)[:200]}), flush=True)
 
     def row(self, attempt, result, error, seconds):
         agent, point, game = attempt["agent"], attempt["point"], attempt["game"]
@@ -490,7 +1067,8 @@ class LevelBench:
         replay = attempt["arcade"].replay
         if attempt["censored"]:
             outcome = "censored"
-        elif agent.bench_outcome in ("cleared", "budget"):
+        elif agent.bench_outcome in ("cleared", "budget", "level_cap", "action_cap", "lead_out", "won", "recorded",
+                                     "replay_mismatch", "restored"):
             outcome = agent.bench_outcome
         elif replay is not None and not replay["ok"]:
             outcome = "replay_mismatch"
@@ -500,17 +1078,99 @@ class LevelBench:
             outcome = "wall"
         else:
             outcome = result.get("status") or "stopped"
-        cleared = outcome == "cleared"
+        cleared = outcome in ("cleared", "won")
         clear = agent.bench_clear or {}
-        actions = clear.get("actions", agent.steps)
+        enter = agent.bench_enter or {"completion_tokens": 0, "steps": agent.bench_offset}
+        if agent.bench_script is not None and agent.bench_script_end is not None:
+            enter = agent.bench_script_end  # tokens and actions count from the first live request
+        if outcome == "lead_out":
+            enter = {"completion_tokens": game.clock.completion_tokens(), "steps": agent.steps}
+        restore = agent.bench_restore
+        if restore is not None:  # tokens from the first live request, actions from the level's first board
+            enter = {"completion_tokens": restore["tokens"], "steps": restore["level_start_step"]}
+        actions = clear.get("actions", agent.steps - enter["steps"])
         requests, noaction = request_actions(agent.workspace.log)
+        through = None
+        if restore is not None:
+            # A restored segment: the one level it plays (credit as a play-through level), nothing before it
+            level = restore["level"]
+            base = point.get("baselines") or []
+            rows_ = []
+            if cleared:
+                credit = level_score(base[level - 1] if level <= len(base) else None, clear["actions"], True)
+                rows_ = [{"level": level, "tokens": clear["completion_tokens"], "at_tokens": clear["completion_tokens"],
+                          "actions": clear["actions"], "score": round(credit, 3)}]
+            total = int(point.get("total_levels") or len(base) or 1)
+            through = {"levels": len(rows_), "total_levels": total, "level_rows": rows_,
+                       "game_score": round(sum(min(100.0, r["score"]) for r in rows_) / total, 3), "enter_applied": []}
+        elif point.get("segment") and not point.get("through"):
+            # A fresh level-1 segment (RL multi-game, 16 Oct): the one level it plays, credited as a restored segment
+            level = int(point.get("level") or 1)
+            base = point.get("baselines") or []
+            rows_ = []
+            if cleared:
+                credit = level_score(base[level - 1] if level <= len(base) else None, clear["actions"], True)
+                rows_ = [{"level": level, "tokens": clear["completion_tokens"], "at_tokens": clear["completion_tokens"],
+                          "actions": clear["actions"], "score": round(credit, 3)}]
+            total = int(point.get("total_levels") or len(base) or 1)
+            through = {"levels": len(rows_), "total_levels": total, "level_rows": rows_,
+                       "game_score": round(sum(min(100.0, r["score"]) for r in rows_) / total, 3), "enter_applied": []}
+        elif point.get("through"):
+            # Play-through: every cleared level with its own tokens, actions and credit; the game score is the mean
+            # credit over all the game's levels (uncleared levels count 0).
+            base, levels, before = point.get("baselines") or [], [], {"completion_tokens": 0, "steps": 0}
+            for item in agent.bench_levels or []:
+                used = item["steps"] - before["steps"]
+                credit = level_score(base[item["level"] - 1] if item["level"] <= len(base) else None, used, True)
+                levels.append({"level": item["level"], "tokens": item["completion_tokens"] - before["completion_tokens"],
+                               "at_tokens": item["completion_tokens"], "actions": used, "score": round(credit, 3)})
+                before = item
+            total = int(point.get("total_levels") or len(base) or 1)
+            through = {"levels": len(levels), "total_levels": total, "level_rows": levels,
+                       "game_score": round(sum(min(100.0, r["score"]) for r in levels) / total, 3),
+                       "enter_applied": list(agent.bench_enter_applied or [])}
+        row = self.row_fields(attempt, result, error, seconds, outcome=outcome, cleared=cleared, clear=clear,
+                              enter=enter, actions=actions, requests=requests, noaction=noaction, replay=replay)
+        if through is not None:
+            row.update(through, level_score=through["game_score"])
+        elif agent.bench_enter_mode:
+            row["enter_applied"] = list(agent.bench_enter_applied or [])
+        if agent.sc_on():
+            row["sim_check"] = dict(agent.sc_stats)
+        if getattr(agent, "rollout", None) is not None:
+            from .rollout_record import clear_replay
+
+            row["rollout"] = agent.rollout.stats
+            # the attempt's own actions on a fresh game: exact for a start with no replayed prefix
+            row["clear_replay"] = (clear_replay(*self.checks, agent, point) if cleared and not point["prefix"]
+                                   else None)
+        if restore is not None:
+            result = dict(agent.rollout.restore_result or {})
+            state = agent.bench_restore_state or {"ok": False, "detail": "first live request not reached"}
+            row["restore"] = {"source": restore["source"], "request": restore["request"], "level": restore["level"],
+                              "scripted": result.get("requests", 0), "diffs": result.get("diffs", [])[:20],
+                              "diff_count": len(result.get("diffs", [])), "prompt_digest": result.get("prompt_digest"),
+                              "state": state, "ok": bool(state.get("ok")) and not result.get("diffs")}
+        if agent.bench_script is not None:
+            row["script"] = dict(agent.bench_script_end or {"ok": False, "detail": "script not finished",
+                                                            "requests": agent.bench_script_at})
+        return row
+
+    def row_fields(self, attempt, result, error, seconds, *, outcome, cleared, clear, enter, actions, requests,
+                   noaction, replay):
+        agent, point, game = attempt["agent"], attempt["point"], attempt["game"]
         return {
             "label": attempt["label"], "index": attempt["index"], "pass": attempt["pass"], "point": point["id"],
+            "arm": attempt["arm"],
             "game": point["game"], "split": point["split"], "level": point["level"],
             "level_index": point["level_index"], "outcome": outcome, "cleared": cleared,
-            "completion_tokens": game.clock.completion_tokens(),
+            "completion_tokens": game.clock.completion_tokens() - enter["completion_tokens"],
+            "lead_tokens": enter["completion_tokens"] if point.get("lead_levels") else None,
+            "lead_actions": enter["steps"] - agent.bench_offset if point.get("lead_levels") else None,
             "tokens_to_clear": clear.get("completion_tokens") if cleared else None,
-            "actions": actions, "total_actions": agent.steps, "baseline_actions": point.get("baseline_actions"),
+            "actions": actions, "total_actions": agent.steps - agent.bench_offset,
+            "baseline_actions": point.get("baseline_actions"), "action_cap": agent.bench_action_cap,
+            "token_budget": agent.bench_budget,
             "level_score": round(level_score(point.get("baseline_actions"), actions, cleared), 3),
             "gameplay_requests": requests, "noaction_requests": noaction, "admitted_requests": len(game.requests),
             "prompt_tokens": agent.prompt_tokens, "compactions": game.compactions,

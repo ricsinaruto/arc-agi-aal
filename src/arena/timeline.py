@@ -18,7 +18,7 @@ naming the trial, so the build fails before any GPU time is spent.
 TRIAL_GRACE = 600    # scripts/arena/bootstrap.py
 START_MARGIN = 480   # arena.run: hard_end - now >= wall + 480
 BOOTSTRAP_RESERVE = 120  # the bootstrap's budget = notebook left - 120 s
-EXEMPT_KINDS = ("level-bench", "expert-quant", "expert-usage", "server-check", "prune-quality")
+EXEMPT_KINDS = ("level-bench", "expert-quant", "expert-usage", "server-check", "prune-quality", "rl-loop")
 
 
 def check(study, *, setup_seconds, restart_seconds, run_seconds, margin=1.15, teardown_seconds=120):

@@ -1,10 +1,7 @@
 """Shared run watcher. Run it as a background task of the owning agent from launch: every
 line it prints wakes that agent. It never stops a run. Rules: src/arc_infra/runops/watch.py.
 
-  watch.py run PLAN.json [--interval 120]   live watch until the run ends (exit 0 after "END"); by default it exits 4
-                                             at its first ALERT so the owning agent's background task wakes
-. Restart it after handling: rule state is kept, so
-                                             handled alerts do not re-fire. --no-exit-on-alert: print and go on
+  watch.py run PLAN.json [--interval 120]   live watch until the run ends (exit 0 after "END")
   watch.py stop RUN                          ask that watcher to exit (it ignores SIGTERM/SIGHUP: a broad `pkill -f`
                                              once killed every arm's watcher; stop one by pid with `kill -9` only)
   watch.py beats                             watchers whose heartbeat is stale (dash loop, each pass; exit 1 if any)
@@ -40,22 +37,18 @@ from arc_infra.runops.watch import END_MARKER, Snapshot, Watch, validate_plan  #
 MODAL = str(paths.ROOT_PATH / ".venv/bin/modal")
 BUCKET = "nebius-arc:arc-runs-bucket/runs/"
 TAIL = 400_000
-KEPT = {}  # spec -> last good (text, mtime): a failed read keeps it, a run's rows do not vanish for one pass
-READ_FAILED = set()  # specs of metric sources not read this pass
 
 
 def _run(cmd, timeout=120):
-    from arc_infra.runops.volfetch import run  # own process group, killed whole on a timeout
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        return r.stdout if r.returncode == 0 else None
+    except (subprocess.SubprocessError, OSError):
+        return None
 
-    return run(cmd, timeout=timeout)
 
-
-MIRROR_FRESH = 300  # s: a mirror refreshed this recently by another fetcher (export_rl, every 120 s) is read as is
-
-
-def fetch(spec, tail=TAIL, mirror=False):
-    """(text or None, mtime epoch or None) of a remote file. ``mirror``: a modal file another process keeps fresh in
-    the machine-wide mirror (RL runs: export_rl) is read from there (mtime None), with no fetch of its own."""
+def fetch(spec, tail=TAIL):
+    """(text or None, mtime epoch or None) of a remote file."""
     kind, _, rest = spec.partition(":")
     if kind == "modal-app":  # `modal app logs` follows a live app: take what arrives in 20 s
         try:
@@ -76,20 +69,11 @@ def fetch(spec, tail=TAIL, mirror=False):
         return text, mt
     if kind == "modal":
         vol, _, path = rest.partition(":")
-        from arc_infra.runops import volfetch
-
-        vol = volfetch.route(vol, path)  # a per-run volume (the run's record names it)
-
-        if mirror:
-            text = volfetch.read(vol, path, MIRROR_FRESH)
-            if text is not None:
-                return text[-tail:] or None, None
-        with volfetch.single_flight(vol, path) as mine:  # another process reading this path: no read this pass
-            if not mine:
-                return None, None
-            meta = _run([MODAL, "volume", "ls", "--json", vol, path])
-        ok = volfetch.get(vol, path, timeout=300, modal=MODAL)
-        text = volfetch.read(vol, path)[-tail:] if ok else None
+        meta = _run([MODAL, "volume", "ls", "--json", vol, path])
+        local = paths.SCRATCH / "watch" / "fetch" / vol / path
+        local.parent.mkdir(parents=True, exist_ok=True)
+        ok = _run([MODAL, "volume", "get", "--force", vol, path, str(local)], timeout=300) is not None
+        text = local.read_text(errors="replace")[-tail:] if ok and local.is_file() else None
         try:  # "2026-10-24 10:59 CEST": minute resolution, local zone
             stamp = json.loads(meta)[0]["created_modified"].rsplit(" ", 1)[0]
             mt = datetime.datetime.strptime(stamp, "%Y-%m-%d %H:%M").astimezone().timestamp()
@@ -97,17 +81,6 @@ def fetch(spec, tail=TAIL, mirror=False):
             mt = None
         return text, mt
     raise ValueError(f"remote spec {spec!r}: modal:<volume>:<path> or nebius:<path>")
-
-
-def fetch_kept(spec, **kw):
-    """fetch() of a metrics source: on a failed or empty read, the last good text, and the spec goes in READ_FAILED."""
-    text, mt = fetch(spec, **kw)
-    if text:
-        KEPT[spec] = (text, mt)
-        return text, mt
-    if text is None:
-        READ_FAILED.add(spec)
-    return KEPT.get(spec, (text, mt))
 
 
 def liveness(plan):
@@ -149,13 +122,10 @@ def snapshot(plan, metrics_path):
     now = time.time()
     remote_age = beat_age = guard_status = None
     incidents = []
-    READ_FAILED.clear()
     if plan.get("metrics_remote"):
         text, mt = fetch(plan["metrics_remote"], tail=50_000_000)
         if text:
             metrics_path.write_text(text)
-        elif text is None:
-            READ_FAILED.add(plan["metrics_remote"])
         remote_age = None if mt is None else now - mt
     if plan.get("runops_state"):
         text, _ = fetch(plan["runops_state"])
@@ -173,14 +143,11 @@ def snapshot(plan, metrics_path):
     if plan.get("platform") == "modal" and plan.get("app_id") and not any(x.startswith("modal-app:") for x in specs):
         specs.append(f"modal-app:{plan['app_id']}")
     live = liveness(plan)
-    got = [fetch(spec) for spec in specs]
-    logs = "\n".join(text or "" for text, _ in got)
-    log_age = min([now - mt for _, mt in got if mt] or [None]) if any(mt for _, mt in got) else None
+    logs = "\n".join(fetch(spec)[0] or "" for spec in specs)
     rows = read_rows(metrics_path) + arena_rows(plan)
     clean = clean_end(plan, rows, logs, guard_status) if live is False else None
     return Snapshot(now=now, rows=rows, live=live, remote_age=remote_age, beat_age=beat_age, incidents=incidents,
-                    log_text=logs, ended=recorded_ended(plan) and live is not True, clean_end=clean, log_age=log_age,
-                    read_failed=bool(READ_FAILED))
+                    log_text=logs, ended=recorded_ended(plan) and live is not True, clean_end=clean)
 
 
 def clean_end(plan, rows, logs, guard):
@@ -200,27 +167,12 @@ def clean_end(plan, rows, logs, guard):
 
 
 def arena_rows(plan):
-    """Plan "arena": {"sampler": spec of the runops live/sampler.jsonl, "cpulog": spec of util/cpulog.txt, "feed": spec
-    of arena/trials/rl-loop/rl/feed.jsonl (phases)} (RL runs),
-    {"progress": spec of arena/live/progress.jsonl} (ARC-AGI-3 arena) or {"arc2": spec of
+    """Plan "arena": {"progress": spec of arena/live/progress.jsonl} (ARC-AGI-3 arena) or {"arc2": spec of
     arena/live/arc2-<trial>.json} (ARC-AGI-2 roster; each new snapshot is kept in <scratch>/watch/<run>.arena.jsonl)."""
     a = plan.get("arena") or {}
-    if a.get("sampler"):  # RL runs: {"sampler": spec of live/sampler.jsonl, "cpulog": spec of util/cpulog.txt}
-        text, mt = fetch_kept(a["sampler"], tail=20_000_000, mirror=True)
-        out = arena.sampler_rows([json.loads(x) for x in (text or "").splitlines() if x.strip().startswith("{")],
-                                 plan.get("launched"), mt)
-        if a.get("cpulog"):
-            out += arena.cpulog_rows(fetch_kept(a["cpulog"], tail=5_000_000, mirror=True)[0])
-        if a.get("feed"):  # the loop's feed: train/play phases and train progress (rl-loop/rl/feed.jsonl)
-            text, _ = fetch_kept(a["feed"], tail=50_000_000, mirror=True)
-            out += arena.seq_feed_rows([json.loads(x) for x in (text or "").splitlines() if x.strip().startswith("{")])
-        return out
     if a.get("progress"):
-        text, _ = fetch_kept(a["progress"], tail=20_000_000)
+        text, _ = fetch(a["progress"], tail=20_000_000)
         return arena.progress_rows([json.loads(x) for x in (text or "").splitlines() if x.strip().startswith("{")])
-    if a.get("level_bench"):  # {"level_bench": spec of the trial's progress.jsonl}
-        text, mt = fetch_kept(a["level_bench"], tail=20_000_000)
-        return arena.level_bench_rows([json.loads(x) for x in (text or "").splitlines() if x.strip().startswith("{")], mt)
     if a.get("arc2"):
         hist = paths.SCRATCH / "watch" / f"{plan['run']}.arena.jsonl"
         hist.parent.mkdir(parents=True, exist_ok=True)
@@ -233,11 +185,10 @@ def arena_rows(plan):
                     f.write(json.dumps(snaps[-1]) + "\n")
             except ValueError:
                 pass
-        out, window = [], float(plan.get("rate_window_s") or 0)
-        for i, x in enumerate(snaps):  # rate since the newest snapshot at least rate_window_s older (or the last one)
-            back = [y for y in snaps[:i] if x["t"] - y["t"] >= window] if window else snaps[i - 1:i]
-            prev = (back[-1]["t"], arena.arc2_tokens(back[-1]["snap"])) if back else None
+        out, prev = [], None
+        for x in snaps:
             out.append(arena.arc2_row(x["snap"], x["t"], prev))
+            prev = (x["t"], x["snap"].get("completion_tokens"))
         return out
     return []
 
@@ -272,12 +223,6 @@ def follow(plan, rec):
         return plan, None
     row = rec["ledger"][-1]["row"]
     eff = {**plan, "launched": row.get("start_epoch") or plan.get("launched")}
-    from arc_infra.runops import records
-    out = records.out_id(plan["run"], rec=rec)  # Modal paths follow the current attempt's folder (v6k, 25 Oct)
-    sub = lambda v: (v.replace("{out}", out).replace(f"validation/{plan['run']}/", f"validation/{out}/") if isinstance(v, str)
-                     else [sub(x) for x in v] if isinstance(v, list)
-                     else {k: sub(x) for k, x in v.items()} if isinstance(v, dict) else v)  # arena.sampler etc.
-    eff.update({k: sub(v) for k, v in plan.items() if k not in ("run", "launched", "app_id")})
     if str(row.get("app_id") or "").startswith("ap-"):
         eff["app_id"] = row["app_id"]
     return eff, int(rec.get("attempt") or 1)
@@ -318,16 +263,8 @@ def cmd_run(a):
             s = snapshot(plan, metrics)
             if plan.get("follow_record") and plan.get("launched"):  # an earlier attempt's rows are not this one's
                 s.rows = [r for r in s.rows if (r.get("t") or 0) >= float(plan["launched"]) - 60]
-            alerts = w.check(s)
-            emit(plan, alerts, metrics, s.now)
+            emit(plan, w.check(s), metrics, s.now)
             write_json(f["state.json"], {**w.state(), "attempt": attempt})
-            if alerts and getattr(a, "exit_on_alert", False):
-                write_json(f["beat.json"], {"run": plan["run"], "pid": os.getpid(), "t": time.time(),
-                                            "interval": a.interval, "plan": str(pathlib.Path(a.plan).resolve()),
-                                            "arm": plan.get("arm"), "ended": False, "woke": True})
-                print(f"WOKE {plan['run']}: {len(alerts)} alert(s) above; after handling restart: "
-                      f"watch.py run {a.plan}", flush=True)
-                return 4
             ended, last_err = s.ended or (s.live is False and s.clean_end is False and "unclean-end" in
                                           {k[0] for k in w.seen}), None
         except Exception as e:  # a bad fetch or parse must not end the watch
@@ -395,16 +332,14 @@ def cmd_beats(_a):
 
 
 def backtest(plan, rows, log_text="", live_until=None, beat_until=None, remote_until=None, until=None, step=60.0,
-             log_at=None, clean=None, read_fails=()):
-    """Replay: [(minutes since launch, Alert)]. *_until: when that signal stopped (None: it never did). read_fails:
-    [(start, end)] epochs when reads fail with no kept rows (rows=[] that pass, as a watcher restarted then would see)."""
+             log_at=None, clean=None):
+    """Replay: [(minutes since launch, Alert)]. *_until: when that signal stopped (None: it never did)."""
     w = Watch(plan)
     t0 = float(plan["launched"] if plan.get("launched") is not None else min(r["t"] for r in rows))
     end = until or max([r["t"] for r in rows] or [t0]) + 2 * w.silence_s
     out, now = [], t0
     while now <= end:
-        failed = any(a <= now <= b for a, b in read_fails)
-        s = Snapshot(now=now, rows=[] if failed else rows, read_failed=failed, live=None if live_until is None else now <= live_until,
+        s = Snapshot(now=now, rows=rows, live=None if live_until is None else now <= live_until,
                      remote_age=None if remote_until is None else max(0.0, now - min(now, remote_until)),
                      beat_age=None if beat_until is None else max(0.0, now - min(now, beat_until)),
                      log_text=log_text if log_at is None or now >= log_at else "",
@@ -429,7 +364,6 @@ def main():
     r = sub.add_parser("run")
     r.add_argument("plan")
     r.add_argument("--interval", type=float, default=120)
-    r.add_argument("--exit-on-alert", action=argparse.BooleanOptionalAction, default=True)
     st = sub.add_parser("stop")
     st.add_argument("run")
     sub.add_parser("beats")

@@ -83,7 +83,8 @@ def verify_model(path, manifest, cache=None):
             or config.get('text_config', config)['max_position_embeddings'] != (profile.declared_context or profile.native_context)
             or mtp_count != profile.mtp_tensors):
         raise RuntimeError('Candidate architecture, quantization, context or MTP inventory changed')
-    if profile.quant_method is None and config.get('dtype', config.get('torch_dtype')) != 'bfloat16':
+    dtype = config.get('dtype', config.get('torch_dtype')) or config.get('text_config', {}).get('dtype')
+    if profile.quant_method is None and dtype != 'bfloat16':  # Qwen3.5-4B declares it in text_config only
         raise RuntimeError('Expected native BF16 checkpoint; no implicit quantization')
     if profile.cli_quantization == 'modelopt_mixed' and config['quantization_config'].get('quant_algo') != 'MIXED_PRECISION':
         raise RuntimeError('Expected mixed NVFP4/FP8 checkpoint configuration')
@@ -106,15 +107,28 @@ def candidate_args(profile, kv_cache_dtype=None):
     return args
 
 
+def template_override(profile):
+    """The profile's replacement chat template (hash-checked), or None: the checkpoint's own."""
+    if profile.chat_template is None:
+        return None
+    name, digest = profile.chat_template
+    path = profile.manifest.with_name(name)
+    if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+        raise RuntimeError(f'Chat template {name} differs from its pinned hash')
+    return path
+
+
 def configure_candidate(recipe, profile=NEX, kv_cache_dtype=None):
     """Keep process ownership/runtime setup; replace only the model command identity."""
     extra = candidate_args(profile, kv_cache_dtype)
+    template = template_override(profile)
     recipe.SERVED_MODEL_NAME = profile.model
     recipe.ANALYZER_CONTEXT = profile.native_context
     os.environ[recipe.MTP_TOKENS_ENV] = str(profile.mtp_tokens)
     os.environ[recipe.MTP_INDEX_SHARE_FOR_ITERATION_ENV] = '0'
     os.environ.pop(recipe.MTP_DYNAMIC_BATCH_SCHEDULE_ENV, None)
     os.environ.pop(recipe.MOE_BACKEND_ENV, None)
+    os.environ.update(dict(profile.env))
     original = recipe.server_command
 
     def command(*args, **kwargs):
@@ -131,6 +145,8 @@ def configure_candidate(recipe, profile=NEX, kv_cache_dtype=None):
             del argv[index - 1:index + 1]
         else:
             argv[index] = profile.cli_quantization
+        if template is not None:
+            argv[argv.index('--chat-template') + 1] = str(template)
         argv[argv.index('--tool-call-parser') + 1] = profile.tool_parser
         argv[argv.index('--reasoning-parser') + 1] = profile.reasoning_parser
         argv.extend(extra)
@@ -160,6 +176,8 @@ async def ready(recipe, identity, *, timeout, base_url, profile=NEX):
 
 
 # Server-environment overrides a candidate server applies (arena.serving.lab_overrides keys).
+RUNTIME_ENV_KEYS = ('PYTHONPATH', 'PATH', 'LD_LIBRARY_PATH', 'CUDA_HOME', 'CUDACXX', 'PYTORCH_CUDA_ALLOC_CONF',
+                    'TORCH_CUDA_ARCH_LIST')
 CANDIDATE_LAB = {'kv_cache_dtype', 'ready_guard', 'prefix_cache', 'prompt_tokens_details', 'stall_dump_seconds'}
 
 
@@ -244,6 +262,8 @@ def start(study, working, input_root):
                   reclaim_skipped_blocks=settings.get('reclaim_skipped_blocks', False),
                   **candidate_configure_options(study, lab))
         configure_candidate(recipe, profile, lab.get('kv_cache_dtype'))
+        record['chat_template'] = (None if profile.chat_template is None else
+                                   {'file': profile.chat_template[0], 'sha256': profile.chat_template[1]})
         record['runtime'] = recipe.verify_and_extract_runtime(
             recipe.resolve_runtime_dir(), full_layer_hashes=False, scan_extracted_caches=False)
         # Hash-verified shared runtime files, not a candidate PLE module.
@@ -252,6 +272,10 @@ def start(study, working, input_root):
         env, record['runtime_environment'] = recipe.runtime_environment(
             deep_preload_validation=False, tuning=tuning)
         record['tuning'] = tuning
+        # The server's runtime paths for jobs run after it (arena.draft_head.runtime_env: the training probe); the
+        # pinned setup leaves this file empty on the candidate path, so those jobs found no torch (RL step 0).
+        (working / 'serving-environment.json').write_text(json.dumps(
+            {k: env[k] for k in RUNTIME_ENV_KEYS if env.get(k)}, indent=1) + '\n')
         record['stages'][stage] = time.monotonic() - started
         stage = 'model_startup'
         identity = recipe.start_server(model, env, tuning=tuning)

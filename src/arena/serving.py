@@ -225,6 +225,68 @@ def lab_overrides(environ=None):
     return result
 
 
+LORA_DEFAULTS = {'max_rank': 32, 'max_loras': 1, 'max_cpu_loras': 2, 'moe_backend': 'marlin', 'sleep_mode': True,
+                 'ple_queue_wait': None}  # seconds; arena.ple_queue_patch (15 Oct)
+
+
+def validate_lora(lora):
+    """RL step 1 (13 Oct): an unmerged adapter on the served checkpoint. ``max_rank`` (vLLM's ranks), adapter slots,
+    the MoE kernel that carries expert LoRA for NVFP4 (Marlin), sleep mode for the same-card trainer."""
+    if lora is None:
+        return None
+    if not isinstance(lora, dict) or set(lora) - set(LORA_DEFAULTS):
+        raise ValueError(f'lora is a dict over {sorted(LORA_DEFAULTS)}')
+    merged = {**LORA_DEFAULTS, **lora}
+    if merged['max_rank'] not in (8, 16, 32, 64, 128, 256):
+        raise ValueError('lora.max_rank is one of vLLM\'s ranks (8..256)')
+    if type(merged['max_loras']) is not int or not 1 <= merged['max_loras'] <= 4 or type(
+            merged['max_cpu_loras']) is not int or merged['max_cpu_loras'] < merged['max_loras']:
+        raise ValueError('lora.max_loras is 1..4 and max_cpu_loras at least that')
+    if merged['moe_backend'] not in ('marlin', 'triton') or type(merged['sleep_mode']) is not bool:
+        raise ValueError('lora.moe_backend is marlin or triton; lora.sleep_mode is boolean')
+    wait = merged['ple_queue_wait']
+    if wait is not None and (type(wait) not in (int, float) or not 0 < wait <= 600):
+        raise ValueError('lora.ple_queue_wait is None or seconds in (0, 600]')
+    return merged
+
+
+def lora_flags(argv, lora):
+    """The serving command with LoRA on: the MoE backend replaced (the pinned one has no LoRA path), the adapter
+    flags, the mixed MoE LoRA format (PEFT 3D expert adapters), sleep mode; no draft model (the MTP head has no
+    adapter)."""
+    argv = list(argv)
+    if '--speculative-config' in argv:
+        raise ValueError('LoRA serving runs without MTP: launch with mtp_tokens 0')
+    if '--moe-backend' in argv:
+        argv[argv.index('--moe-backend') + 1] = lora['moe_backend']
+    else:
+        argv.extend(['--moe-backend', lora['moe_backend']])
+    for flag in ('--enable-lora', '--max-lora-rank', '--max-loras', '--enable-sleep-mode'):
+        if flag in argv:
+            raise ValueError(f'The pinned serving command already sets {flag}')
+    argv.extend(['--enable-lora', '--max-lora-rank', str(lora['max_rank']), '--max-loras', str(lora['max_loras']),
+                 '--max-cpu-loras', str(lora['max_cpu_loras']), '--enable-mixed-moe-lora-format'])
+    if lora['sleep_mode']:
+        argv.append('--enable-sleep-mode')
+    return argv
+
+
+def lora_environment(env):
+    """Runtime adapter loading, the localhost dev endpoints (sleep, wake), and the build arch of the card in use
+    (the recipe pins 12.0, the RTX PRO 6000)."""
+    import subprocess
+
+    env = dict(env)
+    env.update(VLLM_ALLOW_RUNTIME_LORA_UPDATING='True', VLLM_SERVER_DEV_MODE='1')
+    try:
+        cap = subprocess.run(['nvidia-smi', '--query-gpu=compute_cap', '--format=csv,noheader'], capture_output=True,
+                             text=True, timeout=30).stdout.split()[0]
+        env['TORCH_CUDA_ARCH_LIST'] = cap.split('.')[0] + '.0'
+    except (OSError, IndexError, subprocess.SubprocessError):
+        pass
+    return env
+
+
 def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_skipped_blocks=False,
               graph_metrics=False, speculative=None, scheduling_policy=None, torch_profiler=False,
               dense_kernels=None, serving_kernels=None, draft_head=None, stack_kernels=None, expert_capture=False,
@@ -232,7 +294,8 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
               ready_guard_seconds=None, expert_prune=None, expert_prune_sha256=None, prefix_cache=None, prompt_tokens_details=False,
               stall_dump_seconds=None, prefix_match_unit=None, warm_prompt_logprobs=False, research_checkpoint=None,
               graph_capture_sizes=None, setup_timeouts=None, renderer_num_workers=None,
-              mm_processor_cache_gb=None):
+              mm_processor_cache_gb=None, lora=None):
+    lora = validate_lora(lora)
     if research_checkpoint is not None and (expert_overlay is not None or expert_prune is not None):
         raise ValueError('A research checkpoint cannot use the base Flash expert overlay or pruning mask')
     if type(warm_prompt_logprobs) is not bool:
@@ -250,8 +313,8 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
     if renderer_num_workers is not None and (type(renderer_num_workers) is not int or not 1 <= renderer_num_workers <= 16):
         raise ValueError('renderer_num_workers is an integer 1..16')
     if mm_processor_cache_gb is not None and (type(mm_processor_cache_gb) not in (int, float)
-                                              or not 0 <= mm_processor_cache_gb <= 4):
-        raise ValueError('mm_processor_cache_gb is a number of GiB in 0..4 (vLLM default 4)')
+                                              or not 0 <= mm_processor_cache_gb <= 32):
+        raise ValueError('mm_processor_cache_gb is a number of GiB in 0..32 (vLLM default 4)')
     dense_kernels = validate_dense_kernels(dense_kernels)
     draft_head = validate_draft_head(draft_head)
     expert_overlay = expert_overlay_module.validate(expert_overlay)
@@ -292,12 +355,18 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
 
     def wrapped_extract(*args, **kwargs):
         result = extract(*args, **kwargs)
-        apply(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working)
+        apply(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working,
+              **({'state_cotenant': True} if prefix_cache and prefix_cache.get('state_cotenant') else {}))
         if reclaim_skipped_blocks:
             apply_reclamation(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working)
         if prefix_cache is not None:
             # Prefix cache v2 (29 September): after the reclamation patch, which edits the same manager file.
             apply_prefix_cache(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working, prefix_cache)
+        if lora is not None and lora.get('ple_queue_wait'):
+            from .ple_queue_patch import apply as apply_ple_queue
+
+            apply_ple_queue(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working,
+                            lora['ple_queue_wait'])
         if warm_prompt_logprobs:
             from .prompt_logprobs_patch import apply as apply_prompt_logprobs
 
@@ -359,13 +428,15 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
     kv8 = serving_kernels is not None and bool(serving_kernels.get('kv_cache_8bit'))
     if ple_uva and environment is None:
         raise ValueError('ple_uva needs the recipe runtime_environment')
-    if environment is not None and (ple_uva or kv8):
+    if environment is not None and (ple_uva or kv8 or lora is not None):
         # Serving tweaks (ple_uva): the PLE overlay patches the file the recipe's own PLE patch writes, after the
         # recipe's last check of that file (runtime_environment verifies VLLM_PLE_PATCHED_SHA256; smoke v2 failed
         # when the overlay ran right after patch_ple_layer), and the server runs without the PLE offload process.
         # 8-bit KV smoke: the serving bench runs the QSA microbenchmark in the server's own runtime environment.
         def wrapped_environment(*args, **kwargs):
             env, check = environment(*args, **kwargs)
+            if lora is not None:
+                env, check = lora_environment(env), {**check, 'lora_environment': True}
             if ple_uva:
                 identity = apply_serving_kernels_ple(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages',
                                                      working, serving_kernels)
@@ -457,6 +528,8 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
             if '--renderer-num-workers' in argv:
                 raise ValueError('The pinned serving command already sets --renderer-num-workers')
             argv.extend(['--renderer-num-workers', str(renderer_num_workers)])
+        if lora is not None:
+            argv = lora_flags(argv, lora)
         if mm_processor_cache_gb is not None:
             # v7 (5 October): the processed-image LRU is duplicated in the API server and the engine core
             # (4 GiB each by default); host RAM on Kaggle is ~78.6 GiB with 47.7 GiB of PLE pinned.
@@ -485,6 +558,8 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
         result['renderer_num_workers'] = renderer_num_workers
     if mm_processor_cache_gb is not None:
         result['mm_processor_cache_gb'] = mm_processor_cache_gb
+    if lora is not None:
+        result['lora'] = lora
     if graph_metrics:
         result['cudagraph_metrics'] = True
     if speculative is not None:
@@ -603,6 +678,7 @@ def main():
               prefix_match_unit=lab.get('prefix_match_unit', study['server'].get('prefix_match_unit')),
               renderer_num_workers=study['server'].get('renderer_num_workers'),
               mm_processor_cache_gb=study['server'].get('mm_processor_cache_gb'),
+              lora=study['server'].get('lora'),
               warm_prompt_logprobs=lab.get('warm_prompt_logprobs', False),
               ready_guard_seconds=lab.get('ready_guard'),
               setup_timeouts=lab.get('setup_timeouts'),

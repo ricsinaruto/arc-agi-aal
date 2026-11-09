@@ -249,6 +249,12 @@ TRUNCATED_CALL_FOLLOWUP = (
     "executed. Keep your reasoning much shorter this time and emit the `python` tool call early enough that it "
     "completes within the output limit. Prefer one small snippet over a long analysis. "
 )
+# Thinking off (hx_harness no_think): the same notice without the words about reasoning.
+TRUNCATED_CALL_FOLLOWUP_NO_THINK = (
+    "Your previous reply was CUT OFF before the tool call finished, so the call was incomplete and could not be "
+    "executed. Keep the text before the call to a few lines and the `python` call short enough that it completes "
+    "within the output limit. Prefer one small snippet over a long one. "
+)
 MALFORMED_CALL_FOLLOWUP = (
     "Your previous tool call had arguments that were not valid JSON, so it was not executed. Emit exactly one "
     "`python` tool call whose arguments are a well-formed JSON object. "

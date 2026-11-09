@@ -40,21 +40,11 @@ def receipts():
     """{run id lowercased: path} of the Nebius launch receipts."""
     return {p.name[7:-5].lower(): p for p in REC.glob("nebius-*.json")}
 
-def ledger_states(recs=None):
-    """{id: state}: every ledger row by its run_id, and each record's run id by its CURRENT attempt (latest row), so a
-    relaunch under the same id (row "<run>/attempt-2") is not read as attempt 1's settled row (RL 26 Oct)."""
-    if recs is None:
-        sys.path.insert(0, str(ROOT / "src"))
-        from arc_infra.runops import records
-        recs = records.records()
-    out = {}
-    for r in recs:
-        rows = [e["row"] for e in r.get("ledger") or []]
-        for row in rows:
-            out[str(row.get("run_id") or r["run"])] = row.get("state")
-        if rows:
-            out[str(r["run"])] = rows[-1].get("state")
-    return out
+def ledger_states():
+    d = paths.read_json(ROOT / "docs/spend.json"); rows = list(d.get("runs") or [])
+    for v in d.values():
+        if isinstance(v, dict) and isinstance(v.get("runs"), list): rows += v["runs"]
+    return {str(r.get("run_id") or r.get("run")): r.get("state") for r in rows if isinstance(r, dict)}
 
 MODAL_OK = True
 
@@ -248,18 +238,6 @@ def run(st, log=print):
     ops, info = plan(q, vms, modal, now, st)
     (paths.SCRATCH / "mon").mkdir(parents=True, exist_ok=True)
     (paths.SCRATCH / "mon/state.json").write_text(json.dumps({"t": now, "nebius_ok": vms is not None, "modal_ok": MODAL_OK, "runs": info}))
-    if vms is not None and MODAL_OK:  # records nothing runs behind (reserve rows left open): closed once both listings worked
-        try:
-            sys.path.insert(0, str(ROOT / "src"))
-            from arc_infra.runops import records
-            listed = paths.modal_apps(str(ROOT / ".venv/bin/modal"))
-            if listed is not None:
-                live = set(vms) | {e["run"].lower() for e in q.get("live", []) + q.get("queued", [])}
-                stale = records.stale_open(records.records(), live_runs=live,
-                                           live_apps={a["app_id"] for a in listed if a.get("state") != "stopped"}, now=now)
-                records.close_stale(stale, note="reconcile: no app/VM listed past the reservation")
-                for r in stale: log("records: closed stale", r)
-        except Exception as exc: log("stale sweep failed:", exc)
     if not ops: return info
     try: cards = json.loads((paths.SCRATCH / "mon/cards.json").read_text())
     except Exception: cards = {}

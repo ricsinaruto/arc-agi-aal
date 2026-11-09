@@ -39,9 +39,12 @@ MODEL = {
                '        from vllm.arc_draft_head import dump_target as _arc_dump_target\n'
                '        _arc_dump_target(positions, multi_hidden)\n', 1)],
 }
-# Pinned mtp.py and the phase-4 serving-kernels version of it (draft_quant_hook inserted).
+# Pinned mtp.py, the phase-4 serving-kernels version of it (draft_quant_hook inserted) and the serving-tweaks
+# version (draft_quant_hook + the 16K draft vocabulary in compute_logits: the v7.1 server; 7 October). The overlay
+# edit sits in load_weights, which neither touches.
 MTP_SHA256 = ('7735cee47d0d1e4776bebd30d907e4a62160409ce4ef2d65611559f8d58af431',
-              '6fc7b441b53b479510de7206478b2b82bfa5751fd69fac874a5329b0575b342c')
+              '6fc7b441b53b479510de7206478b2b82bfa5751fd69fac874a5329b0575b342c',
+              '44d8a0ef116c2296b9797dca1ba7a68d4700f3946a43b0cd3883b58da91daabd')
 MTP_DUMP = ('        return sample_hidden_states, multi_hidden\n',
             '        # ARC (draft-head fine-tune): the draft\'s step-1 rows, to check the training code.\n'
             '        from vllm.arc_draft_head import dump_draft as _arc_dump_draft\n'

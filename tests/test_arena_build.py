@@ -289,7 +289,7 @@ def test_serving_ab_bench_alternates_control_and_candidates_in_one_container(tmp
     with pytest.raises(ValueError, match="--serving-ab needs --throughput-bench"):
         builder.build("ab-bad", paired_30m=True, output=tmp_path / "bad", arena_variant="cache-reclaim", serving_ab=True)
     source = (ROOT / "scripts/arena/bootstrap.py").read_text()
-    assert "if server_env(trial) != current_env:" in source and '"event": "server_restart"' in source
+    assert "if server_env(trial) != current_env" in source and '"event": "server_restart"' in source
     assert 'probe.rename(probe.with_name(f"cache-probe-' in source
 
 
