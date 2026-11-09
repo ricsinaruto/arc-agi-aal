@@ -30,10 +30,7 @@ build-backend = "hatchling.build"
 packages = [
   "src/arc_infra",
   "src/inference",
-  "src/taaf",
   "src/duck_transfer",
-  "src/duck_controls",
-  "src/sglang_bench",
   "src/arena",
   "src/posttrain",
 ]
@@ -48,7 +45,6 @@ target-version = "py312"
 line-length = 100
 extend-exclude = [
   "src/inference",
-  "src/taaf",
   "src/arc_infra/serving_setup.py",
   "*.ipynb",
 ]

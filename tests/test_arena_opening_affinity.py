@@ -70,20 +70,3 @@ async def test_affinity_never_overbooks_cache_and_does_not_hold_idle_tool_slots(
     assert gate.peak_reserved <= 100 and gate.peak_inflight <= 3
     assert gate.reserved == 0  # no reservation held for a hypothetical next request
 
-
-def test_matched_bundles_only_differ_in_opening_policy(tmp_path):
-    import importlib.util
-    from pathlib import Path
-
-    root = Path(__file__).resolve().parents[1]
-    spec = importlib.util.spec_from_file_location('builder', root / 'scripts/build_arena.py')
-    builder = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(builder)
-    _, control = builder.build('clock-fifo', paired_30m=True, arena_variant='cache-reclaim',
-                               output=tmp_path / 'fifo')
-    _, candidate = builder.build('clock-affinity', paired_30m=True, arena_variant='cache-reclaim',
-                                 opening_burst_requests=3, output=tmp_path / 'affinity')
-    assert control['budget_clock'] == candidate['budget_clock'] == 'tokens'  # new builds (29 September)
-    assert control['opening_burst_requests'] == 1 and candidate['opening_burst_requests'] == 3
-    assert control['active_limit'] == candidate['active_limit'] == 2
-    assert {k for k in control if control[k] != candidate[k]} == {'name', 'opening_burst_requests'}

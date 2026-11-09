@@ -1,0 +1,12 @@
+{
+  "what": "saved-for-backward bytes per token (KB, 1024 B) by decoder-layer part: Flash dims (hidden 2560, hc 4, GDN 16k/48v x 128, 24 attention heads, head_dim 256, moe_intermediate 640) with 16 experts top-10, BF16, LoRA r16; torch.autograd.graph.saved_tensors_hooks over model.model's forward at T=512, parameters excluded, storages deduped; CPU (transformers reference GDN kernel, not fla / rl1_gdn: linear_attn is an upper bound for the GPU path). Measured 26 Oct for adaptive_ckpt (rl1_memory.CKPT).",
+  "tokens": 512,
+  "full_ckpt": {"per_layer_kb": 40.2, "note": "the checkpoint boundary only: the 4 x 2560 hyper-connection stream (fp32) per layer"},
+  "no_ckpt": {
+    "gdn_layer_kb": {"linear_attn": 538.0, "mlp": 119.4, "mlp_hyper_connection": 80.7, "attn_hyper_connection": 80.7, "layer": 10.0, "total": 828.8},
+    "attention_layer_kb": {"self_attn": 134.7, "mlp": 119.4, "mlp_hyper_connection": 80.7, "attn_hyper_connection": 80.7, "layer": 10.0, "total": 425.5},
+    "ple_kb": 145.6,
+    "raw": {"L0.layer": 5.0, "L0.linear_attn": 538.0, "L0.mlp": 119.4, "L0.mlp_hyper_connection": 80.7, "L1.attn_hyper_connection": 80.7, "L1.layer": 10.0, "L1.linear_attn": 538.0, "L1.mlp": 119.4, "L1.mlp_hyper_connection": 80.7, "L1.ple": 145.6, "L2.attn_hyper_connection": 80.7, "L2.layer": 10.0, "L2.linear_attn": 538.0, "L2.mlp": 119.4, "L2.mlp_hyper_connection": 80.7, "L3.attn_hyper_connection": 80.7, "L3.layer": 10.0, "L3.mlp": 119.4, "L3.mlp_hyper_connection": 80.7, "L3.self_attn": 134.7, "other": 80.7}
+  },
+  "trainer_defaults_gib_per_1k_tokens": {"a_full_ckpt_window": 2.556, "b_per_uncheckpointed_layer": 0.68, "note": "b: the 48-layer mean (36 GDN, 12 attention, PLE once) minus the checkpoint input already counted in a, 0.675 -> 0.68"}
+}

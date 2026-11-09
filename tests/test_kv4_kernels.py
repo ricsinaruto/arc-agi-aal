@@ -1,6 +1,6 @@
 """4-bit QSA KV cache kernels on the CPU (docs/validation-20260927/kv-cache-4bit.md).
 
-As tests/test_kv8_kernels.py: torch and Triton, the kernels under the Triton interpreter (``TRITON_INTERPRET=1``, set
+Torch and Triton, the kernels under the Triton interpreter (``TRITON_INTERPRET=1``, set
 before Triton is imported); skipped where Triton is missing (macOS), run in a Linux container (see the doc).
 """
 
@@ -28,7 +28,6 @@ def load_runtime():
 
 
 kv4 = load_runtime()
-kv8 = kv4._kv8
 MODES = ("int4", "k8v4")
 
 
@@ -101,7 +100,7 @@ def test_page_layout_and_views(mode, monkeypatch):
     assert kv4.kv_cache_shape(4, 16, 2, 256, "auto") == (4, 2, 16, 512)
     with pytest.raises(NotImplementedError):
         kv4.kv_cache_shape(4, 16, 2, 256, "fp8_per_token_head")
-    q, k, v, *_ = kv8.synthetic_case(2, page=16, blocks=4, topk=19)
+    q, k, v, *_ = kv4.synthetic_case(2, page=16, blocks=4, topk=19)
     packed = kv4.pack_cache(k, v, mode)
     assert packed.shape == (4, 2, 16, content) and packed.stride() == (16 * 2 * content, content, 2 * content, 1)
     keys, values, k_scale, v_scale = kv4.cache_views(packed, mode)
@@ -119,7 +118,7 @@ def test_page_layout_and_views(mode, monkeypatch):
 @pytest.mark.parametrize("mode", MODES)
 def test_interpreted_writer_matches_the_reference(mode):
     blocks, page = 4, 16
-    q, k, v, *_ = kv8.synthetic_case(1, page=page, blocks=blocks, topk=7)
+    q, k, v, *_ = kv4.synthetic_case(1, page=page, blocks=blocks, topk=7)
     expected = kv4.pack_cache(k, v, mode)
     written = torch.zeros_like(expected)
     views = kv4.cache_views(written, mode)
@@ -145,14 +144,14 @@ def test_interpreted_writer_matches_the_reference(mode):
 
 # ----------------------------------------------------------------------------- reader
 def run_case(rows, mode, *, page=16, blocks=8, topk=37, profile=None, seed=0):
-    q, k, v, indices, table, t2r = kv8.synthetic_case(rows, page=page, blocks=blocks, topk=topk, seed=seed)
+    q, k, v, indices, table, t2r = kv4.synthetic_case(rows, page=page, blocks=blocks, topk=topk, seed=seed)
     packed = kv4.pack_cache(k, v, mode)
     views = kv4.cache_views(packed, mode)
     out = torch.zeros_like(q)
     kv4.attend(q, *views, indices, table, t2r, out, mode, profile)
-    exact = kv8.attention_reference(q, k, v, indices, table, t2r)
+    exact = kv4.attention_reference(q, k, v, indices, table, t2r)
     dk, dv = kv4.dequantize_cache(packed, mode)
-    dequant = kv8.attention_reference(q, dk, dv, indices, table, t2r)
+    dequant = kv4.attention_reference(q, dk, dv, indices, table, t2r)
     return out.float(), exact, dequant
 
 
@@ -161,9 +160,9 @@ def run_case(rows, mode, *, page=16, blocks=8, topk=37, profile=None, seed=0):
 def test_interpreted_kernel_matches_dequantize_then_attend(mode, rows, splits):
     profile = None
     if splits is not None:
-        profile = {**kv8.launch_profile(rows, 2, 12, 37), "splits": 1}
+        profile = {**kv4.launch_profile(rows, 2, 12, 37), "splits": 1}
     out, exact, dequant = run_case(rows, mode, profile=profile)
-    assert kv8.launch_profile(1, 2, 12, 37)["splits"] > 1
+    assert kv4.launch_profile(1, 2, 12, 37)["splits"] > 1
     # Against dequantize-then-attend in FP32 only BF16 rounding remains (rotated Q, p * v_scale, the output).
     assert rel(out, dequant) < 0.01, rel(out, dequant)
     # Against the BF16 cache: the 4-bit error itself (measured 15% int4, 11% k8v4 on Gaussian rows; int8 1.4%).
@@ -171,7 +170,7 @@ def test_interpreted_kernel_matches_dequantize_then_attend(mode, rows, splits):
 
 
 def test_interpreted_kernel_masks_padding_invalid_pages_and_foreign_requests():
-    q, k, v, indices, table, t2r = kv8.synthetic_case(2, page=16, blocks=8, topk=21, requests=2, fill=0.5)
+    q, k, v, indices, table, t2r = kv4.synthetic_case(2, page=16, blocks=8, topk=21, requests=2, fill=0.5)
     packed = kv4.pack_cache(k, v, "int4")
     keys, values, k_scale, v_scale = kv4.cache_views(packed, "int4")
     nan_bits = torch.tensor([float("nan")]).view(torch.int32)
@@ -192,17 +191,17 @@ def test_interpreted_kernel_masks_padding_invalid_pages_and_foreign_requests():
     k_scale.copy_(clean_k)
     v_scale.copy_(clean_v)
     dk, dv = kv4.dequantize_cache(packed, "int4")
-    ref = kv8.attention_reference(q[:1], dk, dv, indices[:1], table, t2r[:1])
+    ref = kv4.attention_reference(q[:1], dk, dv, indices[:1], table, t2r[:1])
     assert rel(out[:1], ref) < 0.01
 
 
 def test_attention_errors_on_real_like_rows_rotation_helps_outliers():
     # One decode row over 512 tokens with 8x outlier key channels: the rotated int4 keys lose less.
-    q, k, v, indices, table, t2r = kv8.synthetic_case(1, page=64, blocks=8, topk=509, fill=1.0, seed=5)
+    q, k, v, indices, table, t2r = kv4.synthetic_case(1, page=64, blocks=8, topk=509, fill=1.0, seed=5)
     k = k.float()
     k[..., :4] *= 2
     k = k.to(torch.bfloat16)
-    exact = kv8.attention_reference(q, k, v, indices, table, t2r)
+    exact = kv4.attention_reference(q, k, v, indices, table, t2r)
     errors = {}
     for mode in MODES:
         packed = kv4.pack_cache(k, v, mode)
@@ -224,8 +223,6 @@ def test_impl_init_args_allowed_and_spec(monkeypatch):
     assert kv4.allowed("int4_per_token_head") and not kv4.allowed("int8_per_token_head") and not kv4.allowed("auto")
     monkeypatch.setitem(kv4._STATE, "config", {"kv_cache_4bit": "k8v4"})
     assert kv4.allowed("int8_per_token_head") and not kv4.allowed("int4_per_token_head")
-    monkeypatch.setitem(kv4._STATE, "config", {"kv_cache_8bit": "int8"})
-    assert not kv4.allowed("int8_per_token_head") and kv4.configured_cache_dtype() is None
 
     class Mode:
         def __init__(self, name):
@@ -331,7 +328,7 @@ def test_writer_matches_the_pinned_int4_writer_when_available():
     assert torch.allclose(pinned["single_rht"](x), kv4.rht_reference(x))
     assert torch.allclose(pinned["single_rht"](x, inverse=True), kv4.rht_reference(x, inverse=True))
     blocks, page = 2, 16
-    q, k, v, *_ = kv8.synthetic_case(1, page=page, blocks=blocks, topk=7, seed=6)
+    q, k, v, *_ = kv4.synthetic_case(1, page=page, blocks=blocks, topk=7, seed=6)
     ours = torch.zeros((blocks, 2, page, 264), dtype=torch.uint8)
     theirs = torch.zeros_like(ours)
     slots = torch.arange(blocks * page, dtype=torch.int64)
@@ -351,3 +348,136 @@ def test_writer_matches_the_pinned_int4_writer_when_available():
     assert (page_ours == page_theirs).float().mean() > 0.999
     assert torch.equal(page_ours[..., 128:132], page_theirs[..., 128:132])
     assert torch.equal(page_ours[..., 260:], page_theirs[..., 260:])
+
+
+# ----------------------------------------------------------------------------- E1: the SM100 port (26 Oct)
+def write_rotated(rk, rv, cache, rows):
+    """The kernel alone on already rotated rows (``write`` rotates first)."""
+    views = kv4.cache_views(cache, "int4")
+    kv4._kv4_write_kernel[(rows, 2)](
+        rk, rv, *views, torch.arange(rows, dtype=torch.int64), rk.stride(0), rk.stride(1), rv.stride(0), rv.stride(1),
+        *[s for view in views for s in view.stride()[:3]], BLOCK_SIZE=rows, HEAD_DIM=256, KEY_BITS=4)
+
+
+def test_writer_is_bitwise_the_pinned_int4_writer_on_the_golden_rows_when_available():
+    """Given the same rotated BF16 rows, the page bytes (codes, scale and zero-point words) equal the pinned writer's
+    exactly: the writer measured 100% equal on the RTX GPU (kv-cache-4bit.md 5.5)."""
+    if not (PINNED_SITE / PINNED_INT4).is_file():
+        pytest.skip("Optional pinned runtime (ARC_PINNED_SITE)")
+    pinned = pinned_int4()
+    k, v = kv4.golden_case(256)
+    rk = kv4.rht_reference(k.float()).to(torch.bfloat16)
+    rv = kv4.rht_reference(v.float()).to(torch.bfloat16)
+    rows = k.shape[0]
+    ours = kv4._empty_cache(1, rows, "int4", "cpu")
+    write_rotated(rk, rv, ours, rows)
+    theirs = kv4._empty_cache(1, rows, "int4", "cpu")
+    keys, values, k_scale, v_scale = kv4.cache_views(theirs, "int4")
+    pinned["_reshape_cache_int4_kernel"][(rows, 2)](
+        rk, rv, keys, values, k_scale.view(torch.float32), v_scale.view(torch.float32),
+        torch.arange(rows, dtype=torch.int64), rk.stride(0), rk.stride(1), rv.stride(0), rv.stride(1),
+        keys.stride(0), keys.stride(1), keys.stride(2), values.stride(0), values.stride(1), values.stride(2),
+        k_scale.stride(0), k_scale.stride(1), k_scale.stride(2), v_scale.stride(0), v_scale.stride(1),
+        v_scale.stride(2), block_size=rows, head_size=256, head_size_v=256, PACKED_HEAD_PADDED=128)
+    assert torch.equal(ours, theirs)
+
+
+def test_writer_kernel_against_the_torch_quantizer_on_rotated_rows():
+    """Kernel and torch reference on the same rotated rows: equal scale words; codes up to rounding ties."""
+    k, v = kv4.golden_case(256)
+    rows = k.shape[0]
+    rk = kv4.rht_reference(k.float()).to(torch.bfloat16)
+    rv = kv4.rht_reference(v.float()).to(torch.bfloat16)
+    page = kv4._empty_cache(1, rows, "int4", "cpu")
+    write_rotated(rk, rv, page, rows)
+    keys, values, k_scale, v_scale = kv4.cache_views(page, "int4")
+    for codes, scale, x in ((keys, k_scale, rk), (values, v_scale, rv)):
+        want_codes, want_bits = kv4.quantize4_reference(x)
+        assert torch.equal(scale[0], want_bits)
+        assert (codes[0] == want_codes).float().mean() > 0.999
+
+
+def test_dequantize_is_exact_integer_and_scale_arithmetic():
+    """(code - zp) * scale, the scale's four low bits cleared: exact for every code and zero point, so the same on any
+    device; the centred codes are exact BF16 MMA operands (the reader applies the scale per column)."""
+    codes = torch.arange(256, dtype=torch.int32).to(torch.uint8).reshape(2, 128)
+    scale = torch.tensor([0.0123, 3.5e-7], dtype=torch.float32)
+    for zp in range(16):
+        bits = (scale.view(torch.int32) & -16) | zp
+        got = kv4.dequantize4_reference(codes, bits)
+        q = torch.stack([codes.int() & 0xF, codes.int() >> 4], -1).reshape(2, 256)
+        want = (q - zp).double() * (bits & -16).view(torch.float32).double().unsqueeze(-1)
+        assert torch.equal(got.double(), want)
+        assert torch.equal((q - zp).to(torch.bfloat16).float(), (q - zp).float())
+
+
+def test_golden_is_deterministic_and_compare_reads_bitwise(monkeypatch):
+    monkeypatch.setitem(kv4._STATE, "config", {"kv_cache_4bit": "int4"})
+    a = kv4.golden("cpu", rows=64)
+    b = kv4.golden("cpu", rows=64)
+    same = kv4.compare(a, b)
+    assert same["bitwise"] and same["page_equal"] == same["rotated_k_equal"] == 1.0 and same["attn_out_rel_diff"] == 0
+    assert a["attn_rel_error_vs_dequant"] < 0.01
+    b["page"] = b["page"].clone()
+    b["page"].transpose(1, 2)[0, 9, 1, 200] ^= 1
+    diff = kv4.compare(a, b)
+    assert not diff["bitwise"] and 0.99 < diff["page_equal"] < 1.0 and diff["v_scale_equal"] == 1.0
+    k, v = kv4.golden_case(64)
+    dk, dv = kv4.dequantize_cache(a["page"], "int4")
+    assert rel(dk[0], k.float()) < 0.15 and rel(dv[0], v.float()) < 0.15
+
+
+def test_main_golden_and_compare_on_the_cpu(tmp_path, capsys, monkeypatch):
+    golden = kv4.golden
+    monkeypatch.setattr(kv4, "golden", lambda device, mode="int4": golden(device, mode, rows=64))
+    assert kv4.main(["golden", str(tmp_path / "a.pt"), "--device", "cpu"]) == 0
+    assert kv4.main(["golden", str(tmp_path / "b.pt"), "--device", "cpu"]) == 0
+    assert kv4.main(["compare", str(tmp_path / "a.pt"), str(tmp_path / "b.pt")]) == 0
+    out = capsys.readouterr().out
+    assert "ARC_KV4_GOLDEN " in out and '"bitwise": true' in out
+
+
+# ----------------------------------------------------------------------------- kv8 helpers folded into kv4 (26 Oct)
+def _digest(*tensors):
+    import hashlib
+
+    h = hashlib.sha256()
+    for t in tensors:
+        h.update(str((tuple(t.shape), str(t.dtype))).encode())
+        h.update(t.detach().contiguous().view(torch.uint8).numpy().tobytes())
+    return h.hexdigest()[:16]
+
+
+def fold_outputs():
+    """The helpers kv4 took from kv8_runtime (merge kernel, launch profile, references) on this file's inputs."""
+    shapes = ((1, 2, 12, 37), (3, 2, 12, 37), (1, 2, 12, 509), (40, 2, 12, 2051), (200, 2, 12, 4099),
+              (600, 2, 12, 203), (4, 2, 6, 19))
+    out = {"profiles": [kv4.launch_profile(*a) for a in shapes]}
+    cases = (("s2", 2, dict(page=16, blocks=4, topk=19)), ("s1", 1, dict(page=64, blocks=8, topk=509, fill=1.0, seed=5)),
+             ("s2r", 2, dict(page=16, blocks=8, topk=21, requests=2, fill=0.5)))
+    for name, rows, kw in cases:
+        out[name] = _digest(*kv4.synthetic_case(rows, **kw))
+    x = kv_like(64).float()
+    codes, scale = kv4.quantize_reference(x, "int8")
+    out["quant"] = _digest(codes, scale, kv4.dequantize_reference(codes, scale))
+    for rows in (1, 3):
+        o, exact, dequant = run_case(rows, "int4")  # kv4.attend: the launch profile and the merge kernel
+        out[f"attend{rows}"] = _digest(o, exact, dequant)
+    return out
+
+
+# Recorded with kv4 importing kv8_runtime (trunk/rl 09322fc16, Modal CPU torch 2.14.0 / Triton 3.8.0 interpreter).
+FOLD_DIGESTS = {
+    "attend1": "0fba9b24e45d51f3", "attend3": "5b6caf15dd87f6de", "quant": "42136231ce4c4e20",
+    "s1": "67179fecfa4baf06", "s2": "d99358cc0784755e", "s2r": "9621d67e41355ecd",
+    "profiles": [{"block_m": 16, "block_n": 16, "splits": 2, "tiles": 3, "warps": 4},
+                 {"block_m": 16, "block_n": 16, "splits": 2, "tiles": 3, "warps": 4},
+                 {"block_m": 16, "block_n": 16, "splits": 32, "tiles": 32, "warps": 4},
+                 {"block_m": 16, "block_n": 64, "splits": 8, "tiles": 33, "warps": 2},
+                 {"block_m": 16, "block_n": 64, "splits": 4, "tiles": 65, "warps": 2},
+                 {"block_m": 16, "block_n": 64, "splits": 1, "tiles": 4, "warps": 2},
+                 {"block_m": 8, "block_n": 16, "splits": 2, "tiles": 2, "warps": 4}]}
+
+
+def test_folded_kv8_helpers_match_the_prefold_outputs():
+    assert fold_outputs() == FOLD_DIGESTS

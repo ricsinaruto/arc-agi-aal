@@ -16,9 +16,6 @@ Entry points (each is only reached when its pinned file was patched, i.e. its op
 - ``shared_b12x_wrapper(experts)`` (flashinfer_b12x_moe.py): one ``B12xMoEWrapper`` (and its CUDA-graph
   workspace, ~0.6 GB at 4,096 batched tokens) per MoE geometry instead of one per layer (49 x ~0.6 GB).
   Layers run one after another on one stream and the result is copied out at once, so they can share it.
-- ``hc_up_mix(module, xn, lora)`` (hyperconnection.py, ``hc_fusion``): silu -> HC up GEMV (10240 x 320)
-  -> sigmoid gate-mix in one Triton kernel at decode sizes (the pinned chain is three launches: hc_silu,
-  cuBLAS, hc_gate_mix). Same BF16 rounding points; only the reduction order inside the dot changes.
 - ``topk_first(logits, k, p)`` (topk_topp_sampler.py + states.py, ``topk_sampler``): top-k first, then
   top-p over the k survivors, instead of sorting the 248K vocabulary. The kept set equals vLLM's
   (``logits >= k-th value``, ties kept) and the top-p cut is taken over the same renormalised top-k
@@ -53,8 +50,6 @@ from functools import partial
 from pathlib import Path
 
 import torch
-import triton
-import triton.language as tl
 
 CONFIG_PATH = Path(__file__).with_name("arc_serving_kernels.json")
 DRAFT_VOCAB_PATH = Path(__file__).with_name("arc_draft_vocab.json")
@@ -65,12 +60,6 @@ DRAFT_HEAD_ERROR_LIMIT = 0.02
 HOST_REGISTER_FLAGS = 0x01 | 0x02
 # Host-table checks: rows gathered through UVA against the CPU alias, and the PLE probe batch.
 HOST_CHECK_ROWS = 4096
-# HC fusion: largest token count that takes the fused kernel (larger M: the pinned three-kernel chain).
-HC_FUSED_MAX_M = 32
-HC_BLOCK_M = 16
-HC_BLOCK_I = 16
-HC_WARPS = 4
-HC_STAGES = 1
 # Top-k-first sampler: rows' top-k must be <= TOPK_MAX; the window adds TOPK_MARGIN so that ties at the
 # k-th value rarely overflow it (an overflowing row keeps vLLM's top-k set and skips the top-p cut).
 TOPK_MAX = 64
@@ -86,14 +75,12 @@ DRAFT_ERROR_LIMIT = 0.40
 # b12x picks micro (<= 40 routed rows), static (<= this many) or dynamic kernels by routed rows = tokens x 10.
 # Micro and static kernels are compiled per token count, dynamic ones once. vLLM pads decode batches to its
 # CUDA-graph sizes (<= 32 tokens here), but eager batches of 33-64 tokens would each compile a static kernel
-# mid-run at the default 640; at 320 they take the dynamic kernel, and the static workspace halves (0.42 GB
-# measured for the whole wrapper). When b12x serves only the one draft layer, 40 (micro, then dynamic) keeps
-# its static workspace at ~26 MB: the KV pool is what the six 64K windows need.
-B12X_STATIC_CUTOVER_PAIRS = 320
+# mid-run at the default 640. b12x serves only the one draft layer: 40 (micro, then dynamic) keeps its static
+# workspace at ~26 MB: the KV pool is what the six 64K windows need.
 B12X_DRAFT_ONLY_CUTOVER_PAIRS = 40
 B12X_CUTOVER_ENV = "FLASHINFER_B12X_STATIC_COMPACT_CUTOVER_PAIRS"
 
-_STATE = {"config": None, "b12x": {}, "hc_warm": {}, "counts": {}, "draft_head": None, "host_tables": [],
+_STATE = {"config": None, "b12x": {}, "counts": {}, "draft_head": None, "host_tables": [],
           "ple_layers": {}}
 
 
@@ -151,6 +138,22 @@ def draft_quant_hook(draft_vllm_config):
 _DRAFT_CLASS = []
 
 
+def draft_moe_backend(major):
+    """The draft layer's MoE backend request by compute capability major: b12x on SM120, vLLM's auto order on SM100."""
+    if major == 12:
+        return "flashinfer_b12x"
+    if major == 10:
+        return "auto"
+    raise RuntimeError(f"ARC NvFp4 draft experts: SM{major}x is neither SM120 (b12x) nor SM100 (TRT-LLM / CUTLASS)")
+
+
+def draft_backend_ok(requested, chosen):
+    """b12x when asked; on auto any real NvFp4 kernel (never the emulation, Marlin's W4A16 or Humming's)."""
+    if requested == "flashinfer_b12x":
+        return chosen == "FLASHINFER_B12X"
+    return chosen in ("FLASHINFER_TRTLLM", "FLASHINFER_CUTLASS", "FLASHINFER_CUTEDSL", "VLLM_CUTLASS")
+
+
 def _draft_method_class():
     if _DRAFT_CLASS:
         return _DRAFT_CLASS[0]
@@ -172,11 +175,16 @@ def _draft_method_class():
 
         def __init__(self, *, layer, prefix=""):
             OnlineMoEMethodBase.__init__(self, layer.moe_config)
-            self.moe.moe_backend = "flashinfer_b12x"  # this draft layer's own FusedMoEConfig
+            # SM120 (RTX): b12x, whatever the target's --moe-backend is; SM100/SM103 (B300, RL redesign E2): vLLM's
+            # own NvFp4 order (TRT-LLM first), never the emulation
+            self.moe.moe_backend = draft_moe_backend(torch.cuda.get_device_capability()[0])  # the draft's own config
+            # the draft is not part of a LoRA adapter (vLLM never wraps it), but its config inherits
+            # lora_config from the target's; b12x refuses LoRA-enabled configs
+            self.moe.is_lora_enabled = False
             self.nvfp4_backend, self.experts_cls = select_nvfp4_moe_backend(
                 config=self.moe, weight_key=kNvfp4Static, activation_key=kNvfp4Dynamic)
-            if self.nvfp4_backend != NvFp4MoeBackend.FLASHINFER_B12X:
-                raise RuntimeError(f"ARC NvFp4 draft experts need b12x, got {self.nvfp4_backend}")
+            if not draft_backend_ok(self.moe.moe_backend, self.nvfp4_backend.value):
+                raise RuntimeError(f"ARC NvFp4 draft experts: backend {self.nvfp4_backend} for {self.moe.moe_backend}")
             self.arc_prefix = prefix
 
         def process_weights_after_loading(self, layer):
@@ -217,8 +225,23 @@ def _draft_probe(layer, tokens=4):
     return {"x": x, "ids": ids, "weights": weights.float(), "ref": ref}
 
 
+def draft_check_skip(experts):
+    """Why the layer self-check cannot run on these fused experts (None: it can). A monolithic kernel (TRT-LLM on
+    SM100) has an apply() with a router signature, not the modular one; acceptance in the run's first minutes is the
+    check there (draft-only: rejection sampling keeps the output exact)."""
+    if not hasattr(experts, "apply"):
+        return "no fused_experts.apply on this backend"
+    if getattr(experts, "is_monolithic", lambda: False)():
+        return f"monolithic {type(experts).__name__}"
+    return None
+
+
 def _draft_check(method, layer, probe, info):
     out = torch.empty_like(probe["x"])
+    skip = draft_check_skip(getattr(getattr(method, "moe_kernel", None), "fused_experts", None))
+    if skip:
+        log("CHECK", {**info, "skipped": skip})
+        return
     with torch.no_grad():
         method.moe_kernel.fused_experts.apply(
             out, probe["x"], layer.w13_weight, layer.w2_weight, probe["weights"], probe["ids"],
@@ -244,9 +267,7 @@ def shared_b12x_wrapper(experts):
     wrapper = _STATE["b12x"].get(key)
     if wrapper is None:
         # Read (and cached) by FlashInfer on the first b12x call, which is this wrapper's allocation.
-        target_b12x = load_config().get("moe_backend") == "flashinfer_b12x"
-        os.environ.setdefault(B12X_CUTOVER_ENV,
-                              str(B12X_STATIC_CUTOVER_PAIRS if target_b12x else B12X_DRAFT_ONLY_CUTOVER_PAIRS))
+        os.environ.setdefault(B12X_CUTOVER_ENV, str(B12X_DRAFT_ONLY_CUTOVER_PAIRS))
         from flashinfer.fused_moe import B12xMoEWrapper
 
         torch.cuda.synchronize()
@@ -262,154 +283,6 @@ def shared_b12x_wrapper(experts):
                      "static_cutover_pairs": os.environ.get(B12X_CUTOVER_ENV)})
     _count("b12x_layers")
     return wrapper
-
-
-# ============================================================================ 3. HC up + gate-mix fusion
-@triton.jit
-def _hc_up_mix_kernel(lora_ptr, w_ptr, xn_ptr, out_ptr, M, stride_lora, stride_xn, stride_out,
-                      HC_DIM: tl.constexpr, HC: tl.constexpr, R: tl.constexpr, R_PAD: tl.constexpr,
-                      BLOCK_M: tl.constexpr, BLOCK_I: tl.constexpr):
-    """out[m, i] = mean_s sigmoid(bf16(silu(lora[m] / HC) @ W[s*HC_DIM + i])) * xn[m, s*HC_DIM + i].
-
-    The rounding points follow the pinned chain: silu output in BF16 (hc_silu), the up GEMV in FP32
-    accumulation rounded to BF16 (cuBLAS), the gate-mix in FP32 stored as BF16 (hc_gate_mix).
-    """
-    pid_i = tl.program_id(0)
-    pid_m = tl.program_id(1)
-    offs_m = pid_m * BLOCK_M + tl.arange(0, BLOCK_M)
-    offs_i = pid_i * BLOCK_I + tl.arange(0, BLOCK_I)
-    offs_r = tl.arange(0, R_PAD)
-    m_mask = offs_m < M
-    i_mask = offs_i < HC_DIM
-    r_mask = offs_r < R
-    x = tl.load(lora_ptr + offs_m[:, None] * stride_lora + offs_r[None, :],
-                mask=m_mask[:, None] & r_mask[None, :], other=0.0).to(tl.float32) / HC
-    a = (x * tl.sigmoid(x)).to(tl.bfloat16)
-    acc = tl.zeros((BLOCK_M, BLOCK_I), dtype=tl.float32)
-    for s in tl.static_range(HC):
-        rows = s * HC_DIM + offs_i
-        w = tl.load(w_ptr + rows[:, None] * R + offs_r[None, :], mask=i_mask[:, None] & r_mask[None, :], other=0.0,
-                    eviction_policy="evict_first")
-        gate = tl.dot(a, tl.trans(w)).to(tl.bfloat16).to(tl.float32)
-        xn = tl.load(xn_ptr + offs_m[:, None] * stride_xn + rows[None, :], mask=m_mask[:, None] & i_mask[None, :],
-                     other=0.0).to(tl.float32)
-        acc += tl.sigmoid(gate) * xn
-    acc = acc / HC
-    tl.store(out_ptr + offs_m[:, None] * stride_out + offs_i[None, :], acc.to(tl.bfloat16),
-             mask=m_mask[:, None] & i_mask[None, :])
-
-
-def hc_up_mix_triton(xn, lora, weight, hc_count, *, block_m=HC_BLOCK_M, block_i=HC_BLOCK_I, num_warps=HC_WARPS,
-                     num_stages=HC_STAGES):
-    """Fused silu + up GEMV + gate-mix. xn [M, HC*H] BF16, lora [M, R] (row stride free), weight [HC*H, R]."""
-    m, dim = xn.shape
-    rank = lora.shape[1]
-    hc_dim = dim // hc_count
-    if (weight.shape != (dim, rank) or weight.dtype != torch.bfloat16 or xn.dtype != torch.bfloat16
-            or lora.dtype != torch.bfloat16 or xn.stride(1) != 1 or lora.stride(1) != 1 or not weight.is_contiguous()):
-        raise RuntimeError(f"ARC HC fusion got unexpected operands {tuple(xn.shape)} {tuple(lora.shape)} "
-                           f"{tuple(weight.shape)} {weight.dtype}")
-    out = torch.empty((m, hc_dim), dtype=torch.bfloat16, device=xn.device)
-    if m == 0:
-        return out
-    grid = (triton.cdiv(hc_dim, block_i), triton.cdiv(m, block_m))
-    _hc_up_mix_kernel[grid](lora, weight, xn, out, m, lora.stride(0), xn.stride(0), out.stride(0),
-                            HC_DIM=hc_dim, HC=hc_count, R=rank, R_PAD=triton.next_power_of_2(rank),
-                            BLOCK_M=block_m, BLOCK_I=block_i, num_warps=num_warps, num_stages=num_stages)
-    return out
-
-
-def hc_up_mix_reference(xn, lora, weight, hc_count):
-    """The pinned three-kernel chain's math in torch (BF16 rounding at the same points)."""
-    x = lora.float() / hc_count
-    a = (x * torch.sigmoid(x)).to(torch.bfloat16)
-    gate = torch.nn.functional.linear(a, weight)
-    m, dim = xn.shape
-    g = torch.sigmoid(gate.float()).view(m, hc_count, dim // hc_count)
-    return (g * xn.float().view(m, hc_count, dim // hc_count)).sum(1).div(hc_count).to(torch.bfloat16)
-
-
-def _pinned_chain(xn, lora, weight, hc_count):
-    silu = torch.ops.vllm.qwen3_8_flash_next_hc_silu(lora, hc_count)
-    gate = torch.nn.functional.linear(silu, weight)
-    return torch.ops.vllm.qwen3_8_flash_next_hc_gate_mix(xn, gate, hc_count)
-
-
-def _arc_hc_up_mix(xn: torch.Tensor, lora: torch.Tensor, weight: torch.Tensor, hc_count: int) -> torch.Tensor:
-    # The op body runs on real tensors only (torch.compile sees the fake impl), so the one-time check and
-    # the warm-up registration live here rather than in the traced forward.
-    key = (tuple(weight.shape), hc_count)
-    if key not in _STATE["hc_warm"] and not torch.cuda.is_current_stream_capturing():
-        _STATE["hc_warm"][key] = (weight, xn.device)
-        _check_hc(xn, lora, weight, hc_count)
-    if 0 < xn.shape[0] <= HC_FUSED_MAX_M:
-        _count("hc_fused")
-        return hc_up_mix_triton(xn, lora, weight, hc_count)
-    return _pinned_chain(xn, lora, weight, hc_count)
-
-
-def _arc_hc_up_mix_fake(xn: torch.Tensor, lora: torch.Tensor, weight: torch.Tensor, hc_count: int) -> torch.Tensor:
-    return xn.new_empty((xn.shape[0], xn.shape[1] // hc_count))
-
-
-def _register_hc_op():
-    from vllm.model_executor.warmup.cutedsl_warmup import register_cutedsl_warmup_provider
-    from vllm.utils.torch_utils import direct_register_custom_op
-
-    if not hasattr(torch.ops.vllm, "arc_hc_up_mix"):
-        direct_register_custom_op(op_name="arc_hc_up_mix", op_func=_arc_hc_up_mix, fake_impl=_arc_hc_up_mix_fake)
-        register_cutedsl_warmup_provider(_HC_WARMUP)
-        log("HC", {"fused_max_m": HC_FUSED_MAX_M, "block_m": HC_BLOCK_M, "block_i": HC_BLOCK_I, "warps": HC_WARPS})
-
-
-def hc_up_mix(module, xn, lora):
-    """The patched ``GatedResidual`` calls this in place of hc_silu -> input_mix_weight_up -> hc_gate_mix.
-
-    Traced by torch.compile: no side effects here, only the opaque op (registered at import).
-    """
-    return torch.ops.vllm.arc_hc_up_mix(xn, lora, module.input_mix_weight_up.weight, module.hc_count)
-
-
-def _check_hc(xn, lora, weight, hc_count):
-    """First call per shape: the fused kernel against the pinned chain on the live operands (<= 16 rows)."""
-    rows = min(int(xn.shape[0]), 16)
-    if rows == 0 or weight.dtype != torch.bfloat16:
-        raise RuntimeError(f"ARC HC fusion expects BF16 HC up weights and rows, got {weight.dtype}, {rows} rows")
-    fused = hc_up_mix_triton(xn[:rows], lora[:rows], weight, hc_count)
-    pinned = _pinned_chain(xn[:rows], lora[:rows], weight, hc_count)
-    diff = (fused.float() - pinned.float())
-    rel = (diff.norm() / pinned.float().norm().clamp(min=1e-12)).item()
-    result = {"shape": list(weight.shape), "rows": rows, "rel_error_vs_pinned": rel,
-              "max_abs_diff": diff.abs().max().item(),
-              "bitwise_equal_fraction": (fused == pinned).float().mean().item()}
-    if rel > 0.01:
-        log("CHECK", {**result, "failed": True})
-        raise RuntimeError(f"ARC HC fusion self-check failed: {result}")
-    log("CHECK", result)
-
-
-class _HcWarmup:
-    """Compiles the fused kernel's Triton specializations at every decode size before graph capture."""
-
-    def get_cutedsl_warmup_compile_units(self):
-        from vllm.model_executor.warmup.cutedsl_warmup import CuTeDSLCompileUnit
-
-        return tuple(CuTeDSLCompileUnit(name="ARC HC up+mix Triton", key=("arc-hc-up-mix", key),
-                                        compile=partial(_warm_hc, key))
-                     for key in sorted(_STATE["hc_warm"]))
-
-
-def _warm_hc(key):
-    weight, device = _STATE["hc_warm"][key]
-    (dim, rank), hc_count = key
-    xn = torch.zeros((HC_FUSED_MAX_M, dim), dtype=torch.bfloat16, device=device)
-    lora = torch.zeros((HC_FUSED_MAX_M, rank + 16), dtype=torch.bfloat16, device=device)[:, :rank]
-    for m in range(1, HC_FUSED_MAX_M + 1):
-        hc_up_mix_triton(xn[:m], lora[:m], weight, hc_count)
-    torch.cuda.synchronize()
-
-
-_HC_WARMUP = _HcWarmup()
 
 
 # ============================================================================ 4. top-k-first sampler
@@ -659,6 +532,85 @@ def host_table(shape, dtype, device, name):
     return raw.view(dtype).view(shape), view.view(dtype).view(shape)
 
 
+def host_table_deferred(shape, dtype, device, name):
+    """``host_table`` with the page-locking (cuMemHostRegister: ~21 s for the 47.7 GiB PLE table, mostly faulting
+    the pages in) in a thread beside the weight load (``pin_overlap``): returns the CPU alias at once and
+    ``finish()``, which joins the registration and returns the CUDA view of the same bytes (called once the table is
+    needed on the GPU: after its shards are copied in). A refused registration falls back to the driver's mapped
+    allocation with the alias's bytes copied in."""
+    import threading
+    import time
+
+    from cuda.bindings import driver
+
+    numel = 1
+    for size in shape:
+        numel *= int(size)
+    nbytes = numel * torch.empty((), dtype=dtype).element_size()
+    torch.zeros(1, device=device)
+    region = mmap.mmap(-1, nbytes, flags=mmap.MAP_PRIVATE | mmap.MAP_ANONYMOUS)
+    if hasattr(mmap, "MADV_HUGEPAGE"):
+        try:
+            region.madvise(mmap.MADV_HUGEPAGE)
+        except OSError:
+            pass
+    raw = torch.frombuffer(region, dtype=torch.uint8, count=nbytes)
+    state = {"error": None, "seconds": None}
+
+    def register():
+        started = time.perf_counter()
+        try:
+            torch.cuda.set_device(device)
+            torch.zeros(1, device=device)  # the primary context is current on this thread
+            _cuda_check(driver.cuMemHostRegister(raw.data_ptr(), nbytes, HOST_REGISTER_FLAGS),
+                        f"cuMemHostRegister({name})")
+        except Exception as error:  # noqa: BLE001 - finish() falls back
+            state["error"] = str(error)
+        state["seconds"] = time.perf_counter() - started
+
+    began = time.perf_counter()
+    thread = threading.Thread(target=register, name=f"arc-pin-{name}", daemon=True)
+    thread.start()
+    done = {}
+
+    def finish():
+        if "view" in done:
+            return done["view"]
+        waited = time.perf_counter()
+        thread.join()
+        waited = time.perf_counter() - waited
+        source, owner, method = raw, (region, raw), "cuMemHostRegister"
+        if state["error"] is not None:
+            log("HOST_TABLE", {"name": name, "register_refused": state["error"]})
+            import ctypes
+
+            _, pointer = _cuda_check(driver.cuMemHostAlloc(nbytes, HOST_REGISTER_FLAGS), f"cuMemHostAlloc({name})")
+            buffer = (ctypes.c_uint8 * nbytes).from_address(int(pointer))
+            source = torch.frombuffer(buffer, dtype=torch.uint8, count=nbytes)
+            source.copy_(raw)
+            owner, method = (buffer, region, raw), "cuMemHostAlloc"
+        _, pointer = _cuda_check(driver.cuMemHostGetDevicePointer(source.data_ptr(), 0),
+                                 f"cuMemHostGetDevicePointer({name})")
+        try:
+            view = torch.as_tensor(_DeviceBuffer(int(pointer), nbytes, (owner, source)), device=device)
+        except Exception as error:
+            log("HOST_TABLE", {"name": name, "array_interface_refused": str(error)})
+            view = torch.ops._C.get_cuda_view_from_cpu_tensor(source)
+        if view.device.type != "cuda" or view.numel() != nbytes or view.data_ptr() != int(pointer):
+            raise RuntimeError(f"ARC host table {name}: the CUDA view is not the mapped region ({view.device})")
+        entry = {"name": name, "bytes": nbytes, "method": method, "pin_seconds": state["seconds"],
+                 "overlapped": True, "join_wait_seconds": round(waited, 3),
+                 "ready_after_seconds": round(time.perf_counter() - began, 1),
+                 "uva_equal_pointer": int(pointer) == source.data_ptr()}
+        _STATE["host_tables"].append({**entry, "owner": owner, "raw": source, "view": view})
+        log("HOST_TABLE", entry)
+        done["view"] = view.view(dtype).view(shape)
+        done["cpu"] = source.view(dtype).view(shape)
+        return done["view"]
+
+    return raw.view(dtype).view(shape), finish, done
+
+
 def _worker_device():
     return torch.device("cuda", torch.cuda.current_device())
 
@@ -835,6 +787,48 @@ def _ple_check(ple, cpu_table, gpu_table):
     log("CHECK", {"ple_uva": result})
 
 
+def _check_identity(extra):
+    """sha256 (16 hex) of this helper, its settings, the torch/CUDA build, the device and ``extra``."""
+    import hashlib
+
+    h = hashlib.sha256(Path(__file__).read_bytes())
+    h.update(json.dumps(load_config(), sort_keys=True).encode())
+    device = torch.cuda.get_device_name() if torch.cuda.is_available() else "cpu"
+    h.update(json.dumps([torch.__version__, torch.version.cuda, device, extra], default=str).encode())
+    return h.hexdigest()[:16]
+
+
+def cached_check(name, extra, fn, environ=None):
+    """ARC_SK_CHECK_CACHE=<dir> (boot cut, MFU-2 24 Oct): a load-time self-check that passed for the same identity
+    (helper, settings, torch/CUDA, device, ``extra``) on an earlier boot, whose marker came back with the boot cache,
+    is skipped; otherwise it runs (it raises on a failure) and the marker is written. Logs the seconds either way."""
+    import time
+
+    root = (os.environ if environ is None else environ).get("ARC_SK_CHECK_CACHE")
+    began = time.perf_counter()
+    marker = None
+    if root:
+        marker = Path(root) / f"{name}-{_check_identity(extra)}.ok"
+        if marker.is_file():
+            log("CHECK_SKIPPED", {name: {"marker": marker.name}})
+            return False
+    fn()
+    if marker is not None:
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text(json.dumps({"name": name, "extra": extra}, default=str) + "\n")
+    log("CHECK_SECONDS", {name: round(time.perf_counter() - began, 3)})
+    return True
+
+
+def _ple_identity(ple, table):
+    module = sys.modules.get(type(ple).__module__)
+    source = getattr(module, "__file__", None)
+    import hashlib
+
+    return {"ple_source": hashlib.sha256(Path(source).read_bytes()).hexdigest() if source else None,
+            "table": [list(table.shape), str(table.dtype)]}
+
+
 def ple_uva_device(default):
     """Patched PLE constructor: build the n-gram embedding on the CPU (then ``ple_uva_place``)."""
     if not load_config().get("ple_uva"):
@@ -856,26 +850,49 @@ def ple_uva_place(ple):
     weight = ple.ngram_embedding.weight
     if weight.device.type != "cpu":
         raise RuntimeError(f"ARC PLE via UVA expects the table built on the CPU, got {weight.device}")
-    cpu_table, gpu_table = host_table(tuple(weight.shape), weight.dtype, device, "ple")
-    _move_small_tensors(ple, weight, device)
-    weight.data = gpu_table
-    load_weights = ple.load_weights
+    if load_config().get("pin_overlap"):  # the table's page-locking beside the weight load (MFU-2, 22 Oct)
+        cpu_table, finish, tables = host_table_deferred(tuple(weight.shape), weight.dtype, device, "ple")
+        _move_small_tensors(ple, weight, device)
+        weight.data = cpu_table  # the CUDA view once finish() joined the registration (after the shards)
+        load_weights = ple.load_weights
 
-    def load_through_cpu_alias(weights):
-        weight.data = cpu_table
-        try:
-            return load_weights(weights)
-        finally:
-            weight.data = gpu_table
+        def load_through_cpu_alias(weights):
+            weight.data = cpu_table
+            try:
+                return load_weights(weights)
+            finally:
+                weight.data = finish()
 
-    ple.load_weights = load_through_cpu_alias
+        def placed_check():
+            weight.data = finish()  # also when no shard reached load_weights
+            cached_check("ple_uva", _ple_identity(ple, tables["cpu"]),
+                         partial(_ple_check, ple, tables["cpu"], tables["view"]))
+
+        ple.load_weights = load_through_cpu_alias
+        check = placed_check
+    else:
+        cpu_table, gpu_table = host_table(tuple(weight.shape), weight.dtype, device, "ple")
+        _move_small_tensors(ple, weight, device)
+        weight.data = gpu_table
+        load_weights = ple.load_weights
+
+        def load_through_cpu_alias(weights):
+            weight.data = cpu_table
+            try:
+                return load_weights(weights)
+            finally:
+                weight.data = gpu_table
+
+        ple.load_weights = load_through_cpu_alias
+        check = partial(cached_check, "ple_uva", _ple_identity(ple, cpu_table),
+                        partial(_ple_check, ple, cpu_table, gpu_table))
     _register_uva_op()
     ple.ngram_embedding.quant_method.embedding = uva_embedding
     _register_ple_op()
     key = f"ple{len(_STATE['ple_layers'])}"
     _STATE["ple_layers"][key] = ple
     ple.forward_impl = partial(_ple_forward, key)
-    _after_load(ple.ngram_embedding, partial(_ple_check, ple, cpu_table, gpu_table))
+    _after_load(ple.ngram_embedding, check)
     log("PLE", {"table_shape": list(weight.shape), "dtype": str(weight.dtype), "device": str(device)})
 
 
@@ -908,6 +925,3 @@ def host_embedding(factory):
     log("EMBED", {"shape": list(weight.shape), "dtype": str(weight.dtype), "device": str(device)})
     return layer
 
-
-if load_config().get("hc_fusion"):
-    _register_hc_op()

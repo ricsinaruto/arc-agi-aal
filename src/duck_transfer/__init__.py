@@ -1,1 +1,1 @@
-"""Duck-transfer: the public Duck tool loop bridged into the shared fleet, with cross-level notes."""
+"""The Duck agent (``agent``), its persistent python sandbox (``sandbox``) and action feedback (``feedback``)."""

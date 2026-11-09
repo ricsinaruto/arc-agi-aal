@@ -19,22 +19,3 @@ def read_json(path, default=None):
         return default
 
 
-def append_jsonl(path, row):
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "a") as f:
-        f.write(json.dumps(row, default=str) + "\n")
-
-
-def read_jsonl(path):
-    try:
-        lines = Path(path).read_text().splitlines()
-    except FileNotFoundError:
-        return []
-    rows = []
-    for line in lines:
-        try:
-            rows.append(json.loads(line))
-        except json.JSONDecodeError:  # a torn last line from a dead writer
-            continue
-    return rows

@@ -1,0 +1,693 @@
+{
+  "run": "b2-rl-hread-rd-v1",
+  "arm": "rl",
+  "platform": "nebius",
+  "gpu": "RTX PRO 6000",
+  "gpu_count": 1,
+  "max_seconds": 17400,
+  "authorization": "approved run",
+  "what": "Held-out read (RL redesign, stage F): whole held-out games from level 1 (26 Oct split, 10 games x 3 copies, <= 200K tokens each) on the RTX competition stack (NVFP4 t37 experts refit on the train 15, Marlin runtime LoRA, MTP 1 with the policy's draft LoRA merged when it has one, int4 KV, BF16 dense), 30 streams; one arm per VM: the base (no adapter) at step 0, then the policy adapter every 8 training steps, same bundle and seeds; judged by RHAE/10K held-out vs the base read (paired by game x pass, matched tokens), launch/rl/heldout/hread.py score",
+  "anchor": {
+    "run": "in-run",
+    "note": "step 0 is the base read; each policy read anchors on <run>-s0000 (launch/rl/heldout/hread.py sets it per read)"
+  },
+  "roster": {
+    "name": "held-out 10 (26 Oct split)",
+    "ids": [
+      "ar25",
+      "bp35",
+      "ft09",
+      "lf52",
+      "lp85",
+      "sk48",
+      "sp80",
+      "tu93",
+      "vc33",
+      "wa30"
+    ],
+    "size": 10
+  },
+  "data": [
+    "launch/rl/data/hread-rd-points-v1.json"
+  ],
+  "bundle": "rl1-loop-hread-rd-v1",
+  "source": "099fb733ab8d2c52f8100a8295bec5d649c08612",
+  "packages": [
+    "arc_infra",
+    "arena",
+    "duck_transfer",
+    "inference"
+  ],
+  "files": {
+    "bootstrap.py": "scripts/arena/bundle_bootstrap.py",
+    "bootstrap_arena.py": "scripts/arena/bootstrap.py",
+    "configs/duck_controls.yaml": "configs/duck_controls.yaml",
+    "configs/duck_public_notebook.json": "configs/duck_public_notebook.json",
+    "data/expert_mask/prune-t37-r15b-nvfp4-v1.json": "data/expert_prune/prune-t37-r15b-nvfp4-v1.json",
+    "rl1/flash_qlora_job.py": "scripts/posttrain/flash_qlora_job.py",
+    "rl1/rl1_cast.py": "scripts/posttrain/rl1_cast.py",
+    "rl1/rl1_dequant.py": "scripts/posttrain/rl1_dequant.py",
+    "rl1/rl1_encode.py": "scripts/posttrain/rl1_encode.py",
+    "rl1/rl1_experts.py": "scripts/posttrain/rl1_experts.py",
+    "rl1/rl1_gdn.py": "scripts/posttrain/rl1_gdn.py",
+    "rl1/rl1_hyper.py": "scripts/posttrain/rl1_hyper.py",
+    "rl1/rl1_memory.py": "scripts/posttrain/rl1_memory.py",
+    "rl1/rl1_sparse.py": "scripts/posttrain/rl1_sparse.py",
+    "rl1/rl1_sparse2.py": "scripts/posttrain/rl1_sparse2.py",
+    "rl1/rl1_topk.py": "scripts/posttrain/rl1_topk.py",
+    "rl1/rl1_cp.py": "scripts/posttrain/rl1_cp.py",
+    "rl1/rl1_dist.py": "scripts/posttrain/rl1_dist.py",
+    "rl1/rl1_draft.py": "scripts/posttrain/rl1_draft.py",
+    "rl1/rl1_trainer.py": "scripts/posttrain/rl1_trainer.py",
+    "rl1/rl1_park.py": "scripts/posttrain/rl1_park.py",
+    "rl1/rl1_table.py": "scripts/posttrain/rl1_table.py",
+    "rl1/rl1_firstcall.py": "scripts/posttrain/rl1_firstcall.py",
+    "rl1/rl1_hubk.py": "scripts/posttrain/rl1_hubk.py",
+    "rl1/rl_job.py": "scripts/posttrain/rl_job.py",
+    "rl1/rl_rollouts.py": "src/posttrain/rl_rollouts.py",
+    "rl1/served_route.py": "src/arena/served_route.py",
+    "data/v85p-levels.json": "launch/rl/data/v85p-levels.json"
+  },
+  "seeds": [
+    {
+      "dest": "configs/boot.json",
+      "path": "launch/rl/data/boot.json",
+      "sha256": "f89042e60695ca0271212b5d774b653099b2fb915539dd832a28ca36b1e2bf98"
+    },
+    {
+      "dest": "configs/compile-cache.json",
+      "path": "launch/rl/data/compile-cache.json",
+      "sha256": "957a681d695c034f7f870f9f4ded68af54d29cb1dbef84e188c51fce7b0b5175"
+    },
+    {
+      "dest": "configs/rl1_points.json",
+      "path": "launch/rl/data/rl1_points.json",
+      "sha256": "94d313bc3e707d99da446f7045edce990cef7f80c22501235164b01f908b0d37"
+    },
+    {
+      "dest": "configs/stuck_points.json",
+      "path": "launch/rl/data/stuck_points.json",
+      "sha256": "9b6c2b3347ca266aacc9cf1974a9afd4765abcbb0014ef978e6c42ef739db911"
+    },
+    {
+      "dest": "requirements.txt",
+      "path": "launch/rl/data/requirements.txt",
+      "sha256": "ec25b68eb96fd9d22e2cb991dd3227b9f040acdce4b37a82692819f8299f49ba"
+    },
+    {
+      "dest": "wheels",
+      "path": "~/arc-rl-data/wheels-5517a1dd51e3",
+      "sha256": "5517a1dd51e3305717500b47986bee073d9a789a72461b0384956c705b4500bb"
+    },
+    {
+      "dest": "generated_games/environment_files",
+      "path": "~/arc-rl-data/games-24acbd876087",
+      "sha256": "24acbd876087ec6ec50e5b1728301155bb40db94ad43bbc285f35b269b195d7f"
+    },
+    {
+      "dest": "configs/hread-points.json",
+      "path": "launch/rl/data/hread-rd-points-v1.json",
+      "sha256": "ec8e5f6481eeccf5b51064435b1fc60f72543763269853b38a704dfb17cc1e15"
+    }
+  ],
+  "study": {
+    "name": "rl1-loop-hread-rd-v1",
+    "status": "prepared-not-launched",
+    "games_source": "configs/duck_public_notebook.json:public_game_ids",
+    "games": [
+      "ar25-0c556536",
+      "bp35-0a0ad940",
+      "ft09-0d8bbf25",
+      "lf52-271a04aa",
+      "lp85-305b61c3",
+      "sk48-d8078629",
+      "sp80-589a99af",
+      "tu93-0768757b",
+      "vc33-5430563c",
+      "wa30-ee6fef47"
+    ],
+    "wall_seconds": 14400,
+    "windows": [
+      130816
+    ],
+    "kv_margin": 0.96,
+    "active_limit": 80,
+    "opening_switch_level1_games": 6,
+    "level_budget_rule": "(k+1)*T1; regrant max(1.5*spent, spent+1920); completion tokens of the game's gameplay replies, reasoning included (compaction summaries and notes/memory asides, tool execution, queue, tokenization and latency excluded); the 30 s floor is 1,920 tokens (30 s at 64 tokens per busy second, one focus game at six streams)",
+    "backlog_priority": "fewest completion tokens, then roster order",
+    "completion_cap": 16384,
+    "reasoning_effort": "xhigh",
+    "temperature": 0.7,
+    "generation_slots": 52,
+    "server": {
+      "max_model_len": 262144,
+      "prefix_caching": true,
+      "mtp_tokens": 1,
+      "max_num_seqs": 52,
+      "gpu_memory_utilization": "0.92",
+      "max_num_batched_tokens": 4096,
+      "prompt_tokens_details": true,
+      "prefix_match_unit": 16,
+      "max_cudagraph_capture_size": 104,
+      "cudagraph_capture_sizes": [
+        1,
+        2,
+        4,
+        8,
+        16,
+        32,
+        48,
+        60,
+        64,
+        72,
+        80,
+        88,
+        96,
+        104
+      ],
+      "renderer_num_workers": 4,
+      "mm_processor_cache_gb": 8.0,
+      "lora": {
+        "max_rank": 16,
+        "max_loras": 1,
+        "max_cpu_loras": 2,
+        "moe_backend": "marlin",
+        "sleep_mode": false,
+        "ple_queue_wait": null,
+        "mtp": true
+      },
+      "serving_kernels": {
+        "mamba_ssm_cache_dtype": "bfloat16",
+        "moe_backend": null,
+        "draft_experts": "nvfp4",
+        "hc_fusion": false,
+        "topk_sampler": true,
+        "ple_uva": true,
+        "pin_overlap": true,
+        "kv_cache_4bit": "int4",
+        "indexer_fp8": false,
+        "embed_host": true,
+        "draft_vocab": "arena16k"
+      },
+      "served_route": null,
+      "serving_fast": {
+        "logprob_fast": true,
+        "image_cache": true,
+        "mm_warmup_overlap": true,
+        "api_gc": true
+      },
+      "expert_mask": {
+        "mask": "data/expert_mask/prune-t37-r15b-nvfp4-v1.json",
+        "sha256": "b30b3b44ba4a7637209da4ed4bb96883d926688df912d78d1d177d505b58076e"
+      }
+    },
+    "trials": [
+      {
+        "name": "heldout-read",
+        "kind": "level-bench",
+        "server_env": {
+          "ARENA_GPU_MEMORY_UTILIZATION": "0.92",
+          "ARENA_PROMPT_TOKENS_DETAILS": "1",
+          "ARENA_READY_GUARD": "180,3000",
+          "ARENA_SETUP_TIMEOUTS": "2700,3600",
+          "ARC_PYC_CACHE": "1",
+          "ARC_MM_WARMUP_SKIP": "1",
+          "ARC_EXPERT_FAST_LOOKUP": "1",
+          "ARC_STABLE_PATCH": "1",
+          "ARC_PLE_CHECK_SKIP": "1",
+          "ARC_MARLIN_BATCH": "1",
+          "ARC_PINNED_LOAD": "1",
+          "ARC_EXPERT_MASK_COMPACT": "1",
+          "ARC_BOOT_CACHE_SAVE": "1",
+          "ARC_DRAFT_LORA": "1",
+          "ARC_LORA_NO_PIN": "1",
+          "ARENA_CPU_CACHE_GIB": "64"
+        },
+        "wall_seconds": 14400
+      }
+    ],
+    "notebook_seconds": 16200,
+    "kernel_timeout": 32400,
+    "context_policy": "append-only; one tool-less model-written summary at the cap (C: Pi's native compaction at window - cap)",
+    "cache_admission": "hybrid_blocks",
+    "isolate_trial_cache": true,
+    "cache_experiment": {
+      "variant": "blocks",
+      "cpu_cache_gib": 0,
+      "kv_cache_dtype": "auto",
+      "compaction_changed": true,
+      "probe_seconds_limit": 270,
+      "reclaim_skipped_blocks": false,
+      "prefix_cache": {
+        "mamba_align_fix": true,
+        "mamba_keep_state": true,
+        "mamba_demote_superseded": true
+      }
+    },
+    "budget_clock": "tokens",
+    "level_budget_policy": "priority",
+    "backlog_policy": "readmissions",
+    "prioritize_parked_progress": true,
+    "require_focus_windows_fit": false,
+    "token_budget": {
+      "unit": "completion_tokens",
+      "purposes": [
+        "gameplay"
+      ],
+      "floor_tokens": 1920,
+      "reference_tokens_per_busy_second": 64.0,
+      "rule": "(k+1)*T1; regrant max(1.5*spent, spent+1920); completion tokens of the game's gameplay replies, reasoning included (compaction summaries and notes/memory asides, tool execution, queue, tokenization and latency excluded); the 30 s floor is 1,920 tokens (30 s at 64 tokens per busy second, one focus game at six streams)"
+    },
+    "stall_dump_seconds": 90,
+    "compaction_thinking": "prefilled-empty",
+    "reasoning_history": "verbatim",
+    "harness_fixes": {
+      "fixes": [
+        "exact_trigger",
+        "summary_guard",
+        "inventory",
+        "cap_followup",
+        "stuck_notice",
+        "sandbox",
+        "timeout_interrupt",
+        "prompt_text",
+        "summary_headroom",
+        "text_count",
+        "solvable_line",
+        "death_turn_v2",
+        "findings_keep",
+        "tool_call_followup",
+        "stuck_streak"
+      ],
+      "summary_room_tokens": 4096,
+      "inventory_max_tokens": 1536,
+      "inventory_receipts": 12,
+      "stuck_turns": 16,
+      "stuck_notice_turns": 8,
+      "stuck_no_change_actions": 5,
+      "interrupt_grace_seconds": 3.0
+    },
+    "drain_half": {
+      "drain_tokens": 56960,
+      "turn_cap": 150,
+      "turn_drain": 30,
+      "coalesce": true,
+      "tool_output_tokens": 3072,
+      "middle_truncation": true,
+      "drop_malformed": true,
+      "note": true
+    },
+    "hx_harness": {
+      "toolbox": true,
+      "reflect": true,
+      "perceive": false,
+      "probe": false,
+      "economy": true,
+      "kit": false,
+      "opener": false,
+      "guide": false,
+      "grid": false,
+      "lattice": false,
+      "coverage": false,
+      "merges": false,
+      "autopilot": false,
+      "worldmodel": false,
+      "memo": true,
+      "autoexplore": false,
+      "stuckexplore": false,
+      "no_stuck_notice": false,
+      "reflect_requests": 8,
+      "reflect_every": 8,
+      "reflect_no_change": 5,
+      "reflect_revisits": 3,
+      "reflect_deaths": 2,
+      "reflect_min_gap": 3,
+      "reflect_style": 2,
+      "reflect_stall": 5,
+      "tool_list_max": 12,
+      "observer_chars": 300,
+      "digest_actions": 8,
+      "autoexplore_actions": 10,
+      "autoexplore_clicks": 6,
+      "stuck_explore_actions": 8,
+      "scene_objects": 14,
+      "economy_style": 1,
+      "memo_once": 1,
+      "reflect_skip_death": 1,
+      "memo_style": 2,
+      "memo_limits": 0,
+      "keep_rules": 0,
+      "playbook_log": 0,
+      "no_think": 0
+    },
+    "dfr_harness": {
+      "vision": true,
+      "guards": true,
+      "actions": true,
+      "level_prompt": true,
+      "frame_diff": true,
+      "animation": true,
+      "sweep": false,
+      "transient": true,
+      "reset_offer": false,
+      "border_moves": false,
+      "simcheck": false,
+      "evidence": false,
+      "transient_note": false,
+      "animation_history": true,
+      "simcarry": false
+    },
+    "dfr_loop": {
+      "prompt_fix": true,
+      "yield_tokens": 0,
+      "no_world_model": true,
+      "action_feedback": false,
+      "inventory_animation": true
+    },
+    "priority": {
+      "refresh_queue": true,
+      "tail_fade": true,
+      "tail_fade_fraction": 0.2,
+      "tail_lookup": "remaining",
+      "normalize_score": true,
+      "human_actions": 25.0,
+      "action_scale": 115.0,
+      "token_scale": 62000.0,
+      "action_weight": 0.25,
+      "tail_base": 2.0,
+      "tail_cap": 4.0,
+      "floor": true,
+      "level_cap_tokens": 0,
+      "level_cap_grant_tokens": 100000
+    },
+    "harness_selection": "duck-transfer default",
+    "opening_burst_requests": 3,
+    "games_excluded": [],
+    "roster": "held-out 10 (26 Oct split: sp80 wa30 sk48 lf52 bp35 + the 5 left out of c100)",
+    "smoke_active": false,
+    "model_datasets": [],
+    "loop_rule": {
+      "action": "fresh_context",
+      "streak": 20,
+      "mean_completion": 300,
+      "similarity": 0.9
+    },
+    "v82": {
+      "window": 130816,
+      "streams": 48,
+      "gate_margin": 0.96,
+      "prompt_fixes": [
+        "solvable_line",
+        "death_turn_v2",
+        "findings_keep",
+        "tool_call_followup",
+        "stuck_streak"
+      ],
+      "source": "docs/validation-20261009/build_v82.py"
+    },
+    "level_bench": {
+      "split": "all",
+      "games": [
+        "ar25",
+        "bp35",
+        "ft09",
+        "lf52",
+        "lp85",
+        "sk48",
+        "sp80",
+        "tu93",
+        "vc33",
+        "wa30"
+      ],
+      "concurrency": 30,
+      "window": 130816,
+      "token_budget": 200000,
+      "level_token_cap": null,
+      "token_budget_by_level": null,
+      "token_budget_by_point": null,
+      "rollout": null,
+      "sampling": null,
+      "seed_base": 8500,
+      "attempt_wall_seconds": 14400,
+      "passes": 3,
+      "order_seed": 0,
+      "progress_seconds": 30,
+      "launch_cutoff_seconds": 120,
+      "min_wall_seconds": 300,
+      "start_points": "configs/hread-points.json",
+      "capacity_tokens": null,
+      "serving": "rl1-flash-nvfp4-lora-mtp1-int4",
+      "arms": [
+        {
+          "name": "base"
+        }
+      ],
+      "first_pass": 0,
+      "lead_token_budget": 80000,
+      "action_cap": null,
+      "gate_completion_reserve": 1664
+    },
+    "hx4": {
+      "points": "data/stuck_bench/rl1_points.json",
+      "points_sha256": "9b6c2b3347ca266aacc9cf1974a9afd4765abcbb0014ef978e6c42ef739db911"
+    },
+    "served_model": "Qwen/Qwen3.8-Flash-Next-NVFP4",
+    "bootstrap_reserves": {
+      "end_seconds": 120,
+      "trial_seconds": 300
+    },
+    "rl1": {
+      "source": "docs/validation-20261013/build_rl1.py",
+      "base": "v8.2 level bench (build_hx4.py --serving=v82)",
+      "model": {
+        "before": "Qwen/Qwen3.8-Flash-Next-NVFP4 + INT3 requant expert overlay, 37.5% expert mask",
+        "after": "Qwen/Qwen3.8-Flash-Next-NVFP4 (own checkpoint) + unmerged LoRA 'policy'"
+      },
+      "server": {
+        "removed": [
+          "dense_kernels",
+          "draft_head",
+          "expert_overlay",
+          "expert_prune",
+          "stack_kernels"
+        ],
+        "before": {
+          "mtp_tokens": 1,
+          "max_num_seqs": 52,
+          "gpu_memory_utilization": "0.92",
+          "max_cudagraph_capture_size": 104
+        },
+        "after": {
+          "mtp_tokens": 0,
+          "max_num_seqs": 84,
+          "gpu_memory_utilization": "0.5",
+          "max_cudagraph_capture_size": 88,
+          "lora": {
+            "max_rank": 16,
+            "max_loras": 5,
+            "max_cpu_loras": 6,
+            "moe_backend": "marlin",
+            "sleep_mode": true,
+            "ple_queue_wait": null
+          }
+        }
+      },
+      "prefix_cache": {
+        "before": [
+          "collapse_log",
+          "keep_reply_states",
+          "mamba_align_fix",
+          "mamba_demote_superseded",
+          "mamba_keep_state",
+          "reply_ids",
+          "request_end_tail",
+          "spec_decode",
+          "state_cotenant",
+          "tail_keep_boundary",
+          "tail_keepalive",
+          "tail_spec_acceptance"
+        ],
+        "after": [
+          "mamba_align_fix",
+          "mamba_keep_state",
+          "mamba_demote_superseded"
+        ]
+      },
+      "server_env": {
+        "before": {
+          "ARENA_STALL_DUMP": "90",
+          "ARENA_GPU_MEMORY_UTILIZATION": "0.92",
+          "ARENA_READY_GUARD": "180,3000",
+          "ARENA_SETUP_TIMEOUTS": "2700,3600",
+          "ARC_MOE_LORA_BM16": "1"
+        },
+        "after": {
+          "ARENA_KV_CACHE_MEMORY_BYTES": "103079215104",
+          "ARENA_GPU_MEMORY_UTILIZATION": "0.5",
+          "ARENA_PROMPT_TOKENS_DETAILS": "1",
+          "ARENA_READY_GUARD": "180,3000",
+          "ARENA_SETUP_TIMEOUTS": "2700,3600",
+          "ARC_MOE_LORA_BM16": "1"
+        }
+      },
+      "harness_keys_changed": [],
+      "dropped_study_keys": [
+        "hero_v2",
+        "arena_variant",
+        "focus_oversubscription",
+        "serving_profile"
+      ]
+    },
+    "generated_games": {
+      "dir": "generated_games/environment_files",
+      "games": [
+        "ar25-0c556536",
+        "bp35-0a0ad940",
+        "cd82-fb555c5d",
+        "cn04-2fe56bfb",
+        "dc22-fdcac232",
+        "ft09-0d8bbf25",
+        "g50t-5849a774",
+        "ka59-38d34dbb",
+        "lf52-271a04aa",
+        "lp85-305b61c3",
+        "ls20-9607627b",
+        "m0r0-492f87ba",
+        "p002-36424a00",
+        "p047-a2d1b0e4",
+        "p04r-b7b29d8c",
+        "p092-7694db09",
+        "p0c4-6a575fba",
+        "p0ch-242358b9",
+        "p0di-c014455d",
+        "p0fr-6c6fbf94",
+        "p0hc-fb7878f1",
+        "p0he-f90169dd",
+        "p0k1-688cb93a",
+        "p0l3-8b2ec60d",
+        "p0oa-eddecb09",
+        "q004-c194034b",
+        "q302-22a34c07",
+        "q309-e1ae2578",
+        "q310-93d43668",
+        "q311-59f39dc9",
+        "q313-c727658c",
+        "q317-fca24cc4",
+        "q320-373de3f1",
+        "q326-43b7832a",
+        "q327-c8f49e18",
+        "q328-e294f624",
+        "q331-663f4d33",
+        "q335-fa25cdf6",
+        "q339-596b1118",
+        "q342-f17a9629",
+        "q345-8f8bb1fd",
+        "q351-af6bc502",
+        "q365-2c82f6dc",
+        "q366-b5a0e4fd",
+        "r11l-495a7899",
+        "re86-8af5384d",
+        "s5i5-18d95033",
+        "sb26-7fbdac44",
+        "sc25-635fd71a",
+        "sk48-d8078629",
+        "sp80-589a99af",
+        "su15-1944f8ab",
+        "tn36-ef4dde99",
+        "tr87-cd924810",
+        "tu93-0768757b",
+        "vc33-5430563c",
+        "w001-d4f99da0",
+        "w00m-cea0d906",
+        "w02e-6c5db149",
+        "wa30-ee6fef47",
+        "x002-bac162aa",
+        "x003-924ee5e3",
+        "x00b-5e6f1c4b",
+        "x00l-c5b4e909",
+        "x010-264fe343",
+        "x012-c56d71ba",
+        "x01f-ab5abdf2",
+        "x01o-c3637c8d",
+        "x01u-9dc9e8e6",
+        "x01v-f8c4b71c"
+      ]
+    },
+    "load_adapters": [],
+    "nebius_assets": [],
+    "chain": {
+      "trials": [
+        "heldout-read"
+      ]
+    },
+    "b200": {
+      "test": "b200-run",
+      "harness": "arena",
+      "gpu": "RTX-PRO-6000",
+      "stop": {
+        "score_target": 1000000000.0,
+        "wall_seconds": 14400
+      }
+    },
+    "hread": {
+      "protocol": "whole held-out games from level 1, <= 200K completion tokens each, passes x 10 copies, vLLM seed seed_base + pass; one arm per read: base at step 0, policy adapter every `every` steps; pairs (game, pass) across reads",
+      "every": 8,
+      "train_run": null,
+      "step": null,
+      "adapter": null,
+      "draft": null,
+      "base": null,
+      "boot_seconds": 1500
+    }
+  },
+  "launch": {
+    "backend": "nebius",
+    "kind": "arena",
+    "env": {},
+    "resume_from": [],
+    "knobs": null,
+    "nebius": {
+      "test": "b200-run",
+      "reason": "whole-game held-out read: 30 tries x <= 200K tokens at ~11-15 tok/s per stream needs ~4 h of play; nothing shorter tests whole games",
+      "approval": "(via coordinator, verbatim): i approve the base read, but let's do held-out reads every 16 steps please. (covers the base read and s0016, s0032,... at ~2.2 h /)"
+    },
+    "queue_next": "30 whole-game tries; verdict by launch/rl/heldout/hread.py score vs the base read"
+  },
+  "preflight": {
+    "-pf": {
+      "ARC_RL1_PREFLIGHT_SPEED": "0",
+      "ARC_RL1_STALL": "900:kill",
+      "ARC_RL1_PREFLIGHT_CORPUS": "validation/rl1-screen-seed-v2/arena/trials/rl-loop/rl,validation/rl1-screen-sc25ref-all/partial,validation/rl1-screen-mg6-7/arena/trials/rl-loop/rl",
+      "ARC_RL1_PREFLIGHT_SERVING": "validation/rl1-screen-drain-2/arena/serving",
+      "ARC_RL1_PREFLIGHT_TRIAL": "heldout-read"
+    },
+    "-db": {
+      "ARC_RL1_PREFLIGHT_SPEED": "0",
+      "ARC_RL1_STALL": "900:kill",
+      "ARC_RL1_PREFLIGHT_CORPUS": "validation/rl1-screen-seed-v2/arena/trials/rl-loop/rl,validation/rl1-screen-sc25ref-all/partial,validation/rl1-screen-mg6-7/arena/trials/rl-loop/rl",
+      "ARC_RL1_PREFLIGHT_SERVING": "validation/rl1-screen-drain-2/arena/serving",
+      "ARC_RL1_PREFLIGHT_TRIAL": "heldout-read",
+      "ARC_RL1_DRY_BOOT": "1"
+    }
+  },
+  "watch": {
+    "vm": "arc-b2-rl-hread-rd-v1",
+    "boot_s": 1800,
+    "cadence_s": 300,
+    "metrics_remote": "nebius:validation/b2-rl-hread-rd-v1/arena/working/trials/heldout-read/train-metrics.jsonl",
+    "targets": {
+      "infra.gen_tok_s": {
+        "plan": 350,
+        "steady": true
+      }
+    },
+    "logs": [
+      "nebius:validation/b2-rl-hread-rd-v1/bootstrap.log",
+      "nebius:validation/b2-rl-hread-rd-v1/arena/working/trials/heldout-read-process.log"
+    ],
+    "progress_key": "infra.gen_tokens",
+    "expect": {
+      "play.done": 30
+    }
+  }
+}

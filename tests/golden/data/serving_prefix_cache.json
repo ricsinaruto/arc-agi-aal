@@ -1,0 +1,74 @@
+{
+ "b2-rl-hread-rd-v1": {
+  "files": {
+   "vllm/entrypoints/openai/chat_completion/serving.py": "03ac50ee722d18c02fd6db075077126d6f77054dfaece2c520116d00ef57745a",
+   "vllm/v1/core/block_pool.py": "32128d20b863d3367ca9977093d68e66c7f570b23d14b32daffc9220c78a4f91",
+   "vllm/v1/core/kv_cache_coordinator.py": "63ff97ab39c4ec04b29ce5314c977ee031f600a709baea59fb2643395a7620cf",
+   "vllm/v1/core/kv_cache_manager.py": "78d9cd21da815787e609712706ece99d869ee1a52e7eeb2db55c70ec2b34cbba",
+   "vllm/v1/core/sched/scheduler.py": "a762ee612baa24342be363d3b707c5f4175474291d8a77409ab912b47b64d710",
+   "vllm/v1/core/single_type_kv_cache_manager.py": "a85836d4759b63494d47983666b1533be4a3e8d3c27ee9a3a74699f65d31b3d6"
+  },
+  "marker": "e594ad07196f3c289f23d08ecc46a0689f5d2eb710fae9223d7581a815d806bb",
+  "validate": {
+   "mamba_align_fix": true,
+   "mamba_demote_superseded": true,
+   "mamba_keep_state": true
+  }
+ },
+ "rl1-loop-seq-real-v10": {
+  "files": {
+   "vllm/entrypoints/openai/chat_completion/arc_reply_ids.py": "624e3d244b2e5c7c2f26f68ce39adbf93b228e37209204f004f66e807fee59ef",
+   "vllm/entrypoints/openai/chat_completion/serving.py": "97de90d9a1b771834aac126d4808d48da121906d56fd86ad3b49725cfd92af94",
+   "vllm/v1/core/arc_tail_cache.py": "30c9e5a5e32d3728f2eb9cc89feb207c32c406a733f29c62d0b45dcc3f6c6a07",
+   "vllm/v1/core/block_pool.py": "32128d20b863d3367ca9977093d68e66c7f570b23d14b32daffc9220c78a4f91",
+   "vllm/v1/core/kv_cache_coordinator.py": "ef156d7b7455d506db3a2a17d47cb9a223f2122f3dbdf33be677a33c455f786e",
+   "vllm/v1/core/kv_cache_manager.py": "29b9984a887045d9d85720a5fe1a72db1bccc8e74c56cd04bde3db93964f00e8",
+   "vllm/v1/core/sched/scheduler.py": "9a3d1ca4b10733b6fb1128dac4556c77c5440fde61d49f21d60e6027c71bc6a7",
+   "vllm/v1/core/single_type_kv_cache_manager.py": "2bc5d361a5fbb994d38bef80dacce68f46217500083461aa72fc151dc80badeb"
+  },
+  "marker": "db8e58263663f9fbc182053411a09f0611553750c1a62a73fe44a796384d74de",
+  "validate": {
+   "admission_tick": 2.0,
+   "collapse_log": true,
+   "keep_reply_states": true,
+   "mamba_align_fix": true,
+   "mamba_demote_superseded": true,
+   "mamba_keep_state": true,
+   "reply_ids": true,
+   "request_end_tail": true,
+   "spec_decode": true,
+   "state_cotenant": true,
+   "tail_keep_boundary": true,
+   "tail_keepalive": true,
+   "tail_spec_acceptance": true
+  }
+ },
+ "rl1-loop-seq-real-v9": {
+  "files": {
+   "vllm/entrypoints/openai/chat_completion/arc_reply_ids.py": "624e3d244b2e5c7c2f26f68ce39adbf93b228e37209204f004f66e807fee59ef",
+   "vllm/entrypoints/openai/chat_completion/serving.py": "97de90d9a1b771834aac126d4808d48da121906d56fd86ad3b49725cfd92af94",
+   "vllm/v1/core/arc_tail_cache.py": "30c9e5a5e32d3728f2eb9cc89feb207c32c406a733f29c62d0b45dcc3f6c6a07",
+   "vllm/v1/core/block_pool.py": "32128d20b863d3367ca9977093d68e66c7f570b23d14b32daffc9220c78a4f91",
+   "vllm/v1/core/kv_cache_coordinator.py": "ef156d7b7455d506db3a2a17d47cb9a223f2122f3dbdf33be677a33c455f786e",
+   "vllm/v1/core/kv_cache_manager.py": "29b9984a887045d9d85720a5fe1a72db1bccc8e74c56cd04bde3db93964f00e8",
+   "vllm/v1/core/sched/scheduler.py": "9a3d1ca4b10733b6fb1128dac4556c77c5440fde61d49f21d60e6027c71bc6a7",
+   "vllm/v1/core/single_type_kv_cache_manager.py": "2bc5d361a5fbb994d38bef80dacce68f46217500083461aa72fc151dc80badeb"
+  },
+  "marker": "db8e58263663f9fbc182053411a09f0611553750c1a62a73fe44a796384d74de",
+  "validate": {
+   "admission_tick": 2.0,
+   "collapse_log": true,
+   "keep_reply_states": true,
+   "mamba_align_fix": true,
+   "mamba_demote_superseded": true,
+   "mamba_keep_state": true,
+   "reply_ids": true,
+   "request_end_tail": true,
+   "spec_decode": true,
+   "state_cotenant": true,
+   "tail_keep_boundary": true,
+   "tail_keepalive": true,
+   "tail_spec_acceptance": true
+  }
+ }
+}

@@ -1,0 +1,101 @@
+{
+ "info": {
+  "groups": 1,
+  "mixed": 1,
+  "reward_mean": -3.1041,
+  "reward_std": 2.0173,
+  "trained": 12,
+  "try_tokens_p50": 38960,
+  "try_tokens_p90": 133077
+ },
+ "kept": [
+  [
+   "a000-wa30-game-L3-f95a64-k058-p0",
+   2.778648437,
+   "wa30-game-L3-f95a64-k058"
+  ],
+  [
+   "a005-wa30-game-L3-f95a64-k058-p5",
+   2.576946218,
+   "wa30-game-L3-f95a64-k058"
+  ],
+  [
+   "a003-wa30-game-L3-f95a64-k058-p3",
+   2.395145734,
+   "wa30-game-L3-f95a64-k058"
+  ],
+  [
+   "a011-wa30-game-L3-f95a64-k058-p11",
+   2.24581449,
+   "wa30-game-L3-f95a64-k058"
+  ],
+  [
+   "a004-wa30-game-L3-f95a64-k058-p4",
+   1.797861883,
+   "wa30-game-L3-f95a64-k058"
+  ],
+  [
+   "a008-wa30-game-L3-f95a64-k058-p8",
+   1.152763286,
+   "wa30-game-L3-f95a64-k058"
+  ],
+  [
+   "a010-wa30-game-L3-f95a64-k058-p10",
+   -2.283890101,
+   "wa30-game-L3-f95a64-k058"
+  ],
+  [
+   "a009-wa30-game-L3-f95a64-k058-p9",
+   -2.283890101,
+   "wa30-game-L3-f95a64-k058"
+  ],
+  [
+   "a007-wa30-game-L3-f95a64-k058-p7",
+   -2.283890101,
+   "wa30-game-L3-f95a64-k058"
+  ],
+  [
+   "a006-wa30-game-L3-f95a64-k058-p6",
+   -2.283890101,
+   "wa30-game-L3-f95a64-k058"
+  ],
+  [
+   "a001-wa30-game-L3-f95a64-k058-p1",
+   -2.283890101,
+   "wa30-game-L3-f95a64-k058"
+  ],
+  [
+   "a002-wa30-game-L3-f95a64-k058-p2",
+   -1.527729541,
+   "wa30-game-L3-f95a64-k058"
+  ]
+ ],
+ "rows": [
+  "a000-wa30-game-L3-f95a64-k058-p0",
+  "a001-wa30-game-L3-f95a64-k058-p1",
+  "a002-wa30-game-L3-f95a64-k058-p2",
+  "a003-wa30-game-L3-f95a64-k058-p3",
+  "a004-wa30-game-L3-f95a64-k058-p4",
+  "a005-wa30-game-L3-f95a64-k058-p5",
+  "a006-wa30-game-L3-f95a64-k058-p6",
+  "a007-wa30-game-L3-f95a64-k058-p7",
+  "a008-wa30-game-L3-f95a64-k058-p8",
+  "a009-wa30-game-L3-f95a64-k058-p9",
+  "a010-wa30-game-L3-f95a64-k058-p10",
+  "a011-wa30-game-L3-f95a64-k058-p11"
+ ],
+ "turn": {
+  "('~/arc-rl-data/rlmin/fixtures/g00158-wa30-L3', 'a000-wa30-game-L3-f95a64-k058-p0')": "cdf25f9f010173e0dba2e15dc4f60abf7a2026791920a701808943f71a88b4e8",
+  "('~/arc-rl-data/rlmin/fixtures/g00158-wa30-L3', 'a001-wa30-game-L3-f95a64-k058-p1')": "678326fadce4725d70edd379e8aa10cb1a4dbaf90ef277a2b4e2b3150e17b33e",
+  "('~/arc-rl-data/rlmin/fixtures/g00158-wa30-L3', 'a002-wa30-game-L3-f95a64-k058-p2')": "561e476fef752f30bf1559741875491a97d1def40bf0cdc0d57abec0231def95",
+  "('~/arc-rl-data/rlmin/fixtures/g00158-wa30-L3', 'a003-wa30-game-L3-f95a64-k058-p3')": "45517518fa992e8814c8a35cf0440014d5a95e70f9eadd210aa38498f712f03c",
+  "('~/arc-rl-data/rlmin/fixtures/g00158-wa30-L3', 'a004-wa30-game-L3-f95a64-k058-p4')": "178ebce041c823816fc915e9fca1873b5bbd6f40b77a92d17106212b71506b9b",
+  "('~/arc-rl-data/rlmin/fixtures/g00158-wa30-L3', 'a005-wa30-game-L3-f95a64-k058-p5')": "a02953abdb44550ae80723d8082a89bc624522dc4be98221c3c8956f2db17798",
+  "('~/arc-rl-data/rlmin/fixtures/g00158-wa30-L3', 'a006-wa30-game-L3-f95a64-k058-p6')": "cdbefd44f32209eb9a998126d97b98737ef3e6a73323e27b0653d1462ce5f2a9",
+  "('~/arc-rl-data/rlmin/fixtures/g00158-wa30-L3', 'a007-wa30-game-L3-f95a64-k058-p7')": "b353b1652a963f94e690faebb3c0e717571d26edb4865f4f483d97fa04b28e4d",
+  "('~/arc-rl-data/rlmin/fixtures/g00158-wa30-L3', 'a008-wa30-game-L3-f95a64-k058-p8')": "eb1dba3528256d9d7dbe44fc8ec026acf2e81a99412060f7bb4ee1ee368104e7",
+  "('~/arc-rl-data/rlmin/fixtures/g00158-wa30-L3', 'a009-wa30-game-L3-f95a64-k058-p9')": "4b210f29d5e4610f26425c04a0f0acc957d2e317c9afa4d8a45ee6a3fbd80d58",
+  "('~/arc-rl-data/rlmin/fixtures/g00158-wa30-L3', 'a010-wa30-game-L3-f95a64-k058-p10')": "7fb38b0d807e8fc67edd00a19b59f0a318b43bfac09f48319162491d7c1f112d",
+  "('~/arc-rl-data/rlmin/fixtures/g00158-wa30-L3', 'a011-wa30-game-L3-f95a64-k058-p11')": "411891c57728acfcf919b07a1968e4fe95d458afcbad022f71f6b417050ba65b"
+ }
+}

@@ -84,7 +84,7 @@ class RestartGuard:
         self.path = Path(state_root) / ".runops" / run_id / "attempts.json"
         self.commit_fn = commit
         self.ack = ack if ack is not None else os.environ.get("ARC_RESTART_ACK", "")
-        self.call_id = call_id if call_id is not None else (_call_id() or os.environ.get("ARC_LAUNCH_ID"))
+        self.call_id = call_id if call_id is not None else _call_id()
         self.beat_s, self.clock = beat_s, clock
         self.lock = threading.RLock()
         self.state = None
@@ -101,9 +101,10 @@ class RestartGuard:
                 except Exception as e:  # noqa: BLE001 - a commit failure must not kill the run
                     print(f"RUNOPS commit failed: {e!r}", flush=True)
 
-    def start(self, checkpoint_step=None):
+    def start(self, checkpoint_step=None, pending=False):
         """Record this attempt and decide. ``checkpoint_step``: the newest complete checkpoint's step (or a callable
-        returning it); None or 0 means none."""
+        returning it); None or 0 means none. ``pending``: no checkpoint, but the dead attempt saved its first update's
+        groups (rl_seq seq_pending.json of step 1): a preemption then resumes from them (real-v11, 28 Oct)."""
         if callable(checkpoint_step):
             checkpoint_step = checkpoint_step()
         now = self.clock()
@@ -126,7 +127,7 @@ class RestartGuard:
                             "alive_s": round(prev.get("last_beat", now) - prev.get("started", now)),
                             "since_beat_s": round(now - prev.get("last_beat", now)),
                             "mem_last": prev.get("mem_last"), "signal": prev.get("signal"),
-                            "checkpoint_step": checkpoint_step, "blocked": True, "ack": None}
+                            "checkpoint_step": checkpoint_step, "pending": bool(pending), "blocked": True, "ack": None}
                 incidents.append(incident)
             acked = []
             if self.ack and first_of_call:  # an agent relaunch that read the cause: record it on every open incident
@@ -144,12 +145,13 @@ class RestartGuard:
                     incident["why"] = "run policy 'stop' (no auto-resume)"
                 elif not incident["cause"].startswith("preemption"):
                     incident["why"] = f"cause '{incident['cause']}' is not a preemption"
-                elif not checkpoint_step:
-                    incident["why"] = "no checkpoint past step 0 (a resume would start over)"
+                elif not checkpoint_step and not pending:
+                    incident["why"] = "no checkpoint past step 0 and no saved pending groups (a resume would start over)"
                 elif resumes >= self.max_resumes:
                     incident["why"] = f"{resumes} auto-resumes already (max {self.max_resumes})"
                 else:
-                    incident.update(blocked=False, resumed=True, why="auto-resume: preemption with a checkpoint")
+                    incident.update(blocked=False, resumed=True, why="auto-resume: preemption with a checkpoint" if
+                                    checkpoint_step else "auto-resume: preemption with saved pending groups (step 0)")
             elif incident:
                 incident["why"] = "acked relaunch"
             open_ = [i for i in incidents if i["blocked"]]
@@ -199,13 +201,6 @@ class RestartGuard:
         elif prior == signal.SIG_DFL:
             signal.signal(signum, signal.SIG_DFL)
             os.kill(os.getpid(), signum)
-
-    def record_preemption(self, note="preflight stand-in"):
-        """A preflight's simulated preemption (it kills itself without a signal): record the signal evidence a real
-        preemption leaves, then exit."""
-        with self.lock:
-            self.me["signal"] = {"name": "SIGINT", "t": self.clock(), "note": note}
-            self._save()
 
     def watch(self):
         """Heartbeat thread plus SIGINT/SIGTERM recording (chained to the earlier handlers; main thread only)."""

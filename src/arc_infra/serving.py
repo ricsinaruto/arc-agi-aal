@@ -10,18 +10,8 @@ MODEL = "Qwen/Qwen3.8-Flash-Next-NVFP4"
 REVISION = "7b719225242aacd3dbd3f9407468c2ee9a9d2594"
 SOURCE_DATASET = "keithtyser/duck-qwen38-nvfp4-mtp-vllm-smoke-v1"
 RUNTIME_DATASET = "keithtyser/qwen38-flash-next-vllm-nvfp4-runtime-v1"
-MODEL_SOURCE = "keithtyser/qwen3-8-flash-next-nvfp4/PyTorch/radixark-modelopt-fp4/1"
-SETUP_SHA256 = "037c041c9bd9dcffa9084b32f47af9cf1bf35849d5eaf2e1a3422daac098b2e2"
+SETUP_SHA256 = "037c041c9bd9dcffa9084b32f47af9cf1bf35849d5eaf2e1a3422daac098b2e2"  # the PARENT script in the source dataset; never the fork's (serving_fork hashes that live)
 BASE_URL = "http://127.0.0.1:1234/v1"
-SERVER_CONTEXT = 32768
-# The pinned Duck script serves 32K; the corrected-Duck v4 test raises it to 64K. Duck v5c
-# (19 September) serves the ARC fork at the native 262,144 like R/B/C: vLLM's memory
-# profiling left only 6.09 GiB / 156,440 tokens at 64K against 8.46 GiB / 291,900 at 262K
-# ("Model loading took" 81.8 versus 79.42 GiB across every recent server), while the
-# agent keeps its 64K limit client-side. The fork only: the pinned script keeps its explicit
-# 5 GiB cache, which cannot back 262K requests.
-NATIVE_CONTEXT = 262144
-SUPPORTED_CONTEXTS = (32768, 65536, NATIVE_CONTEXT)
 SERVER_ENV = {
     "TAAF_KAGGLE_FAST_START": "1",
     "TAAF_VLLM_ENABLE_PREFIX_CACHING": "0",
@@ -63,13 +53,9 @@ def load_recipe(
     """
     if type(mtp_tokens) is not int or mtp_tokens not in (0, 1, 2, 3, 4):
         raise ValueError("Flash serving comparisons support MTP depth 1-4, or 0 (no MTP draft)")
-    # 26..32 (hero-v2, 29 September): more 64K windows than 25 fit a pruned pool; 32 is the pinned CUDA-graph capture
-    # size (SERVER_ENV), so every MTP-0 decode batch (one token per sequence) stays in the captured graphs.
-    # 33..48 (hero-v2 follow-ups, 29 September): up to 46 oversubscribed int4 focus streams + spare sequences; the
-    # study then raises the decode CUDA-graph capture size to cover them (server.max_cudagraph_capture_size).
-    # 65..96 (30 September): campaign arm blocks2-plans-prune50-int3, 76 streams + 4 spare sequences, graphs to 80.
-    if type(generation_slots) is not int or not (generation_slots in (8, 12, 16) or 25 <= generation_slots <= 96):
-        raise ValueError("Flash server capacity comparisons support 8, 12, 16 or 25..96 slots")
+    # up to 384 (27 Oct, real-v5b): 344 tries, 352 seqs, graphs to 1,152
+    if type(generation_slots) is not int or not (generation_slots in (8, 12, 16) or 25 <= generation_slots <= 384):
+        raise ValueError("Flash server capacity comparisons support 8, 12, 16 or 25..384 slots")
     if kv_cache_dtype not in ("auto", "fp8"):
         raise ValueError("Cache dtype must be auto or fp8")
     if type(max_num_batched_tokens) is not int or max_num_batched_tokens not in (4096, 8192):

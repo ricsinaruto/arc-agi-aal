@@ -1,2 +1,2 @@
-"""Shared run operations for training and play jobs (infra arm, 24 Oct): restart guard, host-memory guard, metrics
-exporter, checkpoint I/O and the watcher plan. Standard library only, so every bundle can import it."""
+"""Shared run operations (infra arm, 24 Oct): restart guard, host-memory sampling, launch configs and records, the
+multi-rank test harness and the CPU patch check. Standard library only, so every bundle can import it."""

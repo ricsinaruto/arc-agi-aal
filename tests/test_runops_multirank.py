@@ -43,7 +43,7 @@ def test_skipped_collective_is_a_named_failure_not_a_hang():
     with pytest.raises(RankFailure) as e:
         run_ranks(skips_when_empty, inputs=[[1], [2], []], timeout=5)
     f = e.value.failures
-    assert set(f) == {0, 1} and 2 not in f  # rank 2 returned; its peers timed out in all_reduce
+    assert set(f) == {0, 1} and 2 not in f, f  # rank 2 returned; its peers timed out in all_reduce
 
 
 def test_rank_error_is_reported_with_its_rank():

@@ -1,0 +1,140 @@
+{
+ "kinds": {
+  "seq_accumulate": 12,
+  "seq_boot": 1,
+  "seq_early_ahead": 3,
+  "seq_end": 1,
+  "seq_park": 4,
+  "seq_pending": 3,
+  "seq_phase": 3,
+  "seq_start": 1,
+  "seq_train": 3,
+  "seq_unpark": 3,
+  "step": 3
+ },
+ "log": [
+  "sleep",
+  "start_trainer",
+  "save",
+  "park",
+  "wake",
+  "load:policy:v0000",
+  "sleep",
+  "unpark",
+  "accumulate",
+  "accumulate",
+  "accumulate",
+  "accumulate",
+  "step",
+  "checkpoint",
+  "park",
+  "wake",
+  "load:policy:v0001",
+  "sleep",
+  "unpark",
+  "accumulate",
+  "accumulate",
+  "accumulate",
+  "accumulate",
+  "step",
+  "checkpoint",
+  "park",
+  "wake",
+  "load:policy:v0002",
+  "sleep",
+  "unpark",
+  "accumulate",
+  "accumulate",
+  "accumulate",
+  "accumulate",
+  "step",
+  "checkpoint",
+  "park",
+  "wake",
+  "load:policy:v0003"
+ ],
+ "steps": [
+  {
+   "kind": "seq_start",
+   "resumed": false,
+   "servers": [
+    "http://s0"
+   ],
+   "step": 0,
+   "streams": 50
+  },
+  {
+   "groups": 4,
+   "kind": "seq_train",
+   "step": 0
+  },
+  {
+   "actions_per_clear_vs_base": null,
+   "entropy": null,
+   "grad_norm": null,
+   "groups": 4,
+   "kind": "step",
+   "loss": null,
+   "lr": 1e-05,
+   "restore_dropped": 0,
+   "step": 1,
+   "torch_peak_gib": null,
+   "trained": 48,
+   "trained_tokens": 10,
+   "tries": 48,
+   "update_norm": null,
+   "version": 1
+  },
+  {
+   "groups": 4,
+   "kind": "seq_train",
+   "step": 1
+  },
+  {
+   "actions_per_clear_vs_base": null,
+   "entropy": null,
+   "grad_norm": null,
+   "groups": 4,
+   "kind": "step",
+   "loss": null,
+   "lr": 2e-05,
+   "restore_dropped": 0,
+   "step": 2,
+   "torch_peak_gib": null,
+   "trained": 48,
+   "trained_tokens": 10,
+   "tries": 48,
+   "update_norm": null,
+   "version": 2
+  },
+  {
+   "groups": 4,
+   "kind": "seq_train",
+   "step": 2
+  },
+  {
+   "actions_per_clear_vs_base": null,
+   "entropy": null,
+   "grad_norm": null,
+   "groups": 4,
+   "kind": "step",
+   "loss": null,
+   "lr": 3e-05,
+   "restore_dropped": 0,
+   "step": 3,
+   "torch_peak_gib": null,
+   "trained": 48,
+   "trained_tokens": 10,
+   "tries": 48,
+   "update_norm": null,
+   "version": 3
+  },
+  {
+   "kind": "seq_end",
+   "step": 3,
+   "version": 3,
+   "why": "max_steps"
+  }
+ ],
+ "why": "max_steps"
+}

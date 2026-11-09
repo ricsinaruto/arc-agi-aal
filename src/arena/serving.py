@@ -1,102 +1,55 @@
-"""Opt-in arena cache serving configuration; native/historical profiles stay unchanged."""
+"""The arena's vLLM server start: the pinned recipe with our boot patches, flags and checks (``python -m arena.serving``)."""
 import argparse
+import asyncio
 import json
 import os
-import sys
+import re
+import subprocess
 from pathlib import Path
 
-from arc_infra.dense_kernels_patch import apply as apply_dense_kernels
-from arc_infra.dense_kernels_patch import clear_compile_cache
-from arc_infra.dense_kernels_patch import validate as validate_dense_kernels
-from arc_infra.draft_head_patch import DUMP_DIR as DRAFT_DUMP_DIR
-from arc_infra.draft_head_patch import apply as apply_draft_head
-from arc_infra.draft_head_patch import server_flags as draft_head_flags
-from arc_infra.draft_head_patch import validate as validate_draft_head
-from arc_infra.expert_capture_patch import apply as apply_expert_capture
-from arc_infra.expert_probe_patch import apply as apply_expert_probe
-from arc_infra.expert_prune_patch import apply as apply_expert_prune
-from arc_infra.expert_prune_patch import kept_summary as expert_prune_kept
-from arc_infra.expert_prune_patch import load_mask as load_prune_mask
-from arc_infra.expert_prune_patch import validate as validate_expert_prune
+import httpx
+
+from arc_infra.served_route_patch import SERVER_FLAGS as served_route_flags, apply as apply_served_route
+from arc_infra import serving_fast_patch
+from arc_infra import expert_mask_patch
+from arc_infra.serving import BASE_URL, MODEL, load_recipe
+from arc_infra.serving_fork import FORK_SETUP, GPU_MEMORY_UTILIZATION, GPU_MEMORY_UTILIZATION_ENV  # noqa: F401
+from arc_infra.serving_fork import fork_identity, stage_fork_bundle
+from . import dry_boot
 from arc_infra.serving_kernels_patch import PLE_OFFLOAD_ENV, ple_target
 from arc_infra.serving_kernels_patch import apply as apply_serving_kernels
 from arc_infra.serving_kernels_patch import apply_ple as apply_serving_kernels_ple
 from arc_infra.serving_kernels_patch import server_environment as serving_kernel_environment
 from arc_infra.serving_kernels_patch import server_flags as serving_kernel_flags
 from arc_infra.serving_kernels_patch import validate as validate_serving_kernels
-from arc_infra.stack_kernels_patch import apply as apply_stack_kernels
-from arc_infra.stack_kernels_patch import validate as validate_stack_kernels
-from arc_infra.stall_dump_patch import apply as apply_stall_dump
-from arc_infra.stall_dump_patch import validate as validate_stall_dump
 
-from . import expert_overlay as expert_overlay_module
+from . import runtime_cache
 from .cache import BlockBudget
 from .cache_patch import apply
 from .cache_reclamation import apply as apply_reclamation
 from .compatibility import validate_settings
 from .prefix_cache_patch import apply as apply_prefix_cache
 from .prefix_cache_patch import validate as validate_prefix_cache
-from .serving_core.serving import start
-
-SPECULATIVE_METHODS = ('ngram_gpu',)  # the pinned script's --async-scheduling rejects the CPU `ngram` proposer
 
 
-def validate_speculative(speculative):
-    """An n-gram (prompt-lookup) speculative config that replaces the pinned script's MTP draft.
+def clear_compile_cache(cache_root):
+    """Remove vLLM's torch.compile / AOT cache under ``cache_root`` (the serving XDG cache): its key does not see a
+    changed quant method or expert layout, so a graph an earlier server left in this container would be reused."""
+    import shutil
 
-    The script emits its own ``--speculative-config`` only for MTP depth > 0, so a study that
-    asks for n-gram speculation launches with MTP depth 0 and the arena appends this config.
-    """
-    if not isinstance(speculative, dict) or set(speculative) != {
-            'method', 'num_speculative_tokens', 'prompt_lookup_max', 'prompt_lookup_min'}:
-        raise ValueError('Speculative config needs method, num_speculative_tokens, prompt_lookup_max, prompt_lookup_min')
-    if speculative['method'] not in SPECULATIVE_METHODS:
-        raise ValueError(f'Pinned vLLM async scheduling supports only {SPECULATIVE_METHODS} n-gram speculation')
-    tokens, high, low = (speculative[k] for k in ('num_speculative_tokens', 'prompt_lookup_max', 'prompt_lookup_min'))
-    if any(type(v) is not int for v in (tokens, high, low)) or not 1 <= tokens <= 8 or not 1 <= low <= high <= 16:
-        raise ValueError('Speculative draft length must be 1..8 and 1 <= prompt_lookup_min <= prompt_lookup_max <= 16')
-    return dict(speculative)
+    removed = []
+    for path in (Path(cache_root) / 'vllm' / 'torch_compile_cache',):
+        if path.exists():
+            shutil.rmtree(path)
+            removed.append(str(path))
+    return removed
 
 
-SCHEDULING_POLICIES = ('priority',)  # vLLM's default is fcfs; only an explicit change is appended
-
-
-def profiler_config(directory):
-    """Torch profiler, created lazily by vLLM on the first /start_profile (no cost until then).
-
-    Skips three steps after the start (the uncached tail of a warmed prefix) and stops itself after
-    40 decode iterations; no Python stacks, no front-end (AsyncLLM) profile.
-    """
-    return {'profiler': 'torch', 'torch_profiler_dir': str(directory), 'ignore_frontend': True,
-            'delay_iterations': 3, 'max_iterations': 40, 'torch_profiler_with_stack': False,
-            'torch_profiler_use_gzip': True}
-
-
-# Serving lab (27 September): server knobs a trial's server_env may change without a new bundle.
-# load_recipe resets the TAAF_VLLM_* equivalents from start()'s arguments, so they travel separately.
-# ARENA_DENSE_KERNELS (kernel work, phase 2): "off" serves the pinned runtime whatever the study's
-# server.dense_kernels says (the kernel gate's control reference); a JSON object replaces it.
-# ARENA_SERVING_KERNELS (kernel work, phase 4): the same for server.serving_kernels.
-# ARENA_STACK_KERNELS (kernel work, phase 5): the same for server.stack_kernels.
-# ARENA_EXPERT_OVERLAY (expert quantization, 28 September): "off" or the JSON of server.expert_overlay.
-# Expert-usage diagnostics (28 September): ARENA_EXPERT_PROBE ("0"/"1") replaces server.expert_probe;
-# ARENA_ENFORCE_EAGER=1 adds --enforce-eager (no torch.compile, no CUDA graphs); ARENA_READY_GUARD="<after
-# capture>,<total>" seconds makes the start fail fast when the engine never becomes ready (a hung warm-up).
-# ARENA_PREFIX_CACHE (prefix cache v2, 29 September): "off" or the JSON of cache_experiment.prefix_cache.
-# ARENA_PROMPT_TOKENS_DETAILS=1 adds --enable-prompt-tokens-details (exact per-request cached tokens in usage).
-# ARENA_PREFIX_MATCH_UNIT=N (hero-v2 precheck, 29 September) adds --prefix-match-unit N: prefix-cache keys every N
-# tokens instead of the gcd of the prefix-cacheable groups' blocks (1,600 on the hero), which turns on the pinned
-# runtime's partial-tail entry at a prompt's last N-token boundary (docs/validation-20260927/hero-v2-precheck.md).
-LAB_ENV = ('ARENA_KV_CACHE_DTYPE', 'ARENA_MTP_TOKENS', 'ARENA_MAX_CUDAGRAPH_CAPTURE_SIZE', 'ARENA_PREFIX_CACHING',
-           'ARENA_TORCH_PROFILER', 'ARENA_DENSE_KERNELS', 'ARENA_SERVING_KERNELS', 'ARENA_STACK_KERNELS',
-           'ARENA_EXPERT_OVERLAY', 'ARENA_EXPERT_PROBE', 'ARENA_ENFORCE_EAGER', 'ARENA_READY_GUARD',
-           'ARENA_EXPERT_PRUNE', 'ARENA_STALL_DUMP', 'ARENA_PREFIX_CACHE', 'ARENA_PROMPT_TOKENS_DETAILS',
-           'ARENA_PREFIX_MATCH_UNIT', 'ARENA_WARM_PROMPT_LOGPROBS', 'ARENA_SETUP_TIMEOUTS')
-# ARENA_SETUP_TIMEOUTS="<server ready>,<setup total>" (competition int3 builds, 30 September): raises the pinned recipe's
-# SERVER_READY_TIMEOUT (1,500 s) and SETUP_TOTAL_TIMEOUT (1,800 s), module globals read when main() runs; Kaggle's slow
-# weight load plus Humming's kernel build can pass 1,800 s. Only raises (never lowers) them.
-# A unit must divide the hero's 1,600-token attention/Mamba blocks and be a multiple of the QSA compressor's 4-token
-# group (the pinned CSA+linear check: a hit never lands inside a partially filled compressor state).
+# Server knobs a trial's server_env may change without a new bundle (``lab_overrides``): ARENA_READY_GUARD="<after
+# capture>,<total>" s (fail fast on a hung warm-up), ARENA_SETUP_TIMEOUTS="<server ready>,<setup total>" s (raises the
+# pinned recipe's 1,500 / 1,800 s), ARENA_PROMPT_TOKENS_DETAILS=1 (--enable-prompt-tokens-details). A prefix-match unit
+# (--prefix-match-unit: prefix-cache keys every N tokens) divides the 1,600-token blocks and is a multiple of the QSA
+# compressor's 4-token group.
 PREFIX_MATCH_UNITS = (16, 32, 64, 160, 320, 400, 800)
 
 
@@ -104,6 +57,8 @@ def ready_guard(recipe, after_capture, total):
     """``recipe.wait_for_server`` that also gives up ``after_capture`` s after CUDA-graph capture or ``total`` s
     after launch (the pinned wait allows 1,500 s; two expert-usage runs hung after capture)."""
     import time
+
+    expected = [recipe.SERVED_MODEL_NAME]
 
     def wait(identity, setup_deadline):
         started = time.monotonic()
@@ -115,7 +70,7 @@ def ready_guard(recipe, after_capture, total):
             try:
                 models = recipe.request_json(f"{recipe.BASE_URL}/models", timeout=10)
                 ids = [row.get("id") for row in (models.get("data") or []) if isinstance(row, dict)]
-                if ids == [recipe.SERVED_MODEL_NAME]:
+                if ids == expected:
                     return {"models": models, "ready_seconds": time.monotonic() - started}
             except Exception:  # noqa: BLE001 - not ready yet
                 pass
@@ -131,13 +86,17 @@ def ready_guard(recipe, after_capture, total):
     return wait
 
 
+GRAPH_CAPTURE_MAX = 1152  # 1152 (27 Oct): real-v5b 352 seqs x MTP 3.  MFU-2 tput6 (23 Oct): capture to 1024 cut the unprofiled step 52.0 -> 42.3 ms
+
+
 def validate_graph_capture_sizes(sizes, graph_capture_size):
-    """An explicit CUDA-graph capture list: strictly increasing integers in 1..256 whose largest is the capture size."""
+    """An explicit CUDA-graph capture list: strictly increasing integers in 1..GRAPH_CAPTURE_MAX whose largest is the
+    capture size."""
     if sizes is None:
         return None
-    if (not isinstance(sizes, list) or not sizes or any(type(v) is not int or not 1 <= v <= 256 for v in sizes)
+    if (not isinstance(sizes, list) or not sizes or any(type(v) is not int or not 1 <= v <= GRAPH_CAPTURE_MAX for v in sizes)
             or sizes != sorted(set(sizes))):
-        raise ValueError('cudagraph_capture_sizes must be strictly increasing integers in 1..256')
+        raise ValueError(f'cudagraph_capture_sizes must be strictly increasing integers in 1..{GRAPH_CAPTURE_MAX}')
     if graph_capture_size is None or sizes[-1] != graph_capture_size:
         raise ValueError('The largest capture size must equal max_cudagraph_capture_size')
     return list(sizes)
@@ -147,38 +106,6 @@ def lab_overrides(environ=None):
     """Parse the serving-lab overrides; unknown values fail before the server starts."""
     environ = os.environ if environ is None else environ
     result = {}
-    if environ.get('ARENA_KV_CACHE_DTYPE'):
-        # bfloat16: a candidate's explicit BF16 KV (the Holo4 drift reference); the Flash recipe takes auto or fp8.
-        if environ['ARENA_KV_CACHE_DTYPE'] not in ('auto', 'fp8', 'bfloat16'):
-            raise ValueError('ARENA_KV_CACHE_DTYPE must be auto, fp8 or bfloat16')
-        result['kv_cache_dtype'] = environ['ARENA_KV_CACHE_DTYPE']
-    if environ.get('ARENA_MTP_TOKENS'):
-        result['mtp_tokens'] = int(environ['ARENA_MTP_TOKENS'])
-    if environ.get('ARENA_MAX_CUDAGRAPH_CAPTURE_SIZE'):
-        result['graph_capture_size'] = int(environ['ARENA_MAX_CUDAGRAPH_CAPTURE_SIZE'])
-    if environ.get('ARENA_CUDAGRAPH_CAPTURE_SIZES'):
-        # Decode sweep (30 September): an explicit capture list, "default" = vLLM's own ladder.
-        value = environ['ARENA_CUDAGRAPH_CAPTURE_SIZES']
-        result['graph_capture_sizes'] = None if value == 'default' else [int(v) for v in value.split(',')]
-    if environ.get('ARENA_PREFIX_CACHING'):
-        if environ['ARENA_PREFIX_CACHING'] not in ('0', '1'):
-            raise ValueError('ARENA_PREFIX_CACHING must be 0 or 1')
-        result['prefix_caching'] = environ['ARENA_PREFIX_CACHING'] == '1'
-    if environ.get('ARENA_TORCH_PROFILER'):
-        if environ['ARENA_TORCH_PROFILER'] != '1':
-            raise ValueError('ARENA_TORCH_PROFILER must be 1 when set')
-        result['torch_profiler'] = True
-    if environ.get('ARENA_DENSE_KERNELS'):
-        value = environ['ARENA_DENSE_KERNELS']
-        result['dense_kernels'] = None if value == 'off' else validate_dense_kernels(json.loads(value))
-    if environ.get('ARENA_SERVING_KERNELS'):
-        value = environ['ARENA_SERVING_KERNELS']
-        result['serving_kernels'] = None if value == 'off' else validate_serving_kernels(json.loads(value))
-    for key, name in (('ARENA_EXPERT_PROBE', 'expert_probe'), ('ARENA_ENFORCE_EAGER', 'enforce_eager')):
-        if environ.get(key):
-            if environ[key] not in ('0', '1'):
-                raise ValueError(f'{key} must be 0 or 1')
-            result[name] = environ[key] == '1'
     if environ.get('ARENA_READY_GUARD'):
         after, total = (int(v) for v in environ['ARENA_READY_GUARD'].split(','))
         if not 60 <= after <= total <= 3600:
@@ -190,59 +117,87 @@ def lab_overrides(environ=None):
             raise ValueError('ARENA_SETUP_TIMEOUTS is "<server ready>,<setup total>" seconds, 1500 <= ready <= total '
                              '<= 7200, total >= 1800')
         result['setup_timeouts'] = (ready, total)
-    if environ.get('ARENA_STACK_KERNELS'):
-        value = environ['ARENA_STACK_KERNELS']
-        result['stack_kernels'] = None if value == 'off' else validate_stack_kernels(json.loads(value))
-    result.update(expert_overlay_module.lab_override(environ))
-    if environ.get('ARENA_EXPERT_PRUNE'):
-        # Load-time expert pruning: "off" or the JSON of server.expert_prune (a bundle-relative mask and its sha256).
-        value = environ['ARENA_EXPERT_PRUNE']
-        result['expert_prune'] = None if value == 'off' else validate_expert_prune(json.loads(value))
-    if environ.get('ARENA_STALL_DUMP'):
-        # Diagnostics: all-thread stack dumps in the pruned worker when one step runs this many seconds (a one-shot
-        # timer per step, below vLLM's 300 s execute-model timeout; with server.expert_prune).
-        seconds = int(environ['ARENA_STALL_DUMP'])
-        if not STALL_DUMP_RANGE[0] <= seconds <= STALL_DUMP_RANGE[1]:
-            raise ValueError(f'ARENA_STALL_DUMP is {STALL_DUMP_RANGE[0]}..{STALL_DUMP_RANGE[1]} seconds')
-        result['stall_dump_seconds'] = seconds
-    if environ.get('ARENA_PREFIX_CACHE'):
-        value = environ['ARENA_PREFIX_CACHE']
-        result['prefix_cache'] = None if value == 'off' else validate_prefix_cache(json.loads(value))
     if environ.get('ARENA_PROMPT_TOKENS_DETAILS'):
         if environ['ARENA_PROMPT_TOKENS_DETAILS'] not in ('0', '1'):
             raise ValueError('ARENA_PROMPT_TOKENS_DETAILS must be 0 or 1')
         result['prompt_tokens_details'] = environ['ARENA_PROMPT_TOKENS_DETAILS'] == '1'
-    if environ.get('ARENA_PREFIX_MATCH_UNIT'):
-        unit = int(environ['ARENA_PREFIX_MATCH_UNIT'])
-        if unit not in PREFIX_MATCH_UNITS:
-            raise ValueError(f'ARENA_PREFIX_MATCH_UNIT must be one of {PREFIX_MATCH_UNITS}')
-        result['prefix_match_unit'] = unit
-    if environ.get('ARENA_WARM_PROMPT_LOGPROBS'):
-        # prefix-unit-int4 (29 September): teacher forcing on warm requests (arena.prompt_logprobs_patch).
-        if environ['ARENA_WARM_PROMPT_LOGPROBS'] not in ('0', '1'):
-            raise ValueError('ARENA_WARM_PROMPT_LOGPROBS must be 0 or 1')
-        result['warm_prompt_logprobs'] = environ['ARENA_WARM_PROMPT_LOGPROBS'] == '1'
     return result
 
 
+LORA_DEFAULTS = {'max_rank': 32, 'max_loras': 1, 'max_cpu_loras': 2, 'moe_backend': 'marlin', 'sleep_mode': True,
+                 'ple_queue_wait': None,  # removed (rl-min): null only
+                 'mtp': False}  # True: keep the MTP draft beside the adapter (the draft has no adapter; 25 Oct check)
+
+
+def validate_lora(lora):
+    """RL step 1 (13 Oct): an unmerged adapter on the served checkpoint. ``max_rank`` (vLLM's ranks), adapter slots,
+    the MoE kernel that carries expert LoRA for NVFP4 (Marlin), sleep mode for the same-card trainer."""
+    if lora is None:
+        return None
+    if not isinstance(lora, dict) or set(lora) - set(LORA_DEFAULTS):
+        raise ValueError(f'lora is a dict over {sorted(LORA_DEFAULTS)}')
+    merged = {**LORA_DEFAULTS, **lora}
+    if merged['max_rank'] not in (8, 16, 32, 64, 128, 256):
+        raise ValueError('lora.max_rank is one of vLLM\'s ranks (8..256)')
+    if type(merged['max_loras']) is not int or not 1 <= merged['max_loras'] <= 8 or type(
+            merged['max_cpu_loras']) is not int or merged['max_cpu_loras'] < merged['max_loras']:
+        raise ValueError('lora.max_loras is 1..8 and max_cpu_loras at least that')  # 8: joint reads (21 Oct)
+    if merged['moe_backend'] not in ('marlin', 'triton') or type(merged['sleep_mode']) is not bool:
+        raise ValueError('lora.moe_backend is marlin or triton; lora.sleep_mode is boolean')
+    if merged['ple_queue_wait'] is not None:
+        raise ValueError('lora.ple_queue_wait is gone (rl-min): null only')
+    if type(merged['mtp']) is not bool:
+        raise ValueError('lora.mtp is boolean')
+    return merged
+
+
+def lora_flags(argv, lora):
+    """The serving command with LoRA on: the MoE backend replaced (the pinned one has no LoRA path), the adapter
+    flags, the mixed MoE LoRA format (PEFT 3D expert adapters), sleep mode; no draft model (the MTP head has no
+    adapter)."""
+    argv = list(argv)
+    if '--speculative-config' in argv and not lora.get('mtp'):
+        raise ValueError('LoRA serving runs without MTP: launch with mtp_tokens 0 (or lora.mtp true)')
+    if '--moe-backend' in argv:
+        argv[argv.index('--moe-backend') + 1] = lora['moe_backend']
+    else:
+        argv.extend(['--moe-backend', lora['moe_backend']])
+    for flag in ('--enable-lora', '--max-lora-rank', '--max-loras', '--enable-sleep-mode'):
+        if flag in argv:
+            raise ValueError(f'The pinned serving command already sets {flag}')
+    argv.extend(['--enable-lora', '--max-lora-rank', str(lora['max_rank']), '--max-loras', str(lora['max_loras']),
+                 '--max-cpu-loras', str(lora['max_cpu_loras']), '--enable-mixed-moe-lora-format'])
+    if lora['sleep_mode']:
+        argv.append('--enable-sleep-mode')
+    return argv
+
+
+def lora_environment(env):
+    """Runtime adapter loading, the localhost dev endpoints (sleep, wake), and the build arch of the card in use
+    (the recipe pins 12.0, the RTX PRO 6000)."""
+    env = dict(env)
+    env.update(VLLM_SERVER_DEV_MODE='1', VLLM_ALLOW_RUNTIME_LORA_UPDATING='True')
+    try:
+        cap = subprocess.run(['nvidia-smi', '--query-gpu=compute_cap', '--format=csv,noheader'], capture_output=True,
+                             text=True, timeout=30).stdout.split()[0]
+        env['TORCH_CUDA_ARCH_LIST'] = cap.split('.')[0] + '.0'
+    except (OSError, IndexError, subprocess.SubprocessError):
+        pass
+    return env
+
+
 def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_skipped_blocks=False,
-              graph_metrics=False, speculative=None, scheduling_policy=None, torch_profiler=False,
-              dense_kernels=None, serving_kernels=None, draft_head=None, stack_kernels=None, expert_capture=False,
-              expert_overlay=None, input_root='/kaggle/input', expert_probe=False, enforce_eager=False,
-              ready_guard_seconds=None, expert_prune=None, expert_prune_sha256=None, prefix_cache=None, prompt_tokens_details=False,
-              stall_dump_seconds=None, prefix_match_unit=None, warm_prompt_logprobs=False, research_checkpoint=None,
+              serving_kernels=None, ready_guard_seconds=None, prefix_cache=None, prompt_tokens_details=False,
+              prefix_match_unit=None,
               graph_capture_sizes=None, setup_timeouts=None, renderer_num_workers=None,
-              mm_processor_cache_gb=None):
-    if research_checkpoint is not None and (expert_overlay is not None or expert_prune is not None):
-        raise ValueError('A research checkpoint cannot use the base Flash expert overlay or pruning mask')
-    if type(warm_prompt_logprobs) is not bool:
-        raise ValueError('warm_prompt_logprobs must be boolean')
+              mm_processor_cache_gb=None, lora=None, served_route=None, serving_fast=None, expert_mask=None):
+    if dry_boot.enabled():  # CPU dry boot (arena.dry_boot): GPU inventory and the engine start are stand-ins
+        dry_boot.install(recipe, working)
+    lora = validate_lora(lora)
+    serving_fast = serving_fast_patch.validate(serving_fast)
+    if served_route is not None and (type(served_route) is not str or not served_route.startswith('/')):
+        raise ValueError('served_route is an absolute directory')
     prefix_cache = validate_prefix_cache(prefix_cache)
-    # Stall-only worker dump without pruning (arc_infra.stall_dump_patch; a pruned server carries it on its mask).
-    stall_dump_seconds = validate_stall_dump(stall_dump_seconds)
-    if stall_dump_seconds is not None and expert_prune is not None:
-        raise ValueError('A pruned server carries the stall dump on its mask (with_stall_dump), not the standalone '
-                         'overlay: both patch base_loader.py')
     if type(prompt_tokens_details) is not bool:
         raise ValueError('prompt_tokens_details must be boolean')
     if prefix_match_unit is not None and prefix_match_unit not in PREFIX_MATCH_UNITS:
@@ -250,66 +205,49 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
     if renderer_num_workers is not None and (type(renderer_num_workers) is not int or not 1 <= renderer_num_workers <= 16):
         raise ValueError('renderer_num_workers is an integer 1..16')
     if mm_processor_cache_gb is not None and (type(mm_processor_cache_gb) not in (int, float)
-                                              or not 0 <= mm_processor_cache_gb <= 4):
-        raise ValueError('mm_processor_cache_gb is a number of GiB in 0..4 (vLLM default 4)')
-    dense_kernels = validate_dense_kernels(dense_kernels)
-    draft_head = validate_draft_head(draft_head)
-    expert_overlay = expert_overlay_module.validate(expert_overlay)
-    if type(expert_capture) is not bool:
-        raise ValueError('expert_capture must be boolean')
-    if type(expert_probe) is not bool or type(enforce_eager) is not bool:
-        raise ValueError('expert_probe and enforce_eager must be boolean')
-    if expert_prune is not None and (not isinstance(expert_prune, dict) or 'pruned' not in expert_prune):
-        raise ValueError('expert_prune is a loaded mask (arena.serving.bundle_expert_prune)')
-    if expert_probe and expert_capture:
-        raise ValueError('expert_probe and expert_capture patch the same pinned MoE runner')
+                                              or not 0 <= mm_processor_cache_gb <= 32):
+        raise ValueError('mm_processor_cache_gb is a number of GiB in 0..32 (vLLM default 4)')
+    if expert_mask is not None and not (isinstance(expert_mask, tuple) and len(expert_mask) == 2):
+        raise ValueError('expert_mask is (mask path, sha256) (arena.serving.bundle_expert_mask)')
+    if setup_timeouts is not None:
+        # Before recipe.main(): wait_for_server's deadline and main()'s setup deadline read these globals.
+        recipe.SERVER_READY_TIMEOUT, recipe.SETUP_TOTAL_TIMEOUT = (int(v) for v in setup_timeouts)
     if ready_guard_seconds is not None:
         recipe.wait_for_server = ready_guard(recipe, *ready_guard_seconds)
-    if setup_timeouts is not None:
-        # Before recipe.main(): wait_for_server's deadline, main()'s setup deadline and its SIGALRM read these globals.
-        recipe.SERVER_READY_TIMEOUT, recipe.SETUP_TOTAL_TIMEOUT = (int(v) for v in setup_timeouts)
     serving_kernels = validate_serving_kernels(serving_kernels)
-    stack_kernels = validate_stack_kernels(stack_kernels)
-    if type(torch_profiler) is not bool:
-        raise ValueError('torch_profiler must be boolean')
-    if scheduling_policy is not None and scheduling_policy not in SCHEDULING_POLICIES:
-        raise ValueError(f'Arena scheduling policy must be one of {SCHEDULING_POLICIES}')
-    if type(graph_metrics) is not bool:
-        raise ValueError('CUDA graph metrics must be boolean')
-    if speculative is not None:
-        speculative = validate_speculative(speculative)
     if type(reclaim_skipped_blocks) is not bool:
         raise ValueError('reclaim_skipped_blocks must be boolean')
-    if type(cpu_gib) is not int or not 0 <= cpu_gib <= 32:
-        raise ValueError('Arena CPU cache must be 0..32 GiB')
+    cpu_gib = int(os.environ.get('ARENA_CPU_CACHE_GIB', cpu_gib))  # per-trial override (RL hero, 24 Oct)
+    if type(cpu_gib) is not int or not 0 <= cpu_gib <= 192:  # B300 host: ~500 GiB free beside the trainer's park
+        raise ValueError('Arena CPU cache must be 0..192 GiB')
     if graph_capture_size is not None:
-        if type(graph_capture_size) is not int or not 1 <= graph_capture_size <= 256:
-            raise ValueError('Arena CUDA graph capture size must be an integer in 1..256')
+        if type(graph_capture_size) is not int or not 1 <= graph_capture_size <= GRAPH_CAPTURE_MAX:
+            raise ValueError(f'Arena CUDA graph capture size must be an integer in 1..{GRAPH_CAPTURE_MAX}')
         os.environ[recipe.MAX_CUDAGRAPH_CAPTURE_SIZE_ENV] = str(graph_capture_size)
     graph_capture_sizes = validate_graph_capture_sizes(graph_capture_sizes, graph_capture_size)
     os.environ["VLLM_SERVER_DEV_MODE"] = "1"  # localhost-only cache reset after serving probes
     extract = recipe.verify_and_extract_runtime
 
     def wrapped_extract(*args, **kwargs):
-        result = extract(*args, **kwargs)
-        apply(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working)
+        cached = os.environ.get(runtime_cache.ENV)  # MFU-2 boot item: the extracted tree from the volume
+        result = runtime_cache.restore(recipe, cached, args, kwargs) if cached else None
+        if result is None:
+            result = extract(*args, **kwargs)
+        if dry_boot.enabled():
+            dry_boot.mark(working)
+        if cpu_gib:  # the hybrid-cache offloading connector (arc_infra.arc_offload_runtime, throughput arm L1)
+            target = recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages/vllm/arc_offload.py'
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes((Path(__file__).parents[1] / 'arc_infra/arc_offload_runtime.py').read_bytes())
+            target.with_name('arc_routed_offload.py').write_bytes(  # R3 rows through the host tier (served_route)
+                (Path(__file__).parents[1] / 'arc_infra/arc_routed_offload.py').read_bytes())
+        apply(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working,
+              **({'state_cotenant': True} if prefix_cache and prefix_cache.get('state_cotenant') else {}))
         if reclaim_skipped_blocks:
             apply_reclamation(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working)
         if prefix_cache is not None:
             # Prefix cache v2 (29 September): after the reclamation patch, which edits the same manager file.
             apply_prefix_cache(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working, prefix_cache)
-        if warm_prompt_logprobs:
-            from .prompt_logprobs_patch import apply as apply_prompt_logprobs
-
-            apply_prompt_logprobs(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working)
-        if dense_kernels is not None:
-            # Kernel work, phase 2: the overlay changes the quant methods, which vLLM's AOT compile cache
-            # key does not see; drop any compiled graph an earlier (control) server left in this container.
-            cleared = clear_compile_cache(recipe.CACHE_ROOT)
-            identity = apply_dense_kernels(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working,
-                                           dense_kernels)
-            (Path(working) / 'dense-kernels-start.json').write_text(json.dumps(
-                {'identity': identity, 'cleared_compile_cache': cleared}, indent=2))
         if serving_kernels is not None:
             # Kernel work, phase 4: the HC fusion and the draft quant method change the compiled graph as well.
             cleared = clear_compile_cache(recipe.CACHE_ROOT)
@@ -317,55 +255,39 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
                                              serving_kernels)
             (Path(working) / 'serving-kernels-start.json').write_text(json.dumps(
                 {'identity': identity, 'cleared_compile_cache': cleared}, indent=2))
-        if stack_kernels is not None:
-            # Kernel work, phase 5: attention-metadata host code only (outside the compiled graph).
-            identity = apply_stack_kernels(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working,
-                                           stack_kernels)
-            (Path(working) / 'stack-kernels-start.json').write_text(json.dumps({'identity': identity}, indent=2))
-        if draft_head is not None:
-            # Draft-head fine-tune (28 September): hidden-state dumps (eager) and/or a fine-tuned MTP head;
-            # applied after the serving-kernels overlay, which may also have edited mtp.py.
-            if draft_head['dump']:
-                os.makedirs(DRAFT_DUMP_DIR, exist_ok=True)
-            identity = apply_draft_head(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working,
-                                        draft_head)
-            (Path(working) / 'draft-head-start.json').write_text(json.dumps({'identity': identity}, indent=2))
-        if expert_capture:
-            # Expert quantization (28 September): MoE input rows and the served routing, captured inside the MoE
-            # custom op (opaque to torch.compile) when switched on through /collective_rpc.
-            apply_expert_capture(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working)
-        if expert_probe:
-            # Expert-usage measurement (28 September): routing statistics and a router mask inside the MoE
-            # custom op (opaque to torch.compile), switched through /collective_rpc.
-            apply_expert_probe(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working)
-        if expert_prune is not None:
-            # Load-time expert pruning (28 September): the model is built with fewer experts, so any compiled graph an
-            # earlier server left in this container has the wrong shapes.
-            cleared = clear_compile_cache(recipe.CACHE_ROOT)
-            identity = apply_expert_prune(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working,
-                                          expert_prune)
-            (Path(working) / 'expert-prune-start.json').write_text(json.dumps(
+        if served_route is not None:
+            # R3: each finished request's served top-k experts per layer, written under served_route.
+            # With the host KV tier (cpu_gib) the routed rows travel with its chunks (arc_routed_offload).
+            apply_served_route(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working, served_route,
+                               offload=bool(cpu_gib))
+        if serving_fast is not None and any(serving_fast.values()):
+            # MFU-2 (22 Oct): API front-end overlays (sampled-only logprob text, decoded-image cache); replies unchanged.
+            serving_fast_patch.apply(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working,
+                                     serving_fast)
+        if expert_mask is not None:
+            # Hero run (23 Oct): the pruned model as a router-logit mask; expert ids, LoRA and served routes unchanged.
+            # Compact mode (MFU-2) allocates only kept experts: a compile cache from an uncompacted start is cleared.
+            cleared = clear_compile_cache(recipe.CACHE_ROOT) if os.environ.get(expert_mask_patch.COMPACT_ENV) == '1' else []
+            identity = expert_mask_patch.apply(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working,
+                                               *expert_mask)
+            (Path(working) / 'expert-mask-start.json').write_text(json.dumps(
                 {'identity': identity, 'cleared_compile_cache': cleared}, indent=2))
-        if stall_dump_seconds is not None:
-            # Diagnostics only (no pruning): the loader arms the one-shot per-step dump on the worker class.
-            identity = apply_stall_dump(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working,
-                                        stall_dump_seconds)
-            (Path(working) / 'stall-dump-start.json').write_text(json.dumps({'identity': identity}, indent=2))
         return result
 
     recipe.verify_and_extract_runtime = wrapped_extract
     environment = getattr(recipe, 'runtime_environment', None)
     ple_uva = serving_kernels is not None and ple_target(serving_kernels) is not None
-    kv8 = serving_kernels is not None and bool(serving_kernels.get('kv_cache_8bit'))
     if ple_uva and environment is None:
         raise ValueError('ple_uva needs the recipe runtime_environment')
-    if environment is not None and (ple_uva or kv8):
+    if environment is not None and (ple_uva or lora is not None):
         # Serving tweaks (ple_uva): the PLE overlay patches the file the recipe's own PLE patch writes, after the
         # recipe's last check of that file (runtime_environment verifies VLLM_PLE_PATCHED_SHA256; smoke v2 failed
         # when the overlay ran right after patch_ple_layer), and the server runs without the PLE offload process.
         # 8-bit KV smoke: the serving bench runs the QSA microbenchmark in the server's own runtime environment.
         def wrapped_environment(*args, **kwargs):
             env, check = environment(*args, **kwargs)
+            if lora is not None:
+                env, check = lora_environment(env), {**check, 'lora_environment': True}
             if ple_uva:
                 identity = apply_serving_kernels_ple(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages',
                                                      working, serving_kernels)
@@ -373,37 +295,21 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
                     json.dumps({'identity': identity}, indent=2))
                 env = serving_kernel_environment(serving_kernels, env)
                 check = {**check, 'serving_kernels_environment': {PLE_OFFLOAD_ENV: '0'}}
-            if kv8:
-                from .kv8_checks import record_runtime_env
-
-                record_runtime_env(working, sys.executable, env)
             return env, check
 
         recipe.runtime_environment = wrapped_environment
     command = recipe.server_command
-    overlays = {}  # base model path -> materialised expert-overlay path (one check per server start)
 
     def wrapped_command(*args, **kwargs):
         argv = command(*args, **kwargs)
-        if graph_metrics:
-            if '--disable-log-stats' in argv:
-                raise ValueError('CUDA graph metrics require enabled log stats')
-            argv.append('--cudagraph-metrics')
         if cpu_gib:
             argv.extend(['--kv-transfer-config', json.dumps({
-                'kv_connector': 'OffloadingConnector', 'kv_role': 'kv_both',
-                'kv_connector_extra_config': {'cpu_bytes_to_use': cpu_gib * 1024**3},
+                'kv_connector': 'ArcOffloadingConnector', 'kv_connector_module_path': 'vllm.arc_offload',
+                'kv_role': 'kv_both',
+                'kv_connector_extra_config': {'cpu_bytes_to_use': cpu_gib * 1024**3, 'offload_prompt_only': False,
+                                              # R3 rows through the host tier: bound/refused status for the arena
+                                              **({'arc_routed_status_dir': str(working)} if served_route else {})},
             }), '--no-disable-hybrid-kv-cache-manager'])
-        if speculative is not None:
-            if '--speculative-config' in argv:
-                raise ValueError('n-gram speculation replaces the MTP draft: launch with MTP depth 0')
-            argv.extend(['--speculative-config', json.dumps(speculative, separators=(',', ':'))])
-        if scheduling_policy is not None:
-            # fixed-2x-commit: lane requests carry priority 1 and yield to focus requests (priority 0)
-            # when vLLM must preempt. Recorded in vllm-server-identity.json (argv) and the server log.
-            if '--scheduling-policy' in argv:
-                raise ValueError('The pinned serving command already sets a scheduling policy')
-            argv.extend(['--scheduling-policy', scheduling_policy])
         if serving_kernels is not None:
             spec_tokens = 0
             if '--speculative-config' in argv:  # the draft length sizes the 4-bit block (kv4_block_tokens)
@@ -413,34 +319,10 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
                 if name in argv:
                     raise ValueError(f'The pinned serving command already sets {name}')
                 argv.extend([name, value])
-        if draft_head is not None:
-            for flag in draft_head_flags(draft_head):
-                if flag not in argv:
-                    argv.append(flag)
-        if expert_overlay is not None:
-            # Expert quantization (28 September): the checkpoint with replacement routed-expert shards (a symlink
-            # farm; same names, dtypes and shapes, so vLLM and its kernels are unchanged).
-            from arc_infra.serving import dataset_mount
-
-            position = argv.index('serve') + 1
-            if argv[position] not in overlays:
-                record = expert_overlay_module.materialise(
-                    argv[position], dataset_mount(expert_overlay['dataset'], input_root),
-                    Path(working) / 'expert-overlay-checkpoint', expert_overlay['manifest_sha256'],
-                    check=expert_overlay.get('check', 'sha256'),
-                    expert_prune_sha256=expert_prune_sha256 if expert_prune is not None else None)
-                (Path(working) / expert_overlay_module.RECORD).write_text(json.dumps(record, indent=2))
-                overlays[argv[position]] = record['dest']
-            argv[position] = overlays[argv[position]]
-        if torch_profiler:
-            if '--profiler-config' in argv:
-                raise ValueError('The pinned serving command already sets a profiler config')
-            argv.extend(['--profiler-config', json.dumps(profiler_config(Path(working) / 'torch-profile'),
-                                                         separators=(',', ':'))])
-        if enforce_eager and '--enforce-eager' not in argv:
-            argv.append('--enforce-eager')
         if prompt_tokens_details and '--enable-prompt-tokens-details' not in argv:
             argv.append('--enable-prompt-tokens-details')
+        if served_route is not None:  # R3: vLLM's own routed-experts return, dumped by the served-route overlay
+            argv.extend(flag for flag in served_route_flags if flag not in argv)
         if graph_capture_sizes is not None:
             # vLLM's CompilationConfig.cudagraph_capture_sizes; its largest entry equals --max-cudagraph-capture-size.
             if any(flag in argv for flag in ('--compilation-config', '-cc', '-O')):
@@ -457,6 +339,8 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
             if '--renderer-num-workers' in argv:
                 raise ValueError('The pinned serving command already sets --renderer-num-workers')
             argv.extend(['--renderer-num-workers', str(renderer_num_workers)])
+        if lora is not None:
+            argv = lora_flags(argv, lora)
         if mm_processor_cache_gb is not None:
             # v7 (5 October): the processed-image LRU is duplicated in the API server and the engine core
             # (4 GiB each by default); host RAM on Kaggle is ~78.6 GiB with 47.7 GiB of PLE pinned.
@@ -466,83 +350,144 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
         return argv
 
     recipe.server_command = wrapped_command
-    result = {'cpu_cache_gib': cpu_gib, 'layout_export': True, 'shared_prefix_discount': False}
-    if graph_capture_size is not None:
-        result['max_cudagraph_capture_size'] = graph_capture_size
-    if graph_capture_sizes is not None:
-        result['cudagraph_capture_sizes'] = graph_capture_sizes
-    if reclaim_skipped_blocks:
-        result['reclaim_skipped_blocks'] = True
-    if prefix_cache is not None:
-        result['prefix_cache'] = prefix_cache
-    if prompt_tokens_details:
-        result['prompt_tokens_details'] = True
-    if warm_prompt_logprobs:
-        result['warm_prompt_logprobs'] = True
-    if prefix_match_unit is not None:
-        result['prefix_match_unit'] = prefix_match_unit
-    if renderer_num_workers is not None:
-        result['renderer_num_workers'] = renderer_num_workers
-    if mm_processor_cache_gb is not None:
-        result['mm_processor_cache_gb'] = mm_processor_cache_gb
-    if graph_metrics:
-        result['cudagraph_metrics'] = True
-    if speculative is not None:
-        result['speculative'] = speculative
-    if scheduling_policy is not None:
-        result['scheduling_policy'] = scheduling_policy
-    if torch_profiler:
-        result['torch_profiler'] = profiler_config(Path(working) / 'torch-profile')
-    if dense_kernels is not None:
-        result['dense_kernels'] = dense_kernels
-    if serving_kernels is not None:
-        result['serving_kernels'] = serving_kernels
-    if expert_probe:
-        result['expert_probe'] = True
-    if enforce_eager:
-        result['enforce_eager'] = True
-    if ready_guard_seconds is not None:
-        result['ready_guard_seconds'] = list(ready_guard_seconds)
-    if expert_prune is not None:
-        result['expert_prune'] = {'fraction': expert_prune['fraction'], **expert_prune_kept(expert_prune)}
-    if stall_dump_seconds is not None:
-        result['stall_dump_seconds'] = stall_dump_seconds
-    if stack_kernels is not None:
-        result['stack_kernels'] = stack_kernels
-    if draft_head is not None:
-        result['draft_head'] = draft_head
-    if expert_capture:
-        result['expert_capture'] = True
-    if expert_overlay is not None:
-        result['expert_overlay'] = expert_overlay
-    if research_checkpoint is not None:
-        from .research_checkpoint import configure as configure_checkpoint
-        result['research_checkpoint'] = configure_checkpoint(recipe, working, research_checkpoint)
-    return result
+    extra = {'max_cudagraph_capture_size': graph_capture_size, 'cudagraph_capture_sizes': graph_capture_sizes,
+             'reclaim_skipped_blocks': reclaim_skipped_blocks or None, 'prefix_cache': prefix_cache,
+             'prompt_tokens_details': prompt_tokens_details or None, 'prefix_match_unit': prefix_match_unit,
+             'renderer_num_workers': renderer_num_workers, 'mm_processor_cache_gb': mm_processor_cache_gb, 'lora': lora,
+             'serving_kernels': serving_kernels,
+             'ready_guard_seconds': list(ready_guard_seconds) if ready_guard_seconds is not None else None,
+             'expert_mask': {'mask': str(expert_mask[0]), 'sha256': expert_mask[1]} if expert_mask is not None else None,
+             'served_route': served_route, 'serving_fast': serving_fast}
+    return {'cpu_cache_gib': cpu_gib, 'layout_export': True, 'shared_prefix_discount': False,
+            **{k: v for k, v in extra.items() if v is not None}}
 
 
-def bundle_expert_prune(spec, bundle):
-    """``server.expert_prune`` -> the loaded mask (its bundle-relative file checked against the pinned sha256)."""
-    spec = validate_expert_prune(spec)
-    return None if spec is None else load_prune_mask(Path(bundle) / spec['mask'], spec['sha256'])
+CONTEXT = 262144  # the native context every start must admit (no silent downgrade)
+KV_LOG_PATTERNS = ("prefix caching", "Prefix cach", "Initial free memory", "Available KV cache memory",
+                   "GPU KV cache size", "Maximum concurrency", "Model loading took", "KV cache is needed")
 
 
-STALL_DUMP_RANGE = (30, 240)
+def kv_admission_summary(working):
+    """vLLM's memory/KV admission lines from the owned server log, if present."""
+    lines = []
+    for log in sorted(Path(working).glob("*.log")):
+        for line in log.read_text(errors="replace").splitlines():
+            if any(pattern in line for pattern in KV_LOG_PATTERNS):
+                lines.append(re.sub(r"^\([^)]*\)\s*", "", line).strip())
+    return lines[-12:]
 
 
-def with_stall_dump(mask, seconds):
-    if seconds is None:
-        return mask
-    if mask is None:
-        raise ValueError('ARENA_STALL_DUMP rides on the expert-prune overlay (server.expert_prune)')
-    return {**mask, 'stall_dump_seconds': seconds}
+def verify_hardware():
+    output = subprocess.check_output(
+        ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"], text=True)
+    cards = [line for line in output.splitlines() if line.strip()]
+    if (len(cards) != 1
+            or not (("RTX PRO 6000" in cards[0] and "Blackwell" in cards[0]) or "B200" in cards[0] or "B300" in cards[0])
+            or int(cards[0].rsplit(",", 1)[1]) < 95000):
+        raise RuntimeError(f"Require exactly one RTX PRO 6000 Blackwell 96 GB, B200 or B300; found {cards}")
+    return cards[0]
 
 
-def bundle_draft_head(spec, bundle):
-    """A relative ``server.draft_head.overlay.path`` names a directory inside the bundle."""
-    if not spec or not spec.get('overlay') or Path(spec['overlay']['path']).is_absolute():
-        return spec
-    return {**spec, 'overlay': {**spec['overlay'], 'path': str(Path(bundle) / spec['overlay']['path'])}}
+async def preflight():
+    """The started server: /tokenize reports the native context and /v1/models serves MODEL."""
+    hardware = verify_hardware()
+    body = {"model": MODEL, "messages": [{"role": "user", "content": "Native context admission check."}],
+            "chat_template_kwargs": {"enable_thinking": True, "preserve_thinking": False, "reasoning_effort": "xhigh"},
+            "add_generation_prompt": True}
+    async with httpx.AsyncClient(base_url=BASE_URL.rstrip("/") + "/", timeout=None, trust_env=False) as client:
+        async with asyncio.timeout(60):
+            for attempt in range(3):  # tokenization has no side effect: a dropped connection retries it
+                try:
+                    response = await client.post(client.base_url.copy_with(path="/tokenize"), json=body)
+                    break
+                except httpx.TransportError:
+                    if attempt == 2:
+                        raise
+                    await asyncio.sleep(.05 * (attempt + 1))
+            if response.is_error:
+                raise RuntimeError(f"/tokenize returned {response.status_code}: {response.text[:2000]}")
+            data = response.json()
+            if data.get("max_model_len") != CONTEXT:
+                raise RuntimeError(f"Native context preflight failed: tokenizer reports {data.get('max_model_len')}; "
+                                   f"requested {CONTEXT}. No downgrade allowed.")
+            response = await client.get("models")
+            response.raise_for_status()
+            models = response.json()
+    served = [m.get("id") for m in models.get("data", [])]
+    if MODEL not in served:
+        raise RuntimeError(f"Served models {served} do not include {MODEL}")
+    return {"hardware": hardware, "native_tokenizer_count": int(data["count"]), "served_models": served,
+            "max_model_len": [m.get("max_model_len") for m in models.get("data", [])],
+            "serving_setup": fork_identity()}
+
+
+def verify_sequence_capacity(working, expected):
+    """Check the launched command, not just the intended profile, before gameplay."""
+    identity = json.loads((Path(working) / 'vllm-server-identity.json').read_text())
+    argv = identity.get('argv', [])
+    values = [argv[i + 1] for i, item in enumerate(argv[:-1]) if item == '--max-num-seqs']
+    if values != [str(expected)]:
+        raise RuntimeError(f'Launched vLLM max-num-seqs {values!r} differs from requested {expected}')
+    return {'expected_max_num_seqs': expected, 'actual_max_num_seqs': int(values[0]), 'verified': True}
+
+
+def start(working, input_root, *, kv_cache_memory_bytes=0, generation_slots=8, kv_cache_dtype="auto",
+          recipe_hook=None, max_num_batched_tokens=8192, mtp_tokens=3, gpu_memory_utilization=None):
+    """The pinned recipe's server start (the fork's serving script), ``recipe_hook`` (configure) before its main."""
+    if type(kv_cache_memory_bytes) is not int or kv_cache_memory_bytes < 0:
+        raise ValueError("Explicit KV cache bytes must be a non-negative integer")
+    # None keeps the fork's 0.96 (a lower share leaves GPU memory outside the profiled KV pool)
+    utilization = GPU_MEMORY_UTILIZATION if gpu_memory_utilization is None else gpu_memory_utilization
+    if (type(utilization) is not str or re.fullmatch(r"0\.\d{1,3}", utilization) is None
+            or not 0.5 <= float(utilization) <= 0.99):
+        raise ValueError("gpu_memory_utilization is a decimal string from 0.5 through 0.99")
+    if type(mtp_tokens) is not int or mtp_tokens not in (0, 1, 2, 3, 4):
+        raise ValueError("Flash serving comparisons support MTP depth 1-4, or 0 (no MTP draft)")
+    profile = {"max_model_len": CONTEXT, "max_num_seqs": generation_slots, "prefix_caching": True,
+               "speculative_tokens": mtp_tokens, "max_num_batched_tokens": max_num_batched_tokens,
+               "kv_cache_dtype": "bfloat16" if kv_cache_dtype == "auto" else kv_cache_dtype,
+               "gpu_memory_utilization": utilization, "kv_cache_memory_bytes": kv_cache_memory_bytes}
+    working = Path(working)
+    working.mkdir(parents=True, exist_ok=True)
+    recipe = None
+    stage = "hardware"
+    try:
+        verify_hardware()
+        stage = "server_startup"
+        os.environ[GPU_MEMORY_UTILIZATION_ENV] = utilization
+        bundle = stage_fork_bundle(input_root, working / "fork-bundle")
+        recipe = load_recipe(working, input_root, mtp_tokens=mtp_tokens, generation_slots=generation_slots,
+                             kv_cache_dtype=kv_cache_dtype, max_num_batched_tokens=max_num_batched_tokens,
+                             bundle_dir=bundle, setup_sha256=fork_identity()["fork_sha256"],
+                             kv_cache_memory_bytes=kv_cache_memory_bytes, prefix_caching=True)
+        if recipe_hook is not None:
+            profile["arena_cache"] = recipe_hook(recipe, working)
+        recipe.ANALYZER_CONTEXT = CONTEXT
+        recipe.main()
+        stage = "sequence_capacity"
+        sequence_capacity = verify_sequence_capacity(working, generation_slots)
+        stage = "native_context"
+        result = asyncio.run(preflight())
+        result.update(profile=profile, sequence_capacity=sequence_capacity, kv_admission_log=kv_admission_summary(working))
+        (working / "native-preflight.json").write_text(json.dumps(result, indent=2))
+    except BaseException as exc:
+        if recipe is not None:
+            recipe.stop_owned_server()
+        (working / "native-preflight-failure.json").write_text(json.dumps(
+            {"error": str(exc), "stage": stage, "profile": profile, "kv_admission_log": kv_admission_summary(working)},
+            indent=2))
+        raise
+
+
+
+def bundle_expert_mask(spec, bundle):
+    """``server.expert_mask`` -> (the bundle file's absolute path, its pinned sha256), checked here."""
+    spec = expert_mask_patch.validate(spec)
+    if spec is None:
+        return None
+    path = Path(bundle) / spec['mask']
+    expert_mask_patch.load_mask(path, spec['sha256'])
+    return str(path), spec['sha256']
 
 
 def main():
@@ -561,55 +506,37 @@ def main():
     # environment (build_arena gpu_memory_utilization); unset keeps 0.96.
     utilization = os.environ.get('ARENA_GPU_MEMORY_UTILIZATION') or None
     lab = lab_overrides()
-    prune_spec = lab['expert_prune'] if 'expert_prune' in lab else study['server'].get('expert_prune')
+    for key in ('expert_prune', 'speculative', 'scheduling_policy', 'cudagraph_metrics', 'api_server_count'):
+        if study['server'].get(key):
+            raise ValueError(f'server.{key} is gone (rl-min)')
     # Backend capacity and ordinary admission slots are distinct when siblings use spare sequences.
     sequences = study['server'].get('max_num_seqs', study['generation_slots'])
     if type(sequences) is not int or sequences < study['generation_slots']:
         raise ValueError('Server max_num_seqs must cover ordinary generation slots')
-    samples = study.get('parallel_samples') or {}
-    if samples and sequences != samples['max_num_seqs']:
-        raise ValueError('Sampling and server sequence limits disagree')
     start(args.working, args.input_root, generation_slots=sequences, kv_cache_memory_bytes=kv_bytes,
           gpu_memory_utilization=utilization,
-          mtp_tokens=lab.get('mtp_tokens', study['server'].get('mtp_tokens', 3)),
-          kv_cache_dtype=lab.get('kv_cache_dtype', settings['kv_cache_dtype']),
+          mtp_tokens=study['server'].get('mtp_tokens', 3),
+          kv_cache_dtype=settings['kv_cache_dtype'],
           max_num_batched_tokens=study['server'].get('max_num_batched_tokens', 8192),
-          prefix_caching=lab.get('prefix_caching'),
           recipe_hook=lambda recipe, working: configure(
               recipe, working, cpu_gib=settings['cpu_cache_gib'],
-              graph_capture_size=lab.get('graph_capture_size', study['server'].get('max_cudagraph_capture_size')),
-              graph_capture_sizes=(lab['graph_capture_sizes'] if 'graph_capture_sizes' in lab
-                                   else study['server'].get('cudagraph_capture_sizes')),
-              graph_metrics=study['server'].get('cudagraph_metrics', False),
+              graph_capture_size=study['server'].get('max_cudagraph_capture_size'),
+              graph_capture_sizes=study['server'].get('cudagraph_capture_sizes'),
               reclaim_skipped_blocks=settings.get('reclaim_skipped_blocks', False),
-              speculative=study['server'].get('speculative'),
-              scheduling_policy=study['server'].get('scheduling_policy'),
-              torch_profiler=lab.get('torch_profiler', False),
-              dense_kernels=lab['dense_kernels'] if 'dense_kernels' in lab else study['server'].get('dense_kernels'),
-              serving_kernels=(lab['serving_kernels'] if 'serving_kernels' in lab
-                               else study['server'].get('serving_kernels')),
-              stack_kernels=(lab['stack_kernels'] if 'stack_kernels' in lab
-                             else study['server'].get('stack_kernels')),
-              draft_head=bundle_draft_head(study['server'].get('draft_head'), Path(args.study).parent.parent),
-              expert_capture=study['server'].get('expert_capture', False),
-              expert_overlay=(lab['expert_overlay'] if 'expert_overlay' in lab
-                              else study['server'].get('expert_overlay')),
-              input_root=args.input_root,
-              expert_probe=lab.get('expert_probe', study['server'].get('expert_probe', False)),
-              enforce_eager=lab.get('enforce_eager', False),
-              prefix_cache=lab['prefix_cache'] if 'prefix_cache' in lab else settings.get('prefix_cache'),
+              serving_kernels=study['server'].get('serving_kernels'),
+              served_route=study['server'].get('served_route'),
+              serving_fast=study['server'].get('serving_fast'),
+              expert_mask=bundle_expert_mask(study['server'].get('expert_mask'), Path(args.study).parent.parent),
+              prefix_cache=settings.get('prefix_cache'),
               prompt_tokens_details=lab.get('prompt_tokens_details',
                                             study['server'].get('prompt_tokens_details', False)),
-              prefix_match_unit=lab.get('prefix_match_unit', study['server'].get('prefix_match_unit')),
+              prefix_match_unit=study['server'].get('prefix_match_unit'),
               renderer_num_workers=study['server'].get('renderer_num_workers'),
               mm_processor_cache_gb=study['server'].get('mm_processor_cache_gb'),
-              warm_prompt_logprobs=lab.get('warm_prompt_logprobs', False),
+              lora=study['server'].get('lora'),
               ready_guard_seconds=lab.get('ready_guard'),
               setup_timeouts=lab.get('setup_timeouts'),
-              expert_prune=with_stall_dump(bundle_expert_prune(prune_spec, Path(args.study).parent.parent),
-                                           lab.get('stall_dump_seconds')),
-              expert_prune_sha256=(prune_spec or {}).get('sha256'),
-              research_checkpoint=study.get('research_checkpoint')))
+))
     budget = BlockBudget.load(args.working, study['kv_margin'])
     (Path(args.working) / 'cache-layout.json').write_text(json.dumps(budget.layout, indent=2))
 

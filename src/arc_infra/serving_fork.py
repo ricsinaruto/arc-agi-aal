@@ -1,9 +1,7 @@
 """The ARC fork of the pinned serving script and its staged bundle.
 
 The fork uses GPU_MEMORY_UTILIZATION=0.96 by default so vLLM profiles activations
-and gives remaining GPU memory to the KV cache. An opt-in ARC_VLLM_ONLINE_MXFP8=1
-hook installs a hash-guarded attention-projection dispatch backport. Without that
-flag the historical quantization path is unchanged. Bundles pin the fork's hash.
+and gives remaining GPU memory to the KV cache. Bundles pin the fork's hash.
 """
 
 import hashlib

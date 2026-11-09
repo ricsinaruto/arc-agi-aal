@@ -1,38 +1,19 @@
-"""hero-v2 ``dfr_harness``: harness features ported from dfranzen's ARC-AGI-3 Milestone 2 notebook.
+"""hero-v2 ``dfr_harness``: harness features ported from dfranzen's ARC-AGI-3 Milestone 2 notebook (
+dfranzen/arc-agi-3-milestone-2-solution, Apache-2.0, a patch over the Tufa Labs Duck harness): their prompt texts, the
+diff image, the interior ``gameplay_changed`` rule, the batch no-op stop, the snippet latches, the frame diff, the
+rotation-aware segmentation and the animation helpers, adapted to ``duck_transfer`` under the arena (``SETTING``):
 
-Ported from dfranzen/arc-agi-3-milestone-2-solution (Apache-2.0), a patch over the Tufa Labs Duck harness (the same
-public ToolAgent as ``src/inference``); the prompt texts, the diff image, the interior ``gameplay_changed`` rule, the
-batch no-op stop, the snippet latches, the frame diff, the rotation-aware segmentation and the animation helpers are
-theirs, adapted to the corrected Duck agent (``duck_transfer``) under the arena. One opt-in study key ``dfr_harness``
-(``settings``): None on every earlier build, so their payloads and prompts stay byte for byte; true switches every
-sub-flag on, a dict of booleans selects some (``FLAGS``):
-
-- ``vision``: the current board image at ``UPSCALE`` (their ``MULTIMODAL_UPSCALE=10``: 640 x 640 px, 400 + 2 vision
-  tokens instead of 64 + 2) with a diff image after it (the cells changed since the previous analyzer turn in their
-  new colour, every other cell an off-palette navy; one more 402-token image when the board changed) and one system
-  sentence; on the first turn after a GAME_OVER, their diagnosis text (the BAR RULE) and two images instead of the
-  diff: the death frame and the fatal step's diff. As theirs, the history keeps every image between evictions (append-
-  only: stubbing the previous turn's extra images on every request broke the hybrid prefix cache, 3 October); at a
-  drain the surviving turns' extra images (diff, death frame, fatal diff) become a one-line placeholder (theirs keep
-  them until the turn is trimmed). The board image itself keeps the arena's existing policy.
-- ``guards``: ``gameplay_changed`` in every receipt (a change inside the board, ignoring the outer ``BORDER`` cells
-  where timer bars sit) and their system line explaining it; a batch of two or more actions stops after an executed
-  action with no interior change (their stop text and per-action trace); in the persistent sandbox, from level
-  ``GUARDS_FROM_LEVEL`` on, the next ``action()`` of a snippet after such a no-op raises the catchable
-  ``StaleStateActionError`` without executing, and after GAME_OVER, a completed level or the win any further
-  ``action()`` of the snippet raises ``TerminalStateActionError`` (a BaseException, so ``except Exception`` cannot
-  swallow it).
-- ``actions``: ACTION7 is advertised as ``UNDO`` (accepted as UNDO or ACTION7; executes ACTION7 as before) and the
-  system prompt carries their short per-action explanations in place of the MOUSE coordinate line.
-- ``level_prompt``: their level-transfer system guidance and new-level user prompt (build a new plan for this layout,
-  inspect unfamiliar elements, reassess the goal), with one sentence pointing at the carried cross-level notes.
-- ``frame_diff``: ``frame_diff(before=None, after=None)`` in the sandbox (``arena.dfr_sandbox_lib``: Hungarian
-  matching into moved / rotated / appeared / disappeared / changed_color / resized), rotation-canonical segmentation
-  hashes with ``rotation``, ``rotational_symmetry``, ``pose_hash`` and ``shape_hash``, and their prompt paragraph.
-- ``animation``: an executed action that returned several frames carries ``animation`` (frames, transient pixels and
-  their bbox: cells that changed and changed back) in its receipt; ``last_animation_frames`` (frame views with
-  segmentation) and ``last_animation_timeline`` (their diff timeline) in the sandbox, fetched from the host on use;
-  their opener line when the last action animated, and their system paragraph.
+- ``vision``: the board image at ``UPSCALE`` with a diff image after it (changed cells in their new colour, the rest
+  navy); after a GAME_OVER their diagnosis text and the death frame plus the fatal step's diff instead. At a drain the
+  surviving turns' extra images become a one-line placeholder (the history stays append-only between drains).
+- ``guards``: ``gameplay_changed`` in every receipt (ignoring the outer ``BORDER`` ring); a batch stops after an
+  executed no-op; from level ``GUARDS_FROM_LEVEL`` the next ``action()`` of a snippet after a no-op raises
+  ``StaleStateActionError``, and after GAME_OVER, a clear or the win ``TerminalStateActionError`` (a BaseException).
+- ``actions``: ACTION7 advertised as ``UNDO`` and their per-action explanations; ``level_prompt``: their level-transfer
+  guidance and new-level prompt.
+- ``frame_diff``: ``frame_diff(before=None, after=None)`` in the sandbox (``arena.dfr_sandbox_lib``) and
+  rotation-canonical segmentation hashes; ``animation``: multi-frame actions carry their animation (transient cells)
+  and ``last_animation_frames`` / ``last_animation_timeline`` fetch frames from the host on use.
 """
 
 import base64
@@ -42,7 +23,13 @@ from collections import defaultdict
 
 import numpy as np
 
-FLAGS = ("vision", "guards", "actions", "level_prompt", "frame_diff", "animation")
+# transient (hx4): an action whose animation ends on the starting board is reported as a transient effect, not a
+# no-op, for every action of a python call. animation_history (v8.2): the frames of every animated action stay
+# readable (``animation_frames(x)``, ``animation_timeline(x)``, ``animated_steps()``), ANIMATION_STORE_BYTES per game.
+SETTING = {"vision": True, "guards": True, "actions": True, "level_prompt": True, "frame_diff": True, "animation": True,
+           "sweep": False, "transient": True, "reset_offer": False, "border_moves": False, "simcheck": False,
+           "evidence": False, "transient_note": False, "animation_history": True, "simcarry": False}
+ANIMATION_STORE_BYTES = 24 * 1024 * 1024
 UPSCALE = 10            # their MULTIMODAL_UPSCALE
 BORDER = 4              # their ARC3_NOOP_GUARD_BORDER: the outer ring ignored by gameplay_changed
 GUARDS_FROM_LEVEL = 2   # their ARC3_GUARDS_FROM_LEVEL: the stale-state latch starts on level 2
@@ -55,29 +42,9 @@ ANIMATION_MAX_TOTAL_CELLS = 80
 
 
 def settings(value):
-    """The study block for ``value`` (None/False: off; True: every flag; a dict of booleans over ``FLAGS``, missing
-    flags off), or None when no flag is on."""
-    if value is None or value is False:
-        return None
-    if value is True:
-        return {flag: True for flag in FLAGS}
-    if not isinstance(value, dict):
-        raise ValueError("dfr_harness is true/false or a dict of booleans over " + ", ".join(FLAGS))
-    unknown = sorted(set(value) - set(FLAGS))
-    if unknown:
-        raise ValueError(f"Unknown dfr_harness flags {unknown}; known: {list(FLAGS)}")
-    bad = sorted(k for k, v in value.items() if type(v) is not bool)
-    if bad:
-        raise ValueError(f"dfr_harness flags are booleans; got {bad}")
-    block = {flag: bool(value.get(flag, False)) for flag in FLAGS}
-    return block if any(block.values()) else None
+    from .harness_fixes import exact
 
-
-def describe(block):
-    """The hero-v2 record detail of an on block."""
-    return {"flags": dict(block), "upscale": UPSCALE if block["vision"] else None, "border": BORDER,
-            "guards_from_level": GUARDS_FROM_LEVEL, "source": "dfranzen/arc-agi-3-milestone-2-solution (Apache-2.0)",
-            "module": "arena.dfr_harness"}
+    return exact("dfr_harness", value, SETTING)
 
 
 # --- prompt texts (theirs, renamed to our runtime variables) --------------------------------------------------------
@@ -119,14 +86,7 @@ LEVEL_START_USER_PROMPT = (
     "knowledge with new findings to plan for this board."
 )
 PUBLIC_LEVEL_LINE = "You have progressed to a new level!"
-# Ours (integration with duck_transfer's cross-level notes): one sentence on the carried notes.
-CROSS_LEVEL_CARRIED = (
-    " The cross-level notes in the carried world model below are what you recorded about earlier levels: treat "
-    "them as starting hypotheses for this board and update `Cross-level notes:` with what still holds."
-)
-CROSS_LEVEL_EMPTY = (
-    " Once you have checked which mechanics still hold on this board, record them in `Cross-level notes:`."
-)
+
 
 ACTION_INFO_ADDENDUM = (
     "\n\nAction meanings (use only actions currently available):\n"
@@ -177,6 +137,16 @@ ANIMATION_ADDENDUM_TIMELINE = (
     "either `changes` (the cells, as `old>new @ (row,col) ...`) or `transitions` (a "
     "count per colour change, when there were too many cells to list).\n"
 )
+ANIMATION_HISTORY_ADDENDUM = (
+    "- The animation of every earlier action is kept as well: `animation_frames(x)` and `animation_timeline(x)` "
+    "return what `last_animation_frames` and `last_animation_timeline` held right after that action; `x` is a step "
+    "number, a `history` entry or a transition (`animation_frames(transitions[-3])`). `animated_steps()` lists the "
+    "steps whose action animated. An action that returned a single frame has no animation (an empty list); its "
+    "boards are in `history`. Reading them costs no in-game action.\n"
+)
+
+TRANSIENT_VERDICT = "TRANSIENT EFFECT (animated: {cells} cell(s) changed and changed back; final board unchanged)"
+
 
 DIFF_IMAGE_SYSTEM = (
     " Alongside the current grid image you receive a diff image: cells that "
@@ -247,29 +217,18 @@ def _replace_once(text, old, new, what):
     return text.replace(old, new, 1)
 
 
-def system_prompt(text, block):
-    """The corrected Duck system prompt with the on flags' additions (in their prompt's order)."""
-    if block["frame_diff"]:
-        text = _replace_once(text, SEGMENTATION_NODE_LINE, SEGMENTATION_NODE_LINE_ROTATION, "frame_diff")
-    runtime = ""
-    if block["guards"] or block["animation"]:
-        runtime += GAMEPLAY_CHANGED_ADDENDUM
-    if block["animation"]:
-        runtime += ANIMATION_ADDENDUM + ANIMATION_ADDENDUM_TIMELINE
-    if runtime:
-        # The runtime-variable section ends "...are refreshed.\n" before the blank lines of the next section.
-        text = _insert_before(text, MULTIMODAL_ANCHOR, "\n" + runtime.rstrip("\n"), "runtime variables")
-    if block["vision"]:
-        text = _insert_before(text, VISUAL_ANCHOR, DIFF_IMAGE_SYSTEM, "vision")
-    if block["actions"]:
-        text = _replace_once(text, MOUSE_LINE, "", "actions")
-        text = _insert_before(text, PYTHON_ANCHOR, "\n" + ACTION_INFO_ADDENDUM + UNDO_INFO_ADDENDUM.rstrip("\n"),
-                              "actions")
-    if block["frame_diff"]:
-        text = _insert_before(text, SESSION_ANCHOR, "\n" + FRAME_DIFF_HINT_ADDENDUM.rstrip("\n"), "frame_diff")
-    if block["level_prompt"]:
-        for old, new in LEVEL_TRANSFER_REPLACEMENTS.items():
-            text = _replace_once(text, old, new, "level_prompt")
+def system_prompt(text):
+    """The corrected Duck system prompt with the flags' additions (in their prompt's order)."""
+    text = _replace_once(text, SEGMENTATION_NODE_LINE, SEGMENTATION_NODE_LINE_ROTATION, "frame_diff")
+    runtime = GAMEPLAY_CHANGED_ADDENDUM + ANIMATION_ADDENDUM + ANIMATION_ADDENDUM_TIMELINE + ANIMATION_HISTORY_ADDENDUM
+    # The runtime-variable section ends "...are refreshed.\n" before the blank lines of the next section.
+    text = _insert_before(text, MULTIMODAL_ANCHOR, "\n" + runtime.rstrip("\n"), "runtime variables")
+    text = _insert_before(text, VISUAL_ANCHOR, DIFF_IMAGE_SYSTEM, "vision")
+    text = _replace_once(text, MOUSE_LINE, "", "actions")
+    text = _insert_before(text, PYTHON_ANCHOR, "\n" + ACTION_INFO_ADDENDUM + UNDO_INFO_ADDENDUM.rstrip("\n"), "actions")
+    text = _insert_before(text, SESSION_ANCHOR, "\n" + FRAME_DIFF_HINT_ADDENDUM.rstrip("\n"), "frame_diff")
+    for old, new in LEVEL_TRANSFER_REPLACEMENTS.items():
+        text = _replace_once(text, old, new, "level_prompt")
     return text
 
 
@@ -316,10 +275,7 @@ NO_REPLAY_LINE = (
     "falsified; record the correction in your world model instead "
     "of retesting it."
 )
-DEATH_IMAGE_LABEL = (
-    "Death frame image (the board at the moment the attempt ended, before the automatic reset): inspect the budget "
-    "bar here for the BAR RULE."
-)
+
 FATAL_DIFF_LABEL = (
     "Fatal step diff image (last alive frame -> death frame): cells changed by the killing action in their new true "
     "color; unchanged cells dimmed to dark navy (an off-palette color)."
@@ -359,6 +315,8 @@ def verdict(payload):
     if payload.get("level_completed"):
         return "LEVEL COMPLETED"
     changed = payload.get("gameplay_changed")
+    if changed is False and payload.get("transient_effect"):
+        return TRANSIENT_VERDICT.format(cells=payload["transient_effect"])
     if changed is False:
         return NOOP_VERDICT
     return "effect" if changed is True else "executed"
@@ -644,6 +602,46 @@ def animation_timeline(record):
     return {"action": record.get("action_display"), "frames": len(chain) - 1, "steps": rendered}
 
 
+class AnimationStore:
+    """``animation_history``: every animated action's frame chain of one game, zlib-compressed, at most
+    ``limit`` bytes (oldest steps dropped first)."""
+
+    def __init__(self, limit=ANIMATION_STORE_BYTES):
+        self.limit, self.bytes, self.items, self.dropped, self.stored = int(limit), 0, {}, 0, 0
+
+    def put(self, record):
+        import zlib
+
+        chain = np.asarray(record["chain"], dtype=np.uint8)
+        blob = zlib.compress(chain.tobytes(), 1)
+        step = int(record["step"])
+        previous = self.items.pop(step, None)
+        if previous is not None:
+            self.bytes -= len(previous["blob"])
+        self.items[step] = {"shape": chain.shape, "blob": blob, "action_display": record.get("action_display"),
+                            "level": record.get("level")}
+        self.bytes += len(blob)
+        self.stored += 1
+        while self.bytes > self.limit and len(self.items) > 1:
+            oldest = next(iter(self.items))
+            self.bytes -= len(self.items.pop(oldest)["blob"])
+            self.dropped += 1
+
+    def steps(self):
+        return sorted(self.items)
+
+    def get(self, step):
+        """The record of ``step`` (the shape ``animation_frames`` / ``animation_timeline`` take), or None."""
+        import zlib
+
+        item = self.items.get(int(step))
+        if item is None:
+            return None
+        chain = np.frombuffer(zlib.decompress(item["blob"]), dtype=np.uint8).reshape(item["shape"])
+        return {"action_display": item["action_display"], "step": int(step), "level": item["level"],
+                "chain": [tuple(map(tuple, grid.tolist())) for grid in chain]}
+
+
 def animation_frames(record, frame_payload):
     """Every distinct state the action passed through after the pre-action board, as frame-view payloads
     (``frame_payload(grid, step, level)``, the public ``_ascii_frame_view_payload`` shape with the grid)."""
@@ -662,6 +660,13 @@ STALE_DETAIL = (
     "been halted here. Re-read current_frame and last_action_result, work out why nothing moved, then act on what "
     "you find. (StaleStateActionError can be caught if a snippet has good reason to keep acting through no-ops.)"
 )
+STALE_DETAIL_TRANSIENT = (
+    "{action} was not executed. The action immediately before it, {previous}, played an animation and left the board "
+    "area exactly as it was (cells changed and changed back; it was not a no-op), so positions and paths computed "
+    "for the actions after it may be wrong, which is why execution has been halted here. Read "
+    "`last_animation_timeline` to see what {previous} did, then act on what you find. (StaleStateActionError can be "
+    "caught if a snippet has good reason to keep acting.)"
+)
 TERMINAL_DETAIL = {
     "game_over": ("the previous action reported game_over. The level is reset to its start before your next turn, so "
                   "the board you planned against is gone and this action was not executed. The next turn begins from "
@@ -672,11 +677,10 @@ TERMINAL_DETAIL = {
     "run_complete": "the previous action reported run_complete. The run is finished and this action was not executed.",
 }
 
-# Child code inside ``main()`` before the request loop. ``__DFR_FLAGS__`` and the two message tables are filled in by
-# ``with_dfr``.
+# Child code inside ``main()`` before the request loop. The message tables are filled in by ``with_dfr``.
 CHILD_BLOCK = r'''
-    _DFR_FLAGS = __DFR_FLAGS__
     _DFR_STALE_DETAIL = __DFR_STALE__
+    _DFR_STALE_TRANSIENT = __DFR_STALE_T__
     _DFR_TERMINAL_DETAIL = __DFR_TERMINAL__
     _DFR = {"stale": None, "terminal": None, "events": [], "views": []}
 
@@ -706,23 +710,24 @@ CHILD_BLOCK = r'''
     _dfr_inner_action = runtime_globals["action"]
 
     def action(actions):
-        if _DFR_FLAGS["guards"]:
-            items = _dfr_items(actions)
-            if _DFR["terminal"]:
-                _DFR["events"].append({"kind": "terminal", "after": _DFR["terminal"],
-                                       "action": _dfr_display(items[0]) if items else None})
-                raise TerminalStateActionError(_DFR_TERMINAL_DETAIL[_DFR["terminal"]])
-            frame = runtime_globals.get("current_frame")
-            level = int(getattr(frame, "level", 0) or 0)
-            if _DFR["stale"] is not None and items and level >= __DFR_FROM_LEVEL__:
-                shown = _dfr_display(items[0])
-                _DFR["events"].append({"kind": "stale_state", "action": shown, "previous": _DFR["stale"],
-                                       "level": level, "skipped": [_dfr_display(i) for i in items]})
-                raise StaleStateActionError(_DFR_STALE_DETAIL.format(action=shown, previous=_DFR["stale"]))
+        items = _dfr_items(actions)
+        if _DFR["terminal"]:
+            _DFR["events"].append({"kind": "terminal", "after": _DFR["terminal"],
+                                   "action": _dfr_display(items[0]) if items else None})
+            raise TerminalStateActionError(_DFR_TERMINAL_DETAIL[_DFR["terminal"]])
+        frame = runtime_globals.get("current_frame")
+        level = int(getattr(frame, "level", 0) or 0)
+
+        if _DFR["stale"] is not None and items and level >= __DFR_FROM_LEVEL__:
+            shown = _dfr_display(items[0])
+            _DFR["events"].append({"kind": "stale_state", "action": shown, "previous": _DFR["stale"],
+                                   "level": level, "skipped": [_dfr_display(i) for i in items]})
+            detail = _DFR_STALE_TRANSIENT if _DFR.get("stale_transient") else _DFR_STALE_DETAIL
+            raise StaleStateActionError(detail.format(action=shown, previous=_DFR["stale"]))
         for view in _DFR["views"]:
             view.invalidate()
         result = _dfr_inner_action(actions)
-        if _DFR_FLAGS["guards"] and isinstance(result, dict):
+        if isinstance(result, dict):
             for flag in ("run_complete", "done", "level_completed", "game_over"):
                 if result.get(flag) and result.get("executed"):
                     _DFR["terminal"] = "run_complete" if flag == "done" else flag
@@ -734,6 +739,7 @@ CHILD_BLOCK = r'''
                 executed = result.get("executed_actions")
                 _DFR["stale"] = str(executed[-1] if isinstance(executed, list) and executed
                                     else result.get("action_display") or "?")
+                _DFR["stale_transient"] = bool(result.get("transient_effect"))
         return result
 
     runtime_globals["action"] = action
@@ -754,13 +760,13 @@ CHILD_BLOCK = r'''
         return compute_frame_diff(before._grid, after._grid, before.segmentation.get("nodes", []),
                                   after.segmentation.get("nodes", []))
 
-    def _dfr_fetch(kind):
+    def _dfr_fetch(kind, step=None):
         interrupt = globals().get("_INTERRUPT")
         armed = bool(interrupt and interrupt["armed"])
         if interrupt:
             interrupt["armed"] = False
         try:
-            _send({"type": "animation", "request": {"kind": kind}})
+            _send({"type": "animation", "request": {"kind": kind} if step is None else {"kind": kind, "step": step}})
             reply = _recv()
         finally:
             if interrupt:
@@ -770,9 +776,35 @@ CHILD_BLOCK = r'''
         if reply.get("type") != "animation_result":
             raise RuntimeError("Invalid animation response from sandbox host.")
         payload = reply.get("animation")
+        if step is not None and isinstance(payload, dict) and payload.get("unavailable"):
+            raise LookupError(str(payload["unavailable"]))
+        if kind == "steps":
+            return list(payload or [])
         if kind != "frames":
             return payload or {}
         return [_frame_from_payload(item) for item in (payload or [])]
+
+    def _dfr_step_of(x):
+        if isinstance(x, int) and not isinstance(x, bool):
+            return x
+        frame = getattr(x, "after_frame", None) or getattr(x, "frame", None)
+        step = getattr(frame, "step", None)
+        if step is None:
+            raise TypeError("pass a step number, a history entry or a transition")
+        return int(step)
+
+    def animation_frames(x):
+        """The frames of the animated action at step/entry/transition x (as last_animation_frames right after it);
+        [] when that action returned a single frame."""
+        return _dfr_fetch("frames", _dfr_step_of(x))
+
+    def animation_timeline(x):
+        """The diff timeline of the action at step/entry/transition x (as last_animation_timeline right after it)."""
+        return _dfr_fetch("timeline", _dfr_step_of(x))
+
+    def animated_steps():
+        """The steps whose action animated and whose frames are stored."""
+        return _dfr_fetch("steps", -1)
 
     class _LazyAnimation:
         def __init__(self, kind, empty):
@@ -815,18 +847,17 @@ CHILD_BLOCK = r'''
 
     _dfr_frames_view = _LazyAnimation("frames", [])
     _dfr_timeline_view = _LazyAnimation("timeline", {})
-    if _DFR_FLAGS["animation"]:
-        _DFR["views"].extend((_dfr_frames_view, _dfr_timeline_view))
+    _DFR["views"].extend((_dfr_frames_view, _dfr_timeline_view))
 
     _dfr_refresh_inner = _refresh_state
 
     def _refresh_state(state_payload):
         _dfr_refresh_inner(state_payload)
-        if _DFR_FLAGS["frame_diff"]:
-            runtime_globals["frame_diff"] = frame_diff
-        if _DFR_FLAGS["animation"]:
-            runtime_globals["last_animation_frames"] = _dfr_frames_view
-            runtime_globals["last_animation_timeline"] = _dfr_timeline_view
+        runtime_globals["frame_diff"] = frame_diff
+        runtime_globals["last_animation_frames"] = _dfr_frames_view
+        runtime_globals["last_animation_timeline"] = _dfr_timeline_view
+        runtime_globals.update(animation_frames=animation_frames, animation_timeline=animation_timeline,
+                               animated_steps=animated_steps)
 
     def _dfr_begin():
         _DFR["stale"] = None
@@ -871,7 +902,7 @@ SEGMENTATION_NEW = (
 LIB_ANCHOR = "\nHOST_STDOUT = sys.stdout\n"
 RUNTIME_NAMES = '"last_action_result", "action", "result"'
 DFR_RUNTIME_NAMES = ('"frame_diff", "last_animation_frames", "last_animation_timeline", "StaleStateActionError", '
-                     '"TerminalStateActionError"')
+                     '"TerminalStateActionError", "animation_frames", "animation_timeline", "animated_steps"')
 
 
 def _pinned(text, old, new, what):
@@ -880,20 +911,19 @@ def _pinned(text, old, new, what):
     return text.replace(old, new, 1)
 
 
-def with_dfr(bootstrap, block):
-    """``bootstrap`` (either loop of ``duck_transfer.sandbox.stateful_bootstrap``, with or without action plans)
-    with the on flags' child code: the frame-diff library and rotation-aware segmentation, the snippet latches and
+def with_dfr(bootstrap):
+    """``bootstrap`` (``inference.agent.python_tool_sandbox._SANDBOX_BOOTSTRAP``, with or without action plans)
+    with the child code: the frame-diff library and rotation-aware segmentation, the snippet latches and
     the lazy animation views, plus the ``dfr_guards`` field of the call's final and error messages."""
     import inspect
     import json
 
     from . import dfr_sandbox_lib
 
-    if "_DFR_FLAGS = " in bootstrap:
+    if "_DFR_STALE_DETAIL = " in bootstrap:
         raise ValueError("dfr_harness: the sandbox code is already installed")
-    flags = {key: bool(block[key]) for key in ("guards", "frame_diff", "animation")}
-    child = (CHILD_BLOCK.replace("__DFR_FLAGS__", repr(flags))
-             .replace("__DFR_STALE__", repr(STALE_DETAIL))
+    child = (CHILD_BLOCK.replace("__DFR_STALE__", repr(STALE_DETAIL))
+             .replace("__DFR_STALE_T__", repr(STALE_DETAIL_TRANSIENT))
              .replace("__DFR_TERMINAL__", json.dumps(TERMINAL_DETAIL, ensure_ascii=False))
              .replace("__DFR_FROM_LEVEL__", str(int(GUARDS_FROM_LEVEL))))
     text = _pinned(bootstrap, ANCHOR, child.lstrip("\n") + ANCHOR, "loop")
@@ -910,8 +940,7 @@ def with_dfr(bootstrap, block):
     text = text.replace(catches[0], CATCHES[catches[0]], 1)
     lib = inspect.getsource(dfr_sandbox_lib)
     text = _pinned(text, LIB_ANCHOR, "\n" + lib + LIB_ANCHOR, "module head")
-    if flags["frame_diff"]:
-        text = _pinned(text, SEGMENTATION_OLD, SEGMENTATION_NEW, "segmentation")
+    text = _pinned(text, SEGMENTATION_OLD, SEGMENTATION_NEW, "segmentation")
     if text.count(RUNTIME_NAMES) == 1:  # the fixes loop's inventory skips runtime names
         text = text.replace(RUNTIME_NAMES, RUNTIME_NAMES + ", " + DFR_RUNTIME_NAMES, 1)
     return text

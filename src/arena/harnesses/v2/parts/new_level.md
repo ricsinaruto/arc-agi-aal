@@ -1,1 +1,0 @@
-A new level keeps old mechanics more often than old goals. Before replaying the previous level's plan, probe each new element once (click it, or move next to it and press SPACE). If a plan carried over from the previous level runs to the end without clearing the level, its goal is refuted: stop solving and test the new elements.

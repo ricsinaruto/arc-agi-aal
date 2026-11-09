@@ -1,4 +1,5 @@
-"""One arena trial per invocation (its own process); results merge into study.json."""
+"""One RL trial per invocation (its own process): ``rl-loop`` (training) or ``level-bench`` (held-out read); results
+merge into study.json."""
 
 import argparse
 import asyncio
@@ -6,7 +7,6 @@ import json
 import signal
 import time
 import traceback
-from contextlib import nullcontext
 from pathlib import Path
 
 from arc_infra.arcade import find_games
@@ -15,12 +15,42 @@ from arc_infra.server import hardware
 from arc_infra.serving_checks import validate_api, wait_idle
 
 from .isolation import isolate_trial
-from .report import load_record, merge_trial
-from .trial import run_trial
 
 
-class _Done(Exception):
-    """The serving benchmark finished; skip the gameplay path."""
+def load_record(output, study, *, hardware, api_validation, notebook_start):
+    """The study record, extended when an earlier invocation (another trial) wrote one."""
+    path = Path(output) / "study.json"
+    if path.is_file():
+        record = json.loads(path.read_text())
+        record["api_validations"] = [*record.get("api_validations", []), api_validation]
+        return record
+    return {
+        "study": study,
+        "hardware": hardware,
+        "setup_seconds": time.time() - notebook_start,
+        "api_validation": api_validation,
+        "trials": [],
+    }
+
+
+def merge_trial(record, execution):
+    record["trials"] = [t for t in record["trials"] if t["trial"]["name"] != execution["trial"]["name"]]
+    record["trials"].append(execution)
+    record["comparison"] = [
+        {
+            "trial": t["trial"]["name"],
+            "status": t.get("status"),
+            "mean_score_equal_weight_25_games": (t.get("report") or {}).get("mean_score_equal_weight_25_games"),
+            "levels": (t.get("report") or {}).get("levels"),
+            "score_denominator_games": (t.get("report") or {}).get("score_denominator_games"),
+            "actions": (t.get("report") or {}).get("actions"),
+            "switch_wall_seconds": ((t.get("report") or {}).get("scheduler") or {}).get("switch_wall_seconds"),
+            "preemptions": ((t.get("report") or {}).get("engine") or {}).get("preemptions"),
+            "window": ((t.get("report") or {}).get("window_choice") or {}).get("window"),
+        }
+        for t in record["trials"]
+    ]
+    return record
 
 
 def main(argv=None):
@@ -52,18 +82,13 @@ def main(argv=None):
     probe.model = study.get("served_model", probe.model)
     probe.serving_backend = study.get("backend", "vllm")
     record = load_record(
-        output, study, hardware=hardware(), api_validation=asyncio.run(validate_api(probe)),
+        output, study, hardware=hardware(),
+        api_validation=asyncio.run(validate_api(probe)),
         notebook_start=args.notebook_start_epoch,
     )
-    competition = study.get('competition') if trial.get('competition', True) else None
     if trial.get('wall_seconds') is not None:
         study = {**study, 'wall_seconds': float(trial['wall_seconds'])}
-    if competition:
-        from .competition import gameplay_seconds, is_rerun, open_arcade, resolve_blocks
-    else:
-        from .competition import is_rerun
-    hidden = bool(competition) and is_rerun() and not competition.get('rehearsal')
-    games_dir = None if hidden else args.games_dir or find_games("/kaggle/input")
+    games_dir = args.games_dir or find_games("/kaggle/input")
 
     def stop(signum, frame):
         raise KeyboardInterrupt(f"Notebook termination signal {signum}")
@@ -74,138 +99,29 @@ def main(argv=None):
     folder = output / trial["name"]
     folder.mkdir(exist_ok=True)
     execution = {"trial": trial, "started_epoch": time.time(), "smoke": args.smoke}
-    wall = study["smoke"]["wall_seconds"] if args.smoke else study["wall_seconds"]
-    if (study.get("early_stop") or {}).get("always") and not args.smoke:
-        wall = min(wall, study["early_stop"]["at_seconds"])  # an unconditional run stop plays at most at_seconds
     try:
-        # The level bench sizes its own wall from what is left (arena.level_bench.LevelBench.wall_seconds).
-        if (not competition
-                and trial["kind"] not in ("level-bench", "expert-quant", "expert-usage", "server-check",
-                                          "prune-quality")
-                and hard_end - time.time() < wall + 480):
-            raise TimeoutError("Insufficient time for a full arena trial")
-        if study.get("backend") == "sglang":
-            from .sglang import isolate
-
-            execution["isolation"] = asyncio.run(isolate(args.base_url))
-        elif study.get("isolate_trial_cache"):
+        if trial["kind"] not in ("rl-loop", "level-bench"):
+            raise ValueError(f"trial kind {trial['kind']!r}: rl-loop or level-bench")
+        if study.get("isolate_trial_cache"):
             execution["isolation"] = asyncio.run(isolate_trial(args.base_url))
         else:
             asyncio.run(wait_idle(args.base_url))
         print(json.dumps({"event": "starting_trial", "trial": trial}), flush=True)
-        if trial["kind"] == "serving-bench":
-            from .throughput_bench import run_bench
+        kwargs = dict(source=args.source, games_dir=games_dir, output=folder, server_dir=args.server_dir,
+                      analysis_python=args.analysis_python, base_url=args.base_url, deadline_epoch=hard_end - 300)
+        if trial["kind"] == "rl-loop":
+            # RL: play, updates, held-out reads, stop rules (arena.rl_loop)
+            from .rl_loop import run_rl_loop
 
-            report = asyncio.run(run_bench(study, trial, output=folder, server_dir=args.server_dir,
-                                           base_url=args.base_url, deadline_epoch=hard_end - 120,
-                                           source=args.source))
-            execution["report"] = report
-            execution["status"] = report["status"]
-            if report["status"] == "error":
-                raise RuntimeError("Serving benchmark failed: " + "; ".join(report["task_errors"])[:2000])
-            raise _Done
-        if trial["kind"] == "kernel-quality":
-            # Kernel work, phase 2: control reference or patched-server gate on fixed inputs (arena.kernel_gate).
-            from .kernel_gate import run_quality
-
-            report = asyncio.run(run_quality(study, trial, source=args.source, output=folder,
-                                             server_dir=args.server_dir, base_url=args.base_url,
-                                             deadline_epoch=hard_end - 120))
-            execution["report"] = {k: report.get(k) for k in ("role", "status", "errors", "verdict", "bench")}
-            execution["status"] = report["status"]
-            raise _Done
-        if trial["kind"] == "draft-head":
-            # Draft-head fine-tune (28 September): dump the MTP input rows, stop the server, train the head.
-            # The bootstrap ends the trial process at its start + wall + 600 s (TRIAL_GRACE).
-            from .draft_head import run_draft_head
-
-            report = run_draft_head(study, trial, source=args.source, output=folder, server_dir=args.server_dir,
-                                    base_url=args.base_url,
-                                    deadline_epoch=min(hard_end - 120, execution["started_epoch"] + wall + 560))
-            execution["report"] = {k: report.get(k) for k in ("status", "errors", "dumped", "tokens", "result")}
-            execution["status"] = report["status"]
-            raise _Done
-        if trial["kind"] == "expert-quant":
-            # Expert quantization (28 September): MoE-input capture on fixed recorded sequences, then a GPU
-            # program after the trial stopped the server (arena.expert_quant); it ends before the bootstrap's
-            # trial timeout (hard_end - 120).
-            from .expert_quant import run_expert_quant
-
-            report = asyncio.run(run_expert_quant(study, trial, source=args.source, output=folder,
-                                                  server_dir=args.server_dir, base_url=args.base_url,
-                                                  deadline_epoch=hard_end - 140))
-            execution["report"] = {k: report.get(k) for k in ("phase", "status", "errors", "layers_done")}
-            execution["status"] = report["status"]
-            raise _Done
-        if trial["kind"] == "prune-quality":
-            # Load-time expert pruning GPU check (28 September): held-out teacher forcing on an unpruned reference
-            # server and on each pruned server (arena.expert_usage.run_prune_check).
-            from .expert_usage import run_prune_check
-
-            report = asyncio.run(run_prune_check(study, trial, source=args.source, output=folder,
-                                                 server_dir=args.server_dir, base_url=args.base_url,
-                                                 deadline_epoch=min(hard_end - 150, time.time() + float(
-                                                     trial.get("wall_seconds", 1e9)))))
-            execution["report"] = {k: report.get(k) for k in ("status", "errors", "server")}
-            execution["status"] = report["status"]
-            raise _Done
-        if trial["kind"] == "server-check":
-            # Server-start diagnostic arm (expert usage, 28 September): reaching here means the server started.
-            from .expert_usage import server_check
-
-            report = asyncio.run(server_check(study, trial, base_url=args.base_url, output=folder))
-            execution["report"] = report
-            execution["status"] = report["status"]
-            raise _Done
-        if trial["kind"] == "expert-usage":
-            # Expert-usage measurement (28 September): routing statistics and pruned-router quality on fixed
-            # recorded sequences (arena.expert_usage); its passes run until shortly before the bootstrap's
-            # trial timeout (hard_end - 120).
-            from .expert_usage import run_expert_usage
-
-            report = asyncio.run(run_expert_usage(study, trial, source=args.source, output=folder,
-                                                  base_url=args.base_url,
-                                                  deadline_epoch=min(hard_end - 150,
-                                                                     time.time() + float(trial.get("wall_seconds",
-                                                                                                   1e9)))))
-            execution["report"] = {k: report.get(k) for k in ("status", "errors", "skipped")}
-            execution["status"] = report["status"]
-            raise _Done
-        if trial["kind"] == "level-bench":
+            report = asyncio.run(run_rl_loop(study, trial, **kwargs))
+            execution["report"] = {k: v for k, v in report.items() if k not in ("settings",)}
+        else:
             from .level_bench import run_level_bench
 
-            report = asyncio.run(run_level_bench(
-                study, trial, source=args.source, games_dir=games_dir, output=folder, server_dir=args.server_dir,
-                analysis_python=args.analysis_python, base_url=args.base_url, deadline_epoch=hard_end - 300))
+            report = asyncio.run(run_level_bench(study, trial, **kwargs))
             # study.json keeps the summary; the attempts stay in the trial's level-bench.json.
             execution["report"] = {k: v for k, v in report.items() if k not in ("attempts", "config")}
-            execution["status"] = report["status"]
-            raise _Done
-        lifecycle = open_arcade(study, games_dir, folder) if competition else nullcontext((study, None))
-        with lifecycle as (resolved, arcade):
-            extra = {}
-            if competition:
-                resolved['wall_seconds'] = gameplay_seconds(resolved, hard_end)
-                # Blocks (30 September): the scheduler's wall is the competition play time (arena.competition).
-                resolve_blocks(resolved, args.notebook_start_epoch)
-                record['study'] = resolved
-                extra['arcade'] = arcade
-                if is_rerun():
-                    extra['gameplay_deadline_epoch'] = hard_end - competition['cleanup_seconds']
-            report = asyncio.run(
-                run_trial(
-                    resolved, trial, source=args.source, games_dir=games_dir, output=folder,
-                    server_dir=args.server_dir,
-                    analysis_python=args.analysis_python, base_url=args.base_url, smoke=args.smoke,
-                    **extra,
-                )
-            )
-        execution["report"] = report
         execution["status"] = report["status"]
-        if report["status"] == "error":
-            raise RuntimeError("Trial has agent or telemetry failures: " + "; ".join(report["task_errors"])[:2000])
-    except _Done:
-        pass
     except Exception as exc:  # noqa: BLE001 - every trial outcome is recorded
         execution.update(status="error", error=f"{type(exc).__name__}: {exc}")
         (folder / "exception.txt").write_text(traceback.format_exc())
@@ -216,13 +132,7 @@ def main(argv=None):
         (output / "study.json").write_text(json.dumps(record, indent=2))
         signal.setitimer(signal.ITIMER_REAL, 0)
     print(json.dumps({"event": "trial_result", "trial": trial["name"], "status": execution["status"], "error": execution.get("error")}), flush=True)
-    # On the hidden rerun the gateway scorecard is the submission; a trial that played with a
-    # failed session or preemptions must not fail the notebook afterwards.
-    acceptable = {'complete', 'complete_with_preemptions', 'error'} if competition and is_rerun() else {'complete'}
-    if trial["kind"] in ("serving-bench", "level-bench", "draft-head", "expert-quant", "expert-usage",
-                         "server-check", "prune-quality"):
-        acceptable = {'complete', 'complete_with_errors'}
-    if execution["status"] not in acceptable:
+    if execution["status"] not in ("complete", "complete_with_errors"):
         raise SystemExit(1)
 
 

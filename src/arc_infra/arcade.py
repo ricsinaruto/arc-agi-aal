@@ -1,7 +1,5 @@
 """Offline competition-like arcade construction and public game discovery."""
 
-import hashlib
-import json
 import logging
 import os
 from pathlib import Path
@@ -20,16 +18,6 @@ class CompetitionLikeOfflineArcade(Arcade):
                 # for the direct offline wrapper; no game state is changed.
                 self.scorecard_manager.update_scorecard(response.guid, response, True)
         return env
-
-
-def source_provenance():
-    files = {}
-    for path in sorted(Path(__file__).parent.glob("*.py")):
-        files[path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
-    return {
-        "sha256": hashlib.sha256(json.dumps(files, sort_keys=True).encode()).hexdigest(),
-        "files": files,
-    }
 
 
 def make_arcade(mode, games_dir, recordings_dir):

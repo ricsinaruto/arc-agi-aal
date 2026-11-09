@@ -1,8 +1,8 @@
-"""Run the public Duck tool loop against our timed, independently scored game fleet."""
+"""The Duck agent: one game through ``arc_infra.session.GameSession``, played by the analyzer
+(``inference.agent.tool_agent.ToolAgent``) with a persistent python sandbox, transition receipts and repeat refusal."""
 
 import asyncio
 import json
-import re
 import threading
 import time
 from collections import OrderedDict
@@ -17,29 +17,10 @@ from arc_infra.perception import Observation, board_hash
 from arc_infra.plans import Action, integer
 from arc_infra.session import GameSession
 
+from inference.agent import tool_agent
+from inference.agent.tool_agent import ToolAgent, image_tokens_for
+
 from .feedback import StuckTracker, TransitionCache, no_effect_here, transition_summary
-from .loader import load
-from .plumbing import PlumbingMixin
-from .prompting import PromptMixin, system_prompt
-from .timing import CompetitionClock
-from .trimming import ObservationPreservingTrim, image_tokens_for
-
-THINK_TAG = re.compile(r"</?think>", flags=re.IGNORECASE)  # the public loop's _THINK_TAG_RE
-
-
-def verbatim_history_text(field, message, normalized):
-    """The reply's ``field`` ("reasoning" or "content") as the server sent it, ``<think>`` tags removed only.
-
-    ``normalized`` (the public loop's text) decides only whether the field is kept at all."""
-    if field == "reasoning":
-        raw = message.get("reasoning")
-        if raw in (None, ""):
-            raw = message.get("reasoning_content")
-    else:
-        raw = message.get(field)
-    if not isinstance(raw, str) or not normalized:
-        return normalized
-    return THINK_TAG.sub("", raw)
 
 
 class HistoryPayloads(Sequence):
@@ -65,7 +46,7 @@ class GameplayRequestExpired(TimeoutError):
     """A model HTTP timeout observed after its gameplay allowance expired."""
 
 
-# Refused repeats do not end an analyzer turn, so the public loop would re-ask forever if
+# Refused repeats do not end an analyzer turn, so the analyzer would re-ask forever if
 # the model insisted; after this many refusals in one turn the repeat executes, flagged.
 REFUSALS_PER_TURN = 2
 
@@ -79,7 +60,7 @@ RESET_REFUSED = (
 class DuckAgent(GameSession):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.profile = "duck-interface"
+        self.profile = "duck-transfer"
         self.stopping = threading.Event()
         self.chat_future = None
         self.worker = None
@@ -88,8 +69,7 @@ class DuckAgent(GameSession):
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="duck-actor")
         self.duck_history = []
         self.backend_error = None
-        self.module = load()
-        self.competition_clock = None
+        self.module = tool_agent
         self.transition_results = {}
         self.length_truncations = 0
         # v5 plumbing: the runtime state lives here; the file is written at start and end.
@@ -110,41 +90,26 @@ class DuckAgent(GameSession):
         # the v5b calibration split one equation into two unknowns and ran to its clamps),
         # the tokenizer count's residual against prompt_tokens is calibrated instead, and
         # every sample is logged (``token_count`` events).
-        self.chars_per_token = float(ObservationPreservingTrim.CHARS_PER_TOKEN)
+        self.chars_per_token = float(ToolAgent.CHARS_PER_TOKEN)
         self.image_tokens = self.config.image_tokens_estimate
         self.count_residual = 0.0
         self.token_count_samples = 0
         self.context_prechecks = 0
         self.token_count_errors = 0
         self._analyzer = None
-        from .history import preserve_transition_results
-        from .sandbox import StatefulSandbox, stateful_bootstrap
+        from inference.agent.python_tool_sandbox import _SANDBOX_BOOTSTRAP
+        from inference.utils.grid_utils import ARC_COLOR_CHARS
 
-        original = self.module.run_sandboxed_python
+        from .sandbox import StatefulSandbox
+
         # One persistent interpreter per game (definitions survive between tool calls).
         self.sandbox = StatefulSandbox(
-            stateful_bootstrap(
-                preserve_transition_results(original.__globals__["_SANDBOX_BOOTSTRAP"])
-            ),
-            color_chars=original.__globals__["ARC_COLOR_CHARS"],
+            _SANDBOX_BOOTSTRAP,
+            color_chars=ARC_COLOR_CHARS,
             on_event=lambda kind, **data: self.workspace.append(kind, step=self.steps, **data),
             label=self.game_id,
         )
         self.sandbox_runner = self.sandbox.run
-
-    def configure_fleet_timing(self, started, sessions):
-        self.competition_clock = CompetitionClock(started, sessions)
-        return self.competition_clock.metadata()
-
-    async def before_first_turn(self):
-        """Hook between environment creation and the first analyzer turn (no-op here; the
-        arena's game-start snapshot probes the board from it)."""
-        return None
-
-    async def before_turn(self):
-        """Hook on the event loop before each analyzer turn (the worker is idle; no-op here; the
-        arena's level probe takes a new level's snapshot from it)."""
-        return None
 
     def write_duck_state(self, action="", result=None):
         from inference.agent.runtime_state import Frame, HistoryEntry
@@ -168,13 +133,6 @@ class DuckAgent(GameSession):
     def tried_no_effect_here(self):
         return no_effect_here(self.no_ops, self.obs.levels, self.obs.board)
 
-    # Hooks of the no-change refusal and the stuck count (the arena's harness v2 overrides them
-    # with the effect-aware change; these defaults are the full-board rule).
-
-    def no_effect_repeat(self, action):
-        """True when ``action`` already changed nothing on this exact board (refused repeat)."""
-        return (self.obs.levels, board_hash(self.obs.board), action.identity()) in self.no_ops
-
     async def action_effect(self, action, label, payload, before, before_levels, changed):
         """Annotate one executed action's ``payload``; returns the change the stuck tracker counts."""
         return changed
@@ -182,13 +140,6 @@ class DuckAgent(GameSession):
     def request_template_override(self):
         """Per-request chat-template fields over the config's (the arena's adaptive thinking); None keeps them."""
         return None
-
-    def no_change_repeat_error(self, skipped):
-        return (
-            f"{', '.join(skipped)} already produced no board change on this exact "
-            "board; choose a different action. Tried here with no effect: "
-            + ", ".join(self.tried_no_effect_here())
-        )
 
     def flush_duck_state(self):
         """Write the runtime state file (once at start, once at the end: evidence only)."""
@@ -199,8 +150,8 @@ class DuckAgent(GameSession):
         )
         self.state_flushes += 1
 
-    def runtime_state(self, path=None):
-        """In-memory replacement for the public ``load_runtime_state``."""
+    def runtime_state(self):
+        """``(current frame, history)`` from memory (the state file is written at start and end only)."""
         return self.duck_history[-1].frame, list(self.duck_history)
 
     def ascii_history(self, history):
@@ -271,53 +222,35 @@ class DuckAgent(GameSession):
             )
             raise GameplayRequestExpired("Model request exhausted gameplay allowance") from exc
 
-    # The arena's harness_fixes settings (arena.harness_fixes); None here and on every earlier arena build.
-    harness_fixes = None
-
-    def fix(self, name):
-        """True when the arena's ``harness_fixes`` sub-fix ``name`` is on (never outside the arena)."""
-        return False
 
     def gameplay_payload(self, messages, tools, override=None):
-        """The gameplay request for ``messages``: the public payload, the config's reasoning effort, and the
-        per-request template ``override`` (the arena's adaptive thinking)."""
-        module = self.module
-        payload = module.build_chat_payload(
-            provider="vllm",
-            model=self.config.model,
-            messages=messages,
-            max_tokens=self.config.max_output_tokens or None,
-            temperature=self.config.temperature,
-            top_p=module._LOCAL_ANALYZER_TOP_P,
-            top_k=module._LOCAL_ANALYZER_TOP_K,
-            thinking=self.config.enable_thinking,
-            tools=tools,
-            tool_choice=module._request_tool_choice(tools),
-            seed=-1,
-        )
-        # Effort is the template's own control (the public loop sends none); v5 caps output.
-        payload["chat_template_kwargs"]["reasoning_effort"] = self.config.reasoning_effort
+        """The gameplay request for ``messages`` (vLLM chat completions): the config's sampling, output cap and
+        reasoning effort, and the per-request template ``override`` (the arena's adaptive thinking)."""
+        payload = {"model": self.config.model, "messages": messages, "stream": False,
+                   "temperature": self.config.temperature, "top_p": tool_agent._LOCAL_ANALYZER_TOP_P}
+        if self.config.max_output_tokens:
+            payload["max_tokens"] = self.config.max_output_tokens
+        if tools:
+            payload["tools"] = tools
+            payload["tool_choice"] = "auto"
+        payload["top_k"] = tool_agent._LOCAL_ANALYZER_TOP_K
+        payload["chat_template_kwargs"] = {"enable_thinking": bool(self.config.enable_thinking),
+                                           "reasoning_effort": self.config.reasoning_effort}
         if override:
             payload["chat_template_kwargs"].update(override)
         return payload
 
     async def chat(self, messages, tools):
         module = self.module
-        start = time.monotonic()
+        start = self.now()
         payload = self.gameplay_payload(messages, tools, self.request_template_override())
         sent_effort = (payload["chat_template_kwargs"]["reasoning_effort"]
                        if payload["chat_template_kwargs"].get("enable_thinking", True) else "none")
         try:
-            admission_count = (await self.prepare_admission(payload)
-                               if hasattr(self, "prepare_admission") else None)
+            admission_count = await self.prepare_admission(payload)  # the arena's exact count (None: no gate)
             async with self.client.slots:
                 if self.stopping.is_set() or self.remaining() <= 0:
                     raise TimeoutError("Gameplay deadline reached")
-                # Refresh after admission; change only the outbound payload.
-                if self.competition_clock is not None:
-                    now = time.monotonic()
-                    payload["messages"] = self.competition_clock.annotate(messages, now)
-                    self.workspace.append("planning_budget", **self.competition_clock.snapshot(now))
                 self.workspace.append(
                     "model_request",
                     step=self.steps,
@@ -349,7 +282,7 @@ class DuckAgent(GameSession):
                 if response.status_code == 400 and module._is_context_length_error(
                     ValueError(response.text)
                 ):
-                    # The public loop catches requests.RequestException, whereas
+                    # The analyzer catches requests.RequestException, whereas
                     # this bridge uses httpx. Preserve that recovery contract only
                     # for a definite context rejection, never an ambiguous request.
                     raise ContextLengthRejected(response.text)
@@ -370,7 +303,7 @@ class DuckAgent(GameSession):
                 "message": choice["message"],
                 "finish_reason": choice["finish_reason"],
                 "usage": data.get("usage", {}),
-                "seconds": time.monotonic() - start,
+                "seconds": self.now() - start,
                 "force_action": False,
                 "reasoning_effort": sent_effort,
                 "max_output_tokens": self.config.max_output_tokens or None,
@@ -410,21 +343,8 @@ class DuckAgent(GameSession):
         None. ``verdicts``: one ``(label, payload or None)`` per action tried (None: refused)."""
         return None
 
-    def finish_batch(self, result, requested, verdicts, stop):
-        """The batch receipt (the arena's dfr_loop action feedback adds traces and the echo); ``result`` here."""
-        return result
-
-    def begin_turn(self):
-        """True when the coming analyzer invocation starts a new turn (the arena's dfr_loop: False on a resumption
-        after a token yield, which the stuck notice and the refusal count do not see as a turn)."""
-        return True
-
-    def end_turn(self, result):
-        """Hook after each analyzer invocation (the arena's dfr_loop yield bookkeeping); no-op here."""
-        return None
-
     def analyzer_should_stop(self):
-        """The analyzer's ``should_stop`` (the arena's dfr_loop also yields after its generated-token budget)."""
+        """The analyzer's ``should_stop``: the game is stopping or out of time."""
         return self.stopping.is_set() or self.remaining() <= 0
 
     async def step_duck(self, arguments):
@@ -439,7 +359,6 @@ class DuckAgent(GameSession):
                 label = str(item.get("action") or "").strip().upper()
                 # Upstream's aliases cover ACTION1..6 only, but the environment
                 # can advertise additional engine actions (currently ACTION7).
-                # Preserve advertised names without modifying the public package.
                 name = self.engine_action(label)
                 if name not in set(self.obs.available) | {"RESET"}:
                     raise ValueError(f"Unavailable action: {label or '<empty>'}")
@@ -481,9 +400,9 @@ class DuckAgent(GameSession):
             if action.name == "RESET" and self.steps == self.level_start_step:
                 stop = {"stop_reason": "reset_refused", "stop_detail": RESET_REFUSED}
                 break
-            repeat = self.no_effect_repeat(action)
+            # Same action on the exact same board already changed nothing: refused (REFUSALS_PER_TURN per turn).
+            repeat = (self.obs.levels, board_hash(self.obs.board), action.identity()) in self.no_ops
             if repeat and self.turn_refusals < REFUSALS_PER_TURN:
-                # Same action on the exact same board already changed nothing: refuse it.
                 skipped.append(display(action))
                 verdicts.append((display(action), None))
                 self.workspace.append(
@@ -528,9 +447,6 @@ class DuckAgent(GameSession):
                 payload["tried_no_effect_here"] = tried
             self.auto_reset = None
             self.stuck.note_action(effective)
-            note_label = getattr(self.stuck, "note_label", None)  # arena procedure tracker (collapse detector)
-            if note_label is not None:
-                note_label(label)
             if payload["level_completed"]:
                 self.level_start_step = self.steps
                 self.stuck.reset_level()
@@ -558,7 +474,8 @@ class DuckAgent(GameSession):
         if skipped and not executed and not stop:
             stop = {
                 "stop_reason": "no_change_repeat",
-                "error": self.no_change_repeat_error(skipped),
+                "error": f"{', '.join(skipped)} already produced no board change on this exact board; choose a "
+                         "different action. Tried here with no effect: " + ", ".join(self.tried_no_effect_here()),
                 "transition": {"no_change_repeat": True},
             }
         result = {
@@ -577,7 +494,7 @@ class DuckAgent(GameSession):
         }
         if skipped:
             result["skipped_repeats"] = skipped
-        return self.finish_batch(result, [display(action) for action in actions], verdicts, stop)
+        return result
 
     async def count_prompt(self, messages, tools, template_kwargs=None):
         """``(text tokens, images, text characters, image tokens)`` from the server tokenizer
@@ -658,43 +575,13 @@ class DuckAgent(GameSession):
             self._analyzer._image_tokens = self.image_tokens
 
     def analyzer(self, loop):
-        from .sandbox import stateful_system_prompt, stateful_tools
-
-        owner = self
-
-        class BridgedToolAgent(
-            ObservationPreservingTrim, PromptMixin, PlumbingMixin, self.module.ToolAgent
-        ):
-            def _chat_completion(self, messages, *, tools, request_timeout_seconds=None):
-                future = asyncio.run_coroutine_threadsafe(owner.chat(messages, tools), loop)
-                owner.chat_future = future
-                try:
-                    return future.result()
-                finally:
-                    owner.chat_future = None
-
-            def _tools(self, state_path):
-                return stateful_tools(super()._tools(state_path))
-
-            def _history_text(self, field, message, normalized, markup_stripped):
-                # reasoning_history "verbatim" (29 September): the server's own string, only <think> tags removed,
-                # so the next prompt continues the generated tokens exactly (blank lines and paragraph breaks
-                # kept). Tool-call markup recovered from the text still takes the normalized path.
-                if owner.config.reasoning_history != "verbatim" or markup_stripped:
-                    return normalized
-                return verbatim_history_text(field, message, normalized)
-
-        analyzer = BridgedToolAgent(
-            model=self.config.model, base_url=self.config.base_url, provider="vllm", timeout=900
-        )
-        analyzer._owner = self
+        if self.config.reasoning_history != "verbatim":  # the history keeps the server's own reasoning text
+            raise ValueError(f"reasoning_history {self.config.reasoning_history!r}: only 'verbatim' is supported")
+        analyzer = ToolAgent(self, loop, model=self.config.model, base_url=self.config.base_url)
         self._analyzer = analyzer
         analyzer._image_tokens = self.image_tokens
         analyzer._chars_per_token = self.chars_per_token
-        # Also cover already-imported upstream modules with cached env values.
-        analyzer._yield_seconds = None
-        analyzer._system_prompt = system_prompt(stateful_system_prompt(analyzer._system_prompt))
-        # v5: the request carries max_tokens, so the trimmer reserves the same amount.
+        # v5: the request carries max_tokens, so the context budget reserves the same amount.
         analyzer._max_output_tokens = self.config.max_output_tokens or None
         analyzer._reply_reserve_tokens = analyzer._max_output_tokens or 512
         analyzer._context_budget_tokens = max(
@@ -740,7 +627,7 @@ class DuckAgent(GameSession):
                 self.worker = None
 
     async def run(self):
-        self.started = time.monotonic()
+        self.started = self.now()
         self.state_path = self.workspace.root / "tool_runtime_state.json"
         loop = asyncio.get_running_loop()
         try:
@@ -753,7 +640,7 @@ class DuckAgent(GameSession):
             if self.env is None:
                 raise RuntimeError("Failed to create environment")
             self.obs = Observation.from_raw(self.env.observation_space)
-            self.last_observation_at = time.monotonic()
+            self.last_observation_at = self.now()
             self.workspace.observe(0, self.obs)
             self.write_duck_state()
             self.flush_duck_state()  # analyze() requires the file to exist
@@ -762,9 +649,7 @@ class DuckAgent(GameSession):
             def step_env(arguments):
                 return asyncio.run_coroutine_threadsafe(self.step_duck(arguments), loop).result()
 
-            await self.before_first_turn()
             while self.remaining() > 0 and self.steps < self.config.max_actions:
-                await self.before_turn()
                 if self.obs.state == "WIN":
                     self.status = "won"
                     break
@@ -781,9 +666,8 @@ class DuckAgent(GameSession):
                         game_over_step=game_over.get("step"),
                         actions=game_over.get("actions"),
                     )
-                if self.begin_turn():
-                    self.stuck.note_turn()
-                    self.turn_refusals = 0
+                self.stuck.note_turn()
+                self.turn_refusals = 0
                 self.worker = loop.run_in_executor(
                     self.executor,
                     partial(
@@ -794,13 +678,11 @@ class DuckAgent(GameSession):
                         step_env=step_env,
                         transcript_path=self.workspace.root / "duck-transcript.txt",
                         analysis_step=self.turns,
-                        request_timeout_seconds=self.remaining(),
                         should_stop=self.analyzer_should_stop,
                     ),
                 )
                 result = await asyncio.shield(self.worker)
                 self.worker = None
-                self.end_turn(result)
                 if self.backend_error:
                     raise RuntimeError(self.backend_error)
                 if result is not None and result.retryable_failure and self.remaining() > 0:

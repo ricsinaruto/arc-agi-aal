@@ -5,24 +5,6 @@ from dataclasses import dataclass
 
 import numpy as np
 
-PALETTE = [
-    "FFFFFF",
-    "CCCCCC",
-    "999999",
-    "666666",
-    "333333",
-    "000000",
-    "E53AA3",
-    "FF7BCC",
-    "F93C31",
-    "1E93FF",
-    "88D8F1",
-    "FFDC00",
-    "FF851B",
-    "921231",
-    "4FCC30",
-    "A356D6",
-]
 HEX = "0123456789abcdef"
 
 
@@ -84,10 +66,6 @@ def encode_grid(board):
     except (TypeError, ValueError):
         pass
     return ["".join(HEX[int(c)] for c in row) for row in board]
-
-
-def decode_grid(rows):
-    return np.array([[int(c, 16) for c in row] for row in rows], dtype=np.uint8)
 
 
 def board_hash(board):

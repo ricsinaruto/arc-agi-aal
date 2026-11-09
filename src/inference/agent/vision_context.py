@@ -1,10 +1,9 @@
-"""Optional multimodal context helpers for ARC analyzer prompts."""
+"""Board images for ARC analyzer prompts."""
 from __future__ import annotations
 
 import base64
 import io
 import itertools
-import os
 from typing import Any
 
 from PIL import Image
@@ -31,22 +30,7 @@ ARC_COLOR_MAP: dict[int, tuple[int, int, int]] = {
 }
 
 
-def multimodal_context() -> str:
-    return os.environ.get("MULTIMODAL_CONTEXT", "").strip().lower()
-
-
-def current_grid_image_enabled() -> bool:
-    return multimodal_context() == "current_grid"
-
-
-def current_grid_image_upscale() -> int:
-    raw = os.environ.get("MULTIMODAL_UPSCALE", "").strip()
-    if not raw:
-        return 16
-    try:
-        return max(1, int(raw))
-    except ValueError:
-        return 16
+UPSCALE = 4  # board image scale (the public notebook's MULTIMODAL_UPSCALE)
 
 
 def frame_to_png_data_url(frame: Frame, *, upscale: int | None = None) -> str:
@@ -55,7 +39,7 @@ def frame_to_png_data_url(frame: Frame, *, upscale: int | None = None) -> str:
     if rows <= 0 or cols <= 0:
         raise ValueError("Cannot render an empty grid as an image.")
 
-    scale = current_grid_image_upscale() if upscale is None else max(1, int(upscale))
+    scale = UPSCALE if upscale is None else max(1, int(upscale))
     data = None
     if all(len(row) == cols for row in frame.grid):
         try:
@@ -84,7 +68,7 @@ def frame_to_png_data_url(frame: Frame, *, upscale: int | None = None) -> str:
 
 
 def current_grid_image_part(frame: Frame | None) -> dict[str, Any] | None:
-    if frame is None or not current_grid_image_enabled():
+    if frame is None:
         return None
     return {
         "type": "image_url",

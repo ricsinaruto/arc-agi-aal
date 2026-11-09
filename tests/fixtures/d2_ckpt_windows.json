@@ -1,0 +1,210 @@
+{
+ "source": "rl1-loop-seq-d2-v2 trainer.log (27 Oct): per rank, its 12 grad windows in order (acc: the accumulate call, whose start finds the reserve trimmed); base/peak GiB as logged at the logged n; gap: card - peak where the window's peak grew the reserve",
+ "ranks": {
+  "0": [
+   {
+    "acc": 0,
+    "tokens": 14265,
+    "tail": 9042,
+    "n": 23,
+    "base": 69.066,
+    "peak": 256.481,
+    "gap": 1.138
+   },
+   {
+    "acc": 0,
+    "tokens": 14260,
+    "tail": 9037,
+    "n": 17,
+    "base": 79.503,
+    "peak": 224.847
+   },
+   {
+    "acc": 0,
+    "tokens": 15991,
+    "tail": 10768,
+    "n": 10,
+    "base": 79.403,
+    "peak": 186.6
+   },
+   {
+    "acc": 1,
+    "tokens": 12470,
+    "tail": 7247,
+    "n": 14,
+    "base": 78.898,
+    "peak": 188.138,
+    "gap": 1.413
+   },
+   {
+    "acc": 1,
+    "tokens": 21170,
+    "tail": 15947,
+    "n": 0,
+    "base": 78.821,
+    "peak": 121.557
+   },
+   {
+    "acc": 1,
+    "tokens": 17480,
+    "tail": 12257,
+    "n": 0,
+    "base": 78.698,
+    "peak": 112.219
+   },
+   {
+    "acc": 2,
+    "tokens": 13256,
+    "tail": 8033,
+    "n": 4,
+    "base": 78.898,
+    "peak": 128.367,
+    "gap": 2.43
+   },
+   {
+    "acc": 2,
+    "tokens": 17703,
+    "tail": 12480,
+    "n": 0,
+    "base": 78.82,
+    "peak": 112.898
+   },
+   {
+    "acc": 2,
+    "tokens": 17414,
+    "tail": 12191,
+    "n": 0,
+    "base": 78.722,
+    "peak": 112.077
+   },
+   {
+    "acc": 3,
+    "tokens": 19564,
+    "tail": 14338,
+    "n": 0,
+    "base": 78.97,
+    "peak": 117.692,
+    "gap": 2.896
+   },
+   {
+    "acc": 3,
+    "tokens": 29030,
+    "tail": 23804,
+    "n": 0,
+    "base": 78.87,
+    "peak": 141.323,
+    "gap": 4.46
+   },
+   {
+    "acc": 3,
+    "tokens": 25189,
+    "tail": 19963,
+    "n": 0,
+    "base": 78.723,
+    "peak": 131.531
+   }
+  ],
+  "1": [
+   {
+    "acc": 0,
+    "tokens": 12569,
+    "tail": 7346,
+    "n": 29,
+    "base": 68.303,
+    "peak": 266.829,
+    "gap": 0.49
+   },
+   {
+    "acc": 0,
+    "tokens": 15559,
+    "tail": 10336,
+    "n": 11,
+    "base": 78.763,
+    "peak": 190.641
+   },
+   {
+    "acc": 0,
+    "tokens": 15367,
+    "tail": 10144,
+    "n": 5,
+    "base": 78.673,
+    "peak": 144.264
+   },
+   {
+    "acc": 1,
+    "tokens": 14527,
+    "tail": 9304,
+    "n": 13,
+    "base": 79.57,
+    "peak": 199.278,
+    "gap": 1.318
+   },
+   {
+    "acc": 1,
+    "tokens": 14677,
+    "tail": 9454,
+    "n": 13,
+    "base": 79.472,
+    "peak": 200.421
+   },
+   {
+    "acc": 1,
+    "tokens": 21765,
+    "tail": 16542,
+    "n": 4,
+    "base": 79.394,
+    "peak": 165.245
+   },
+   {
+    "acc": 2,
+    "tokens": 13058,
+    "tail": 7835,
+    "n": 17,
+    "base": 79.605,
+    "peak": 212.891,
+    "gap": 1.537
+   },
+   {
+    "acc": 2,
+    "tokens": 14512,
+    "tail": 9289,
+    "n": 13,
+    "base": 79.527,
+    "peak": 199.109
+   },
+   {
+    "acc": 2,
+    "tokens": 21808,
+    "tail": 16585,
+    "n": 4,
+    "base": 79.427,
+    "peak": 165.451
+   },
+   {
+    "acc": 3,
+    "tokens": 19836,
+    "tail": 14610,
+    "n": 6,
+    "base": 79.743,
+    "peak": 176.413,
+    "gap": 3.646
+   },
+   {
+    "acc": 3,
+    "tokens": 21059,
+    "tail": 15833,
+    "n": 5,
+    "base": 79.622,
+    "peak": 171.818
+   },
+   {
+    "acc": 3,
+    "tokens": 31906,
+    "tail": 26680,
+    "n": 0,
+    "base": 79.499,
+    "peak": 149.183
+   }
+  ]
+ }
+}

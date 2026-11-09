@@ -1,8 +1,8 @@
 """4-bit QSA main KV cache for the pinned Qwen3.8-Flash-Next vLLM runtime (29 September; kv-cache-4bit.md).
 
 Copied into ``vllm/arc_kv4.py`` by ``arc_infra.serving_kernels_patch`` only when ``server.serving_kernels`` sets
-``kv_cache_4bit`` ("int4" or "k8v4"), next to ``vllm/arc_kv8.py`` whose split-K merge kernel, launch profile and
-sparse-attention reference it reuses. The mode is read from ``vllm/arc_serving_kernels.json``; the patched
+``kv_cache_4bit`` ("int4" or "k8v4"). The split-K merge kernel, launch profile and references are the removed kv8
+runtime's, source unchanged. The mode is read from ``vllm/arc_serving_kernels.json``; the patched
 ``nvidia/qsa.py`` calls the entry points below. vLLM imports are deferred, so the kernels load standalone (CPU tests
 under ``TRITON_INTERPRET=1``).
 
@@ -34,11 +34,6 @@ from pathlib import Path
 import torch
 import triton
 import triton.language as tl
-
-if __package__ == "vllm":
-    from vllm import arc_kv8 as _kv8
-else:
-    from arc_infra import kv8_runtime as _kv8
 
 CONFIG_PATH = Path(__file__).with_name("arc_serving_kernels.json")
 CONFIG_KEY = "kv_cache_4bit"
@@ -105,11 +100,37 @@ def impl_init_args(args, kwargs):
 
 def _warm_rht():
     """Create the pinned RHT sign vector on the worker's GPU at model construction, never first inside a CUDA-graph
-    capture (a host-to-device copy there is illegal)."""
+    capture (a host-to-device copy there is illegal); check the device once (``check_device``)."""
     if torch.cuda.is_available():
-        from vllm.v1.attention.ops.int4_per_token_head import _get_rht_signs
+        from vllm.v1.attention.ops import int4_per_token_head as ops
 
-        _get_rht_signs(HEAD_DIM, 0, torch.device("cuda", torch.cuda.current_device()))
+        device = torch.device("cuda", torch.cuda.current_device())
+        if not _STATE.get("device"):
+            _STATE["device"] = check_device(torch.cuda.get_device_capability(device), ops._hadacore_available(),
+                                            torch.cuda.get_device_name(device))
+        ops._get_rht_signs(HEAD_DIM, 0, device)
+
+
+# Architectures this overlay serves (E1, 26 Oct): the same Triton sources, compiled per device. SM120: RTX PRO 6000
+# (the competition card, where the GPU writer was checked equal to the pinned writer); SM100/SM103: B200/B300 (the RL
+# play card). The 4-bit pages are bitwise the same only when the rotation is the same: the pinned single_rht takes
+# Hadacore (BF16 tensor-core MMAs, the PTX build) on CUDA; without it the pinned dispatch falls back to an FP32 torch
+# butterfly for d = 256 (its Triton tier stops at d = 128), whose BF16 ties differ (2.1% of bytes measured on RTX).
+SUPPORTED_ARCH = {10: "SM100/SM103 (B200, B300)", 12: "SM120 (RTX PRO 6000)"}
+
+
+def check_device(capability, hadacore, name=""):
+    """Refuse a device the 4-bit pages were not built for, or one whose rotation is not Hadacore's; log the device."""
+    major, minor = capability
+    row = {"device": name, "capability": f"{major}.{minor}", "arch": SUPPORTED_ARCH.get(major), "hadacore": hadacore,
+           "mode": configured_mode()}
+    if major not in SUPPORTED_ARCH:
+        raise NotImplementedError(f"ARC kv4 serves {sorted(SUPPORTED_ARCH.values())}, not SM{major}{minor} ({name})")
+    if not hadacore:
+        raise RuntimeError(f"ARC kv4 on SM{major}{minor} ({name}): the pinned Hadacore transform is not available, so "
+                           "the rotation would fall back to the FP32 butterfly and the pages would differ from SM120's")
+    log("DEVICE", row)
+    return row
 
 
 def customize_spec(spec):
@@ -316,13 +337,19 @@ def cache_update(impl, key, value, kv_cache, slot_mapping):
     _count("cache_update")
     mode = configured_mode()
     rows = slot_mapping.shape[0]
-    if rows >= SAMPLE_MIN_ROWS:
+    if rows >= SAMPLE_MIN_ROWS and not _capturing(key):
         _sample(impl, key[:rows], value[:rows])
     write(key, value, *cache_views(kv_cache, mode, impl), slot_mapping, mode)
 
 
-# Real K/V round trip (logged, never changes the output): the first prefill chunks of each QSA layer (>= 512 rows;
-# CUDA graphs capture at most 32 tokens, so a sampled step is never captured).
+def _capturing(tensor):
+    """True inside a CUDA-graph capture: the B300 RL card captures up to 1,024 tokens, so a >= 512-row step can be a
+    capture, where the sample's host copies and syncs are illegal (the competition card captures <= 160)."""
+    return tensor.is_cuda and torch.cuda.is_current_stream_capturing()
+
+
+# Real K/V round trip (logged, never changes the output): the first prefill chunks of each QSA layer (>= 512 rows,
+# outside any CUDA-graph capture).
 SAMPLE_MIN_ROWS = 512
 SAMPLES_PER_LAYER = 2
 SAMPLE_MAX_ROWS = 4096
@@ -331,7 +358,7 @@ SAMPLE_MAX_ROWS = 4096
 def self_check(device, mode):
     """Once per server, outside any graph capture: this module's GPU writer against the torch reference page, the
     pinned int4 writer's page (int4), and the GPU reader against FP32 dequantize-then-attend and the BF16 cache."""
-    q, k, v, indices, table, t2r = _kv8.synthetic_case(4, page=64, blocks=16, topk=203, requests=2, device=device)
+    q, k, v, indices, table, t2r = synthetic_case(4, page=64, blocks=16, topk=203, requests=2, device=device)
     expected = pack_cache(k.cpu(), v.cpu(), mode).to(device)
     written = torch.zeros_like(expected)
     slots = torch.arange(k.shape[0] * k.shape[1], device=device, dtype=torch.int64)
@@ -350,8 +377,8 @@ def self_check(device, mode):
     out = torch.zeros_like(q)
     attend(q, *cache_views(written, mode), indices, table, t2r, out, mode)
     dk, dv = dequantize_cache(written.cpu(), mode)
-    reference = _kv8.attention_reference(q.cpu(), dk, dv, indices.cpu(), table.cpu(), t2r.cpu())
-    exact = _kv8.attention_reference(q.cpu(), k.cpu(), v.cpu(), indices.cpu(), table.cpu(), t2r.cpu())
+    reference = attention_reference(q.cpu(), dk, dv, indices.cpu(), table.cpu(), t2r.cpu())
+    exact = attention_reference(q.cpu(), k.cpu(), v.cpu(), indices.cpu(), table.cpu(), t2r.cpu())
     result["reader_rel_error_vs_dequant"] = _relative(reference, out.float().cpu())
     result["reader_rel_error_vs_bf16"] = _relative(exact, out.float().cpu())
     return result
@@ -390,8 +417,8 @@ def round_trip_stats(key, value):
     for name, x in (("k", key.float()), ("v", value.float())):
         rotated = rht(x).to(torch.bfloat16).float()
         back = rht(dequantize4_reference(*quantize4_reference(rotated)), inverse=True) / HEAD_DIM
-        codes, scale = _kv8.quantize_reference(x, "int8")
-        out[f"{name}_int8"] = _relative(x, _kv8.dequantize_reference(codes, scale))
+        codes, scale = quantize_reference(x, "int8")
+        out[f"{name}_int8"] = _relative(x, dequantize_reference(codes, scale))
         out[f"{name}_int4_rht"] = _relative(x, back)
         out[f"{name}_int4_plain"] = _relative(x, dequantize4_reference(*quantize4_reference(x)))
         rms = x.pow(2).mean(dim=-1).sqrt().clamp_min(1e-20)
@@ -540,8 +567,58 @@ def _qsa_kv4_splitk_kernel(
         )
 
 
+@triton.jit
+def _qsa_kv8_merge_kernel(
+    partial_output_ptr, partial_lse_ptr, output_ptr, stride_output_row, stride_output_head, num_rows,
+    HEAD_DIM: tl.constexpr, NUM_QUERY_HEADS: tl.constexpr, NUM_SPLITS: tl.constexpr, BLOCK_SPLITS: tl.constexpr,
+) -> None:
+    # The pinned _qsa_merge_splitk_kernel, copied so that this module loads without vLLM.
+    row = tl.program_id(0)
+    head = tl.program_id(1)
+    split_offsets = tl.arange(0, BLOCK_SPLITS)
+    dim_offsets = tl.arange(0, HEAD_DIM)
+    split_mask = split_offsets < NUM_SPLITS
+    lse = tl.load(partial_lse_ptr + (split_offsets * num_rows + row) * NUM_QUERY_HEADS + head, mask=split_mask,
+                  other=-float("inf"))
+    lse_max = tl.max(lse, axis=0)
+    has_values = lse_max > -float("inf")
+    # == the pinned where(split_mask & has_values, ...), split so the Triton interpreter can run it.
+    shifted = tl.where(has_values, tl.where(split_mask, lse - lse_max, -float("inf")), -float("inf"))
+    weights = tl.math.exp2(shifted)
+    denominator = tl.sum(weights, axis=0)
+    partial_output = tl.load(
+        partial_output_ptr + ((split_offsets[:, None] * num_rows + row) * NUM_QUERY_HEADS + head) * HEAD_DIM
+        + dim_offsets[None, :],
+        mask=split_mask[:, None],
+        other=0.0,
+    )
+    merged = tl.sum(partial_output * weights[:, None], axis=0)
+    merged = tl.where(denominator > 0, merged / denominator, 0.0)
+    tl.store(output_ptr + row * stride_output_row + head * stride_output_head + dim_offsets, merged)
+
+
 def _interpreting():
     return os.environ.get("TRITON_INTERPRET") == "1"
+
+
+def launch_profile(rows, kv_heads, group_size, topk):
+    """The pinned tile/split profile (``qsa_sparse_paged_attention``, tuned on GB300), unchanged."""
+    block_m = triton.next_power_of_2(group_size)
+    base_programs = rows * kv_heads
+    small_profile_limit = 8 if block_m <= 8 else 4
+    if base_programs <= small_profile_limit:
+        block_n, target_splits, warps = 16, 64, 4
+    elif base_programs < 32:
+        block_n, target_splits, warps = 16, 32, 4
+    elif base_programs <= 256:
+        block_n, target_splits, warps = 64, 8, 2
+    elif base_programs <= 512:
+        block_n, target_splits, warps = 64, 4, 2
+    else:
+        block_n, target_splits, warps = 64, 1, 2
+    num_tiles = triton.cdiv(topk, block_n)
+    splits = min(1 << (num_tiles.bit_length() - 1), target_splits)
+    return {"block_m": block_m, "block_n": block_n, "splits": splits, "warps": warps, "tiles": num_tiles}
 
 
 def sparse_attention(q, k_codes, v_codes, k_scale, v_scale, logical_indices, block_table, token_to_req, out,
@@ -571,7 +648,7 @@ def sparse_attention(q, k_codes, v_codes, k_scale, v_scale, logical_indices, blo
     if not q.shape[0]:
         return out
     group_size = q.shape[1] // k_codes.shape[2]
-    p = profile or _kv8.launch_profile(q.shape[0], k_codes.shape[2], group_size, logical_indices.shape[1])
+    p = profile or launch_profile(q.shape[0], k_codes.shape[2], group_size, logical_indices.shape[1])
     if p["splits"] == 1:
         partial_output, partial_lse = out, out
     else:
@@ -593,7 +670,7 @@ def sparse_attention(q, k_codes, v_codes, k_scale, v_scale, logical_indices, blo
         INTERPRET=_interpreting(), num_warps=p["warps"], num_stages=2,
     )
     if p["splits"] > 1:
-        _kv8._qsa_kv8_merge_kernel[(q.shape[0], q.shape[1])](
+        _qsa_kv8_merge_kernel[(q.shape[0], q.shape[1])](
             partial_output, partial_lse, out, out.stride(0), out.stride(1), q.shape[0],
             HEAD_DIM=HEAD_DIM, NUM_QUERY_HEADS=q.shape[1], NUM_SPLITS=p["splits"],
             BLOCK_SPLITS=triton.next_power_of_2(p["splits"]), num_warps=2, num_stages=1,
@@ -624,6 +701,79 @@ def attention(impl, query, kv_cache, logical_indices, block_table, token_to_req,
 
 
 # ============================================================================ references (tests)
+QUANT_MAX = {"int8": 127.0, "fp8": 448.0}
+
+
+def quantize_reference(x, mode):
+    """Torch mirror of the pinned per-token-head writer: x [..., dim] -> (codes, fp32 scale [...])."""
+    x = x.float()
+    scale = (x.abs().amax(dim=-1) / QUANT_MAX[mode]).clamp_min(1e-6)
+    y = x / scale.unsqueeze(-1)
+    if mode == "int8":
+        y = torch.where(y >= 0, y + 0.5, y - 0.5).clamp(-128.0, 127.0).trunc().to(torch.int8)
+    else:
+        y = y.clamp(-448.0, 448.0).to(torch.float8_e4m3fn)
+    return y, scale
+
+
+def dequantize_reference(codes, scale):
+    return codes.float() * scale.unsqueeze(-1)
+
+
+def attention_reference(q, k, v, logical_indices, block_table, token_to_req):
+    """FP32 sparse GQA on dense per-token K/V pages ``[blocks, page, kv_heads, dim]`` (any float dtype)."""
+    rows, heads, dim = q.shape
+    kv_heads = k.shape[2]
+    group = heads // kv_heads
+    page = k.shape[1]
+    out = torch.zeros((rows, heads, dim), dtype=torch.float32, device=q.device)
+    for row in range(rows):
+        request = int(token_to_req[row])
+        if request < 0 or request >= block_table.shape[0]:
+            continue
+        tokens = [int(t) for t in logical_indices[row].tolist() if t >= 0 and t // page < block_table.shape[1]]
+        tokens = [t for t in tokens if 0 <= int(block_table[request, t // page]) < k.shape[0]]
+        if not tokens:
+            continue
+        index = torch.tensor(tokens, device=q.device)
+        pages = block_table[request, index // page].long()
+        offsets = index % page
+        for kv_head in range(kv_heads):
+            keys = k[pages, offsets, kv_head].float()
+            values = v[pages, offsets, kv_head].float()
+            query = q[row, kv_head * group:(kv_head + 1) * group].float()
+            weights = torch.softmax(query @ keys.T * dim ** -0.5, dim=-1)
+            out[row, kv_head * group:(kv_head + 1) * group] = weights @ values
+    return out
+
+
+def synthetic_case(rows, *, kv_heads=2, group=12, dim=256, page=64, blocks=64, topk=203, requests=None,
+                   device="cpu", seed=0, fill=0.8):
+    """Random paged K/V (unit-RMS rows with a few outliers, like normed and RoPE'd keys), block tables and
+    top-k indices with -1 padding, for the reference checks and the microbenchmark."""
+    g = torch.Generator(device="cpu").manual_seed(seed)
+    requests = requests or max(1, rows)
+    k = torch.randn((blocks, page, kv_heads, dim), generator=g)
+    v = torch.randn((blocks, page, kv_heads, dim), generator=g)
+    k[..., :4] *= 4.0  # outlier channels (RoPE'd low-frequency pairs)
+    q = torch.randn((rows, kv_heads * group, dim), generator=g)
+    width = max(1, blocks // requests)
+    table = torch.full((requests, width), -1, dtype=torch.int32)
+    order = torch.randperm(blocks, generator=g)
+    for r in range(requests):
+        table[r] = order[r * width:(r + 1) * width].to(torch.int32)
+    length = width * page
+    indices = torch.full((rows, topk), -1, dtype=torch.int32)
+    for row in range(rows):
+        count = max(1, int(topk * fill))
+        chosen = torch.randperm(length, generator=g)[:count].to(torch.int32)
+        indices[row, :count] = chosen
+    token_to_req = (torch.arange(rows) % requests).to(torch.int32)
+    to = dict(device=device)
+    return (q.to(torch.bfloat16).to(**to), k.to(torch.bfloat16).to(**to), v.to(torch.bfloat16).to(**to),
+            indices.to(**to), table.to(**to), token_to_req.to(**to))
+
+
 def quantize4_reference(x):
     """Torch mirror of the 4-bit writer on (already rotated) rows ``[..., 256]``: (packed uint8 [..., 128], scale
     bits int32 [...])."""
@@ -653,8 +803,8 @@ def round_trip(x, mode_part):
     "int4" (rotated 4-bit), "int4-norht" (4-bit without the rotation)."""
     x = x.float()
     if mode_part == "int8":
-        codes, scale = _kv8.quantize_reference(x, "int8")
-        return _kv8.dequantize_reference(codes, scale)
+        codes, scale = quantize_reference(x, "int8")
+        return dequantize_reference(codes, scale)
     if mode_part == "int4-norht":
         return dequantize4_reference(*quantize4_reference(x))
     rotated = rht_reference(x).to(torch.bfloat16).float()
@@ -672,7 +822,7 @@ def pack_cache(k, v, mode):
         raw[..., k_off:ks_off] = kq
         raw[..., ks_off:v_off] = kb.contiguous().view(torch.uint8).view(blocks, page, kv_heads, 4)
     else:
-        kq, ks = _kv8.quantize_reference(k, "int8")
+        kq, ks = quantize_reference(k, "int8")
         raw[..., k_off:ks_off] = kq.view(torch.uint8)
         raw[..., ks_off:v_off] = ks.contiguous().view(torch.uint8).view(blocks, page, kv_heads, 4)
     vq, vb = quantize4_reference(rht_reference(v.float()).to(torch.bfloat16))
@@ -687,6 +837,104 @@ def dequantize_cache(kv_cache, mode):
     if mode == "int4":
         k = rht_reference(dequantize4_reference(keys, k_scale), inverse=True) / HEAD_DIM
     else:
-        k = _kv8.dequantize_reference(keys, k_scale)
+        k = dequantize_reference(keys, k_scale)
     v = rht_reference(dequantize4_reference(values, v_scale), inverse=True) / HEAD_DIM
     return k, v
+
+
+# ============================================================================ cross-device golden (E1, 26 Oct)
+GOLDEN_ROWS = 1024
+
+
+def golden_case(rows=GOLDEN_ROWS, seed=20261026):
+    """Fixed BF16 K/V rows ``[rows, 2, 256]`` from a seeded CPU generator (unit RMS, four 4x outlier key channels,
+    constant rows for the scale floor, tiny rows): the same inputs on every device."""
+    g = torch.Generator().manual_seed(seed)
+    k = torch.randn((rows, 2, HEAD_DIM), generator=g)
+    v = torch.randn((rows, 2, HEAD_DIM), generator=g)
+    k[..., :4] *= 4.0
+    k[:4], v[:4] = 0.25, -0.5
+    k[4:8] *= 1e-4
+    return k.to(torch.bfloat16), v.to(torch.bfloat16)
+
+
+def _empty_cache(blocks, page, mode, device):
+    """A zeroed packed cache in the served layout: logical ``(blocks, kv_heads, page, content)``, NHD strides."""
+    return torch.zeros((blocks, page, 2, content_bytes(mode)), dtype=torch.uint8, device=device).transpose(1, 2)
+
+
+def golden(device, mode="int4", rows=GOLDEN_ROWS):
+    """This device's rotated rows, written pages and attention output on the golden inputs (as CPU tensors)."""
+    k, v = (x.to(device) for x in golden_case(rows))
+    page = _empty_cache(1, rows, mode, device)
+    write(k, v, *cache_views(page, mode), torch.arange(rows, device=device, dtype=torch.int64), mode)
+    q, ck, cv, indices, table, t2r = synthetic_case(4, page=64, blocks=16, topk=203, requests=2, seed=7,
+                                                         device=device)
+    packed = _empty_cache(16, 64, mode, device)
+    write(ck.reshape(-1, 2, HEAD_DIM), cv.reshape(-1, 2, HEAD_DIM), *cache_views(packed, mode),
+          torch.arange(16 * 64, device=device, dtype=torch.int64), mode)
+    out = torch.zeros_like(q)
+    attend(q, *cache_views(packed, mode), indices, table, t2r, out, mode)
+    dk, dv = dequantize_cache(packed.cpu(), mode)
+    reference = attention_reference(q.cpu(), dk, dv, indices.cpu(), table.cpu(), t2r.cpu())
+    cuda = torch.device(device).type == "cuda"
+    return {"mode": mode, "device": torch.cuda.get_device_name(device) if cuda else "cpu",
+            "capability": tuple(torch.cuda.get_device_capability(device)) if cuda else None,
+            "rotated_k": rht(k.float()).to(torch.bfloat16).cpu(), "rotated_v": rht(v.float()).to(torch.bfloat16).cpu(),
+            "page": page.cpu(), "attn_page": packed.cpu(), "attn_out": out.float().cpu(),
+            "attn_rel_error_vs_dequant": _relative(reference, out.float().cpu())}
+
+
+def compare(ours, theirs):
+    """Agreement of two ``golden`` results: fractions of equal bytes, and the attention outputs' relative distance."""
+    def equal(a, b):
+        return float((a.contiguous().view(torch.uint8) == b.contiguous().view(torch.uint8)).float().mean())
+
+    _, ks_off, v_off, vs_off = offsets(ours["mode"])
+    page_a, page_b = ours["page"].transpose(1, 2), theirs["page"].transpose(1, 2)
+    result = {"devices": [ours["device"], theirs["device"]],
+              "rotated_k_equal": equal(ours["rotated_k"], theirs["rotated_k"]),
+              "rotated_v_equal": equal(ours["rotated_v"], theirs["rotated_v"]),
+              "page_equal": equal(ours["page"], theirs["page"]),
+              "k_scale_equal": equal(page_a[..., ks_off:v_off], page_b[..., ks_off:v_off]),
+              "v_scale_equal": equal(page_a[..., vs_off:], page_b[..., vs_off:]),
+              "attn_page_equal": equal(ours["attn_page"], theirs["attn_page"]),
+              "attn_out_rel_diff": _relative(theirs["attn_out"], ours["attn_out"]),
+              "attn_rel_error_vs_dequant": [ours["attn_rel_error_vs_dequant"], theirs["attn_rel_error_vs_dequant"]]}
+    result["bitwise"] = result["page_equal"] == 1.0 and result["attn_page_equal"] == 1.0
+    return result
+
+
+def main(argv=None):
+    """``python -m vllm.arc_kv4 golden OUT.pt``: this device's golden result (a GPU with the pinned runtime, or the CPU
+    references); ``python -m vllm.arc_kv4 compare OURS.pt THEIRS.pt``: the agreement, exit 1 unless bitwise equal."""
+    import argparse
+
+    p = argparse.ArgumentParser(prog="arc_kv4")
+    sub = p.add_subparsers(dest="cmd", required=True)
+    g = sub.add_parser("golden")
+    g.add_argument("out")
+    g.add_argument("--mode", default="int4", choices=sorted(CACHE_DTYPES))
+    g.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
+    c = sub.add_parser("compare")
+    c.add_argument("ours")
+    c.add_argument("theirs")
+    a = p.parse_args(argv)
+    if a.cmd == "compare":
+        result = compare(torch.load(a.ours), torch.load(a.theirs))
+        log("COMPARE", result)
+        return 0 if result["bitwise"] else 1
+    _STATE["config"] = {CONFIG_KEY: a.mode}
+    if torch.device(a.device).type == "cuda":
+        from vllm.v1.attention.ops import int4_per_token_head as ops
+
+        check_device(torch.cuda.get_device_capability(), ops._hadacore_available(), torch.cuda.get_device_name())
+    result = golden(a.device, a.mode)
+    torch.save(result, a.out)
+    log("GOLDEN", {"out": a.out, "device": result["device"], "capability": result["capability"],
+                   "attn_rel_error_vs_dequant": result["attn_rel_error_vs_dequant"]})
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

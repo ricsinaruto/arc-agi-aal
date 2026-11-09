@@ -1,69 +1,22 @@
-"""Opt-in hybrid prefix-cache fixes for the pinned vLLM runtime (29 September; prefix-cache-v2.md).
+"""Hybrid prefix-cache fixes for the pinned vLLM runtime (prefix-cache-v2/v3.md, docs/research-throughput/LOG.md),
+hash-guarded edits of a disposable extracted runtime. rl-min serves two settings: ``FULL`` (every option on: RL
+play) and ``BASE`` (the three v2 options: the held-out read):
 
-The patches only modify a disposable extracted runtime and are hash-guarded like ``cache_reclamation``.
-
-``mamba_align_fix`` (``vllm/v1/core/sched/scheduler.py``, ``Scheduler._mamba_block_aligned_split``). In
-Mamba "align" mode a recurrent state is only reusable at a Mamba block boundary, so prefill chunks must end on
-one. The split reads ``self.cache_config.block_size``, but ``EngineCore._initialize_kv_caches`` sets that to
-the *smallest* group block (``min(g.kv_cache_spec.block_size)``): Flash-Next's QSA raw-key ring
-(``CircularBufferSpec``) has 4-token blocks (8 on MTP-3), so the served value is 4 (``cache_config_info
-block_size="4"`` in every c110 run's metrics) while the Mamba block is 1,600 (hero) or 800 (BF16 KV). The split
-therefore ends chunks on 4-token boundaries:
-
-- the state at the prompt's last Mamba boundary is never written, so the next request of a game can only
-  resume from a decode-crossing state or an older one (the "hybrid-state lag");
-- a prefill split into several chunks leaves a chunk-end state in the block that the scheduler then caches
-  under the *next* boundary's hash, so a later hit there resumes from a state up to one block short of its
-  prefix (tokens between the chunk end and the boundary are skipped by the recurrent layers).
-
-The fix aligns to the Mamba spec's block size (falling back to the scheduler block size, the LCM of the group
-block sizes, which equals it on these layouts).
-
-``mamba_keep_state`` (``vllm/v1/core/single_type_kv_cache_manager.py``, ``MambaManager``). In align mode a
-request frees each boundary state one step after the next state block exists, so the state the next request of
-the game would resume from enters the LRU free queue at the prefill end or the last decode crossing, up to a
-whole request earlier than the request's attention blocks, and is evicted first. The patch keeps the newest
-cached boundary state per request (MTP-0 only: no speculative state blocks) until a newer one is cached or the
-request is freed, and frees it last, so it ages with the attention blocks. A request holds at most one extra
-state block per Mamba group, inside the two per group that the admission cost table already charges.
-
-``mamba_demote_superseded`` (needs ``mamba_keep_state``; also ``vllm/v1/core/block_pool.py``). Every state a
-request writes but the newest (intermediate prefill chunk ends, earlier decode crossings, the state it resumed
-from) is useless to the game's next request, yet pinned vLLM frees it to the MRU end of the free queue, where it
-displaces other games' prefixes; one state costs 4 pages, as much as 6,400 tokens of attention KV. With this
-option such superseded states go to the front of the free queue (reused first, still hittable until then),
-except states some request has resumed from and states within the first ``DEMOTE_MIN_TOKENS`` tokens (the shared
-system prompt's state, which every first or evicted request resumes from).
-
-``request_end_tail`` (prefix cache v3, 29 September; prefix-cache-v3.md; optional key, off unless given). A finished
-request's exact end (the partial attention block, each Mamba group's running state, the QSA compressor ring) is
-registered as a prefix-cache entry, so the game's next request resumes at the previous request's last computed token
-instead of its last whole block (``arena.prefix_tail_runtime``, copied into the runtime as
-``vllm/v1/core/arc_tail_cache.py`` and hooked into ``KVCacheManager`` at construction, lookup and free). The
-entries' blocks are ordinary evictable cached blocks, so they never reduce the pool that running requests allocate
-from. MTP-0 layouts only (the index disables itself otherwise and says so in the server log).
-
-``spec_decode`` (throughput arm, 3 October; docs/research-throughput/LOG.md; optional key, off unless given). Prefix
-caching under MTP-k speculative decoding (``num_speculative_blocks`` k > 0). The pinned runtime loses most hybrid
-prefix hits under MTP, which made the 30 September MTP-1 nine-hour arm run at ~0.5x (prefix hit rate 51%):
-
-- ``mamba_keep_state`` / ``mamba_demote_superseded`` switch themselves off under speculation. With this key the kept
-  state is the newest cached boundary state below the running block *and its k speculative blocks* (the scan skips
-  the last 1 + k table entries), so keep and demote run under MTP-k too;
-- the hybrid coordinator applies the EAGLE "last block drop" to every group (no group of this layout is flagged
-  ``is_eagle_group``, so all are): a hit at length L is only accepted when the full-attention KV is also cached for
-  one more hash unit past L. Every hit point inside a request's last (partial) attention block fails that test, so a
-  game's next request falls back to an older full-block boundary: ~2-3K tokens re-prefilled per request on 3,136-token
-  blocks. The drop exists because the MTP layer's KV at position L - 1 was written with the token that followed it in
-  the request that cached it (a lookahead); it can differ from the new request's token only when the prompts diverge
-  exactly at L. With this key the drop is off (``drop_eagle_block = False`` in ``find_longest_cache_hit`` and
-  ``find_longest_cache_hit_per_group``): the target model's KV and recurrent states of a hit are exact either way,
-  so the served distribution is unchanged; at worst one draft-layer KV entry is stale, which can only lower
-  acceptance (rejection sampling keeps the output exact).
-
-CPU replay of the pinned scheduler (``scripts/arena_analysis/prefix_cache_sim.py --spec 1``, 3,136-token blocks,
-16-token hash unit, 30 games on 810 blocks): prefix hit rate MTP-0 + v2 0.887; MTP-1 pinned 0.322; + keep only 0.575;
-+ no drop only 0.516; + both (this key) 0.878; no leaked blocks or free-queue duplicates.
+- ``mamba_align_fix`` (scheduler): prefill chunks end on the Mamba state block, not on the smallest group block (the
+  QSA raw-key ring's 4 tokens), so the state at a prompt's last boundary is written and cached under its own hash.
+- ``mamba_keep_state`` / ``mamba_demote_superseded`` (manager, block pool): a request keeps its newest cached boundary
+  state until a newer one exists and frees it last; superseded states go to the front of the free queue, except
+  states some request resumed from and those within the first ``DEMOTE_MIN_TOKENS`` (the shared system prompt).
+- ``request_end_tail`` (``arena.prefix_tail_runtime`` as ``vllm/v1/core/arc_tail_cache.py``): a finished request's
+  exact end is a prefix-cache entry, so the game's next request resumes at its last computed token
+  (``tail_keep_boundary``, ``tail_keepalive``, ``collapse_log``: placement, refresh and diagnostics of those entries).
+- ``spec_decode`` / ``tail_spec_acceptance``: keep and demote under MTP-k (the scan skips the speculative blocks), no
+  EAGLE last-unit drop (target KV and states of a hit are exact), request-end tails at the accepted state slot.
+- ``keep_reply_states``: the states a decode crossing supersedes stay held (up to ``HOLD_STATES``), so a re-sent reply
+  that re-tokenizes differently resumes before the divergence; ``reply_ids``: the chat serving module re-sends a
+  reply with the token ids it was generated with (``arena.reply_ids_runtime``).
+- ``state_cotenant``: the CSA+linear layout edit of ``arena.cache_patch``; ``admission_tick``: waiting requests are
+  admitted together once per tick of seconds while streams decode, so their prefills share one slow step.
 """
 import hashlib
 import json
@@ -264,10 +217,6 @@ TAIL_POP_INSERT = ('        if self._arc_tail is not None:\n'
                    '            self._arc_tail.register(request)\n'
                    '            self._arc_tail.after_free()\n')
 COORDINATOR_RELATIVE = 'vllm/v1/core/kv_cache_coordinator.py'
-# Files this module edits, for the CPU patch check (arc_infra.runops.patchcheck); existence only, since the
-# manager file is stacked on cache_patch / reclamation at boot. The tail helper is new, so it is not listed.
-TARGETS = tuple({'relative': r} for r in (SCHEDULER_RELATIVE, MANAGER_RELATIVE, POOL_RELATIVE, KV_MANAGER_RELATIVE,
-                                          COORDINATOR_RELATIVE))
 COORDINATOR_SHA256 = '9cd616a0f6bbd27776aa6bb44c7420c95574f9ffb5e254a8f355937642b8451b'
 EAGLE_DROP_ANCHOR = '                drop_eagle_block = use_eagle and idx not in eagle_verified\n'
 EAGLE_DROP_REPLACEMENT = ('                # ARC spec_decode: no EAGLE last-unit drop (target KV and states of a hit are exact; at\n'
@@ -276,9 +225,14 @@ EAGLE_DROP_REPLACEMENT = ('                # ARC spec_decode: no EAGLE last-unit
 EAGLE_GROUP_ANCHOR = '                drop_eagle_block=use_eagle,\n'
 EAGLE_GROUP_REPLACEMENT = '                drop_eagle_block=False,  # ARC spec_decode: no EAGLE last-unit drop\n'
 MARKER = 'prefix-cache-patch.json'
-OPTIONS = ('mamba_align_fix', 'mamba_keep_state', 'mamba_demote_superseded')
-# Optional keys (absent = off), so every earlier study's options and identity stay byte-identical.
-OPTIONAL = ('request_end_tail', 'spec_decode', 'tail_keep_boundary', 'keep_reply_states', 'tail_spec_acceptance')
+BASE = {'mamba_align_fix': True, 'mamba_keep_state': True, 'mamba_demote_superseded': True}
+FULL = {**BASE, 'request_end_tail': True, 'spec_decode': True, 'tail_keep_boundary': True, 'keep_reply_states': True,
+        'tail_spec_acceptance': True, 'reply_ids': True, 'tail_keepalive': True, 'state_cotenant': True,
+        'collapse_log': True, 'admission_tick': 2.0}
+# the options as the identity records them (the boot-cache key reads it: key order matters)
+IDENTITY_ORDER = ('mamba_align_fix', 'mamba_keep_state', 'mamba_demote_superseded', 'request_end_tail', 'spec_decode',
+                  'tail_keep_boundary', 'keep_reply_states', 'tail_spec_acceptance', 'state_cotenant', 'collapse_log',
+                  'reply_ids', 'tail_keepalive', 'admission_tick')
 
 
 def _replace_once(text, anchor, replacement, what):
@@ -305,13 +259,68 @@ DROP_REPLACEMENT = ('            if stopped:\n'
                     '                del new_token_ids[num_new:]  # Trim new tokens if needed.\n')
 
 
-def patched_scheduler(original, accept=False):
+# admission_tick: waiting requests wait for the tick while streams decode and no prefill chunk runs (see TICK_*).
+TICK_INIT_ANCHOR = '        self.prefill_capacity_bound = False\n'
+TICK_INIT_INSERT = ('        # ARC admission_tick: the next time the waiting queue opens; carry = the last opening left requests\n'
+                    '        self._arc_clock = time.monotonic\n'
+                    '        self._arc_admit_at = 0.0\n'
+                    '        self._arc_admit_carry = False\n'
+                    '        self._arc_admit_cohort = 0\n'
+                    '        self._arc_admit_stats = {{"openings": 0, "admitted": 0, "max_group": 0, "held_steps": 0,\n'
+                    '                                 "rides": 0, "tick_seconds": {seconds!r}}}\n')
+TICK_WAIT_ANCHOR = ('        # Next, schedule the WAITING requests.\n'
+                    '        if not preempted_reqs and self._pause_state == PauseState.UNPAUSED:\n'
+                    '            step_skipped_waiting = create_request_queue(self.policy)\n')
+TICK_WAIT_REPLACEMENT = (
+    '        # Next, schedule the WAITING requests.\n'
+    '        # ARC admission_tick: hold them while streams decode, this step carries no prefill chunk, the last opening\n'
+    '        # took in everything that waited at it and the tick has not passed since the last admission.\n'
+    '        arc_now = self._arc_clock()\n'
+    '        arc_hold = bool((self.waiting or self.skipped_waiting) and not prefill_scheduled\n'
+    '                        and not self._arc_admit_carry and arc_now < self._arc_admit_at\n'
+    '                        and any(not r.is_prefill_chunk for r in self.running))\n'
+    '        if arc_hold:\n'
+    '            self._arc_admit_stats["held_steps"] += 1\n'
+    '        elif not self._arc_admit_carry:\n'
+    '            self._arc_admit_cohort = len(self.waiting) + len(self.skipped_waiting)  # waiting at this opening\n'
+    '        if not arc_hold and not preempted_reqs and self._pause_state == PauseState.UNPAUSED:\n'
+    '            step_skipped_waiting = create_request_queue(self.policy)\n')
+TICK_END_ANCHOR = ('            # re-queue requests skipped in this pass ahead of older skipped items.\n'
+                   '            if step_skipped_waiting:\n'
+                   '                self.skipped_waiting.prepend_requests(step_skipped_waiting)\n')
+TICK_END_INSERT = (
+    '            # ARC admission_tick: an admission closes the queue for one tick, once the requests that were\n'
+    '            # waiting at the opening are in.\n'
+    '            arc_new = len(scheduled_new_reqs) + len(scheduled_resumed_reqs)\n'
+    '            self._arc_admit_cohort -= arc_new\n'
+    '            self._arc_admit_carry = bool(self._arc_admit_cohort > 0 and (self.waiting or self.skipped_waiting))\n'
+    '            if arc_new:\n'
+    '                self._arc_admit_at = arc_now + {seconds!r}\n'
+    '                arc_stats = self._arc_admit_stats\n'
+    '                arc_stats["openings"] += 1\n'
+    '                arc_stats["admitted"] += arc_new\n'
+    '                arc_stats["max_group"] = max(arc_stats["max_group"], arc_new)\n'
+    '                arc_stats["rides"] += bool(prefill_scheduled)\n'
+    '                if arc_stats["openings"] % 200 == 0:\n'
+    '                    print("ARC_ADMIT_TICK_STATS " + str(arc_stats).replace("\'", \'"\'), flush=True)\n')
+
+
+def patched_scheduler(original, seconds=None):
+    """The align fix; with ``seconds`` (FULL) also the tail acceptance and the admission tick."""
     if hashlib.sha256(original).hexdigest() != SCHEDULER_SHA256:
         raise RuntimeError('Mamba align fix rejected unrecognized pinned scheduler source')
     text = _replace_once(original.decode(), ALIGN_ANCHOR, ALIGN_REPLACEMENT, 'aligned-split block size')
-    if accept:
-        text = _replace_once(text, ACCEPT_ANCHOR, ACCEPT_REPLACEMENT, 'spec acceptance')
-        text = _replace_once(text, DROP_ANCHOR, DROP_REPLACEMENT, 'stop-dropped tokens')
+    if seconds is None:
+        compile(text, SCHEDULER_RELATIVE, 'exec')
+        return text.encode()
+    text = _replace_once(text, ACCEPT_ANCHOR, ACCEPT_REPLACEMENT, 'spec acceptance')
+    text = _replace_once(text, DROP_ANCHOR, DROP_REPLACEMENT, 'stop-dropped tokens')
+    seconds = float(seconds)
+    text = _replace_once(text, TICK_INIT_ANCHOR, TICK_INIT_ANCHOR + TICK_INIT_INSERT.format(seconds=seconds),
+                         'admission tick state')
+    text = _replace_once(text, TICK_WAIT_ANCHOR, TICK_WAIT_REPLACEMENT, 'admission tick hold')
+    text = _replace_once(text, TICK_END_ANCHOR, TICK_END_ANCHOR + TICK_END_INSERT.format(seconds=seconds),
+                         'admission tick close')
     compile(text, SCHEDULER_RELATIVE, 'exec')
     return text.encode()
 
@@ -360,20 +369,19 @@ HOLD_POP_NEW = ("            kept = self._arc_kept_state.pop(request_id, None)\n
                 "                return ([kept] if kept is not None else []) + held + super().pop_blocks_for_free(request_id)\n")
 
 
-def patched_manager(original, demote=False, spec_decode=False, hold=False):
+def patched_manager(original, full=True):
     if hashlib.sha256(original).hexdigest() not in (MANAGER_SHA256, MANAGER_RECLAIMED_SHA256):
         raise RuntimeError('Mamba keep-state patch rejected unrecognized pinned manager source')
     text = original.decode()
     text = _replace_once(text, CLASS_ANCHOR, CLASS_ANCHOR + CLASS_INSERT.format(
-        demote=bool(demote), min_tokens=DEMOTE_MIN_TOKENS), 'MambaManager class')
+        demote=True, min_tokens=DEMOTE_MIN_TOKENS), 'MambaManager class')
     remove, helper, init, pop = KEEP_REMOVE_REPLACEMENT, KEEP_HELPER, KEEP_INIT_INSERT, KEEP_POP_REPLACEMENT
-    if hold:
+    if full:  # keep_reply_states and spec_decode
         remove = _replace_once(remove, HOLD_CALL_OLD, HOLD_CALL_NEW, 'hold call')
         helper = _replace_once(helper, HOLD_DEF_OLD, HOLD_DEF_NEW, 'hold def')
         helper = _replace_once(helper, HOLD_FREE_OLD, HOLD_FREE_NEW, 'hold free')
         init = _replace_once(init, HOLD_INIT_OLD, HOLD_INIT_NEW, 'hold init')
         pop = _replace_once(pop, HOLD_POP_OLD, HOLD_POP_NEW, 'hold pop')
-    if spec_decode:
         remove = _replace_once(remove, SPEC_ALIGN_OLD, SPEC_ALIGN_NEW, 'spec keep condition')
         helper = _replace_once(helper, SPEC_SCAN_OLD, SPEC_SCAN_NEW, 'spec keep scan')
     text = _replace_once(text, KEEP_INIT_ANCHOR, KEEP_INIT_ANCHOR + init, 'align init')
@@ -413,33 +421,42 @@ def patched_kv_manager(original):
     return text.encode()
 
 
+# reply_ids (7 October): 2.3% of replies re-tokenize to another split of the same text, so the re-sent prompt leaves
+# the cached sequence inside the reply (9 of 10 full recomputes in tp-streams-dev10-s44-cot-diag-v1). The chat serving
+# module substitutes the generated ids back, on exact text identity behind an identical prompt only.
+CHAT_SERVING_RELATIVE = 'vllm/entrypoints/openai/chat_completion/serving.py'
+CHAT_SERVING_SHA256 = 'a2440b6b76ad87de86bcf6fc7061ad5d02ab67c1c3c89ca7de3eeb29aa12aa2f'
+REPLY_IDS_HELPER_RELATIVE = 'vllm/entrypoints/openai/chat_completion/arc_reply_ids.py'
+REPLY_IMPORT_ANCHOR = 'from vllm.utils.serial_utils import numpy2base64\n'
+REPLY_IMPORT_INSERT = 'from vllm.entrypoints.openai.chat_completion import arc_reply_ids as _arc_reply_ids  # ARC\n'
+REPLY_RENDER_ANCHOR = '        conversation, engine_inputs = result\n'
+REPLY_RENDER_INSERT = ('        # ARC reply_ids: re-sent replies keep the token ids they were generated with.\n'
+                       '        _arc_reply_ids.substitute(\n'
+                       '            engine_inputs, tokenizer, self.model_config.max_model_len,\n'
+                       '            request.max_completion_tokens if request.max_completion_tokens is not None\n'
+                       '            else request.max_tokens)\n')
+REPLY_FINISH_ANCHOR = '        choices: list[ChatCompletionResponseChoice] = []\n'
+REPLY_FINISH_INSERT = '        _arc_reply_ids.record(final_res, tokenizer)  # ARC reply_ids\n'
+
+
+def patched_chat_serving(original):
+    if hashlib.sha256(original).hexdigest() != CHAT_SERVING_SHA256:
+        raise RuntimeError('Reply-id patch rejected unrecognized pinned chat serving source')
+    text = original.decode()
+    text = _replace_once(text, REPLY_IMPORT_ANCHOR, REPLY_IMPORT_ANCHOR + REPLY_IMPORT_INSERT, 'chat serving import')
+    text = _replace_once(text, REPLY_RENDER_ANCHOR, REPLY_RENDER_ANCHOR + REPLY_RENDER_INSERT, 'chat render')
+    text = _replace_once(text, REPLY_FINISH_ANCHOR, REPLY_FINISH_INSERT + REPLY_FINISH_ANCHOR, 'chat full generator')
+    compile(text, CHAT_SERVING_RELATIVE, 'exec')
+    return text.encode()
+
+
 def validate(options):
-    """``None`` or ``{"mamba_align_fix", "mamba_keep_state", "mamba_demote_superseded"}`` booleans, one on, plus the
-    optional ``request_end_tail`` boolean (normalized away when false)."""
+    """None, or ``FULL`` / ``BASE`` as the identity records it; any other value is refused."""
     if options is None:
         return None
-    if (not isinstance(options, dict) or not set(OPTIONS) <= set(options)
-            or not set(options) <= set(OPTIONS) | set(OPTIONAL)):
-        raise ValueError(f'prefix_cache needs exactly {", ".join(OPTIONS)} (optional: {", ".join(OPTIONAL)})')
-    if any(type(v) is not bool for v in options.values()) or not any(options.values()):
-        raise ValueError('prefix_cache options are booleans and at least one is on')
-    if options['mamba_demote_superseded'] and not options['mamba_keep_state']:
-        raise ValueError('mamba_demote_superseded needs mamba_keep_state (the newest state must be held)')
-    if options.get('tail_spec_acceptance') and not (options.get('request_end_tail') and options.get('spec_decode')
-                                                    and options['mamba_align_fix']):
-        raise ValueError('tail_spec_acceptance needs request_end_tail, spec_decode and mamba_align_fix')
-    if options.get('keep_reply_states') and not options['mamba_keep_state']:
-        raise ValueError('keep_reply_states extends mamba_keep_state: it needs mamba_keep_state')
-    if options.get('tail_keep_boundary') and not options.get('request_end_tail'):
-        raise ValueError('tail_keep_boundary changes request_end_tail placement: it needs request_end_tail')
-    result = {k: options[k] for k in OPTIONS}
-    result.update({k: True for k in OPTIONAL if options.get(k)})
-    return result
-
-
-def _guard(target, allowed, what):
-    if hashlib.sha256(target.read_bytes()).hexdigest() not in allowed:
-        raise RuntimeError(f'Request-end tail patch rejected unrecognized pinned {what}')
+    if options not in (FULL, BASE):
+        raise ValueError(f'prefix_cache: rl-min serves {FULL} or {BASE}')
+    return {k: options[k] for k in IDENTITY_ORDER if k in options}
 
 
 def _apply_one(target, patch, allowed_originals, record):
@@ -465,46 +482,33 @@ def apply(site, output, options):
         raise RuntimeError('Prefix-cache patch options changed within one working directory')
     identity = {'options': options, 'gpu_validated': False}
     site = Path(site)
-    if options['mamba_align_fix']:
-        accept = bool(options.get('tail_spec_acceptance'))
-        identity['scheduler'] = _apply_one(site / SCHEDULER_RELATIVE, lambda src: patched_scheduler(src, accept),
-                                           (SCHEDULER_SHA256,), previous.get('scheduler'))
-    if options['mamba_keep_state']:
-        demote = options['mamba_demote_superseded']
-        spec = bool(options.get('spec_decode'))
-        identity['manager'] = _apply_one(site / MANAGER_RELATIVE, lambda src: patched_manager(src, demote, spec, bool(options.get('keep_reply_states'))),
-                                         (MANAGER_SHA256, MANAGER_RECLAIMED_SHA256), previous.get('manager'))
-    if options['mamba_demote_superseded']:
-        identity['block_pool'] = _apply_one(site / POOL_RELATIVE, patched_pool, (POOL_SHA256,),
-                                            previous.get('block_pool'))
-    if options.get('request_end_tail'):
-        # The tail index relies on the pinned block pool's and managers' internals: guard the files it does not
-        # patch itself (the v2 patches above already guarded the ones they edit).
-        if not options['mamba_demote_superseded']:
-            _guard(site / POOL_RELATIVE, (POOL_SHA256,), 'block_pool.py')
-        if not options['mamba_keep_state']:
-            _guard(site / MANAGER_RELATIVE, (MANAGER_SHA256, MANAGER_RECLAIMED_SHA256),
-                   'single_type_kv_cache_manager.py')
-        helper = Path(__file__).with_name('prefix_tail_runtime.py').read_bytes()
-        if options.get('spec_decode'):
-            # MTP-k request-end tails (4 October): the helper registers only in-flight and prefill-only finishes.
-            helper = _replace_once(helper.decode(), 'SPEC_TAIL = False\n', 'SPEC_TAIL = True\n',
-                                   'tail SPEC_TAIL flag').encode()
-        if options.get('tail_spec_acceptance'):
-            helper = _replace_once(helper.decode(), 'SPEC_ACCEPT = False\n', 'SPEC_ACCEPT = True\n',
-                                   'tail SPEC_ACCEPT flag').encode()
-        if options.get('tail_keep_boundary'):
-            # Phase 4 (4 October): the request's kept boundary state stays where its free put it (MRU) instead of
-            # going to the front, so a game whose tail entry cannot serve still resumes at its last boundary.
-            helper = _replace_once(helper.decode(), 'PLACEMENT = "swap"\n', 'PLACEMENT = "back"\n',
-                                   'tail PLACEMENT').encode()
-        (site / TAIL_HELPER_RELATIVE).write_bytes(helper)
-        identity['tail_helper_sha256'] = hashlib.sha256(helper).hexdigest()
-        identity['kv_cache_manager'] = _apply_one(site / KV_MANAGER_RELATIVE, patched_kv_manager,
-                                                  (KV_MANAGER_SHA256, KV_MANAGER_DIAGNOSTICS_SHA256),
-                                                  previous.get('kv_cache_manager'))
-    if options.get('spec_decode'):
-        identity['coordinator'] = _apply_one(site / COORDINATOR_RELATIVE, patched_coordinator, (COORDINATOR_SHA256,),
-                                             previous.get('coordinator'))
+    full = len(options) > len(BASE)
+    identity['scheduler'] = _apply_one(site / SCHEDULER_RELATIVE,
+                                       lambda src: patched_scheduler(src, options.get('admission_tick')),
+                                       (SCHEDULER_SHA256,), previous.get('scheduler'))
+    identity['manager'] = _apply_one(site / MANAGER_RELATIVE, lambda src: patched_manager(src, full),
+                                     (MANAGER_SHA256, MANAGER_RECLAIMED_SHA256), previous.get('manager'))
+    identity['block_pool'] = _apply_one(site / POOL_RELATIVE, patched_pool, (POOL_SHA256,), previous.get('block_pool'))
+    if not full:
+        marker.write_text(json.dumps(identity, indent=2) + '\n')
+        return identity
+    helper = Path(__file__).with_name('prefix_tail_runtime.py').read_bytes().decode()
+    for old, new in (('SPEC_TAIL = False\n', 'SPEC_TAIL = True\n'), ('SPEC_ACCEPT = False\n', 'SPEC_ACCEPT = True\n'),
+                     ('PLACEMENT = "swap"\n', 'PLACEMENT = "back"\n'), ('KEEPALIVE = False\n', 'KEEPALIVE = True\n'),
+                     ('COLLAPSE_LOG = os.environ.get("ARC_TAIL_COLLAPSE_LOG") == "1"\n', 'COLLAPSE_LOG = True\n')):
+        helper = _replace_once(helper, old, new, f'tail {old.split()[0]} flag')  # the runtime's switches, all on
+    helper = helper.encode()
+    (site / TAIL_HELPER_RELATIVE).write_bytes(helper)
+    identity['tail_helper_sha256'] = hashlib.sha256(helper).hexdigest()
+    identity['kv_cache_manager'] = _apply_one(site / KV_MANAGER_RELATIVE, patched_kv_manager,
+                                              (KV_MANAGER_SHA256, KV_MANAGER_DIAGNOSTICS_SHA256),
+                                              previous.get('kv_cache_manager'))
+    identity['coordinator'] = _apply_one(site / COORDINATOR_RELATIVE, patched_coordinator, (COORDINATOR_SHA256,),
+                                         previous.get('coordinator'))
+    helper = Path(__file__).with_name('reply_ids_runtime.py').read_bytes()
+    (site / REPLY_IDS_HELPER_RELATIVE).write_bytes(helper)
+    identity['reply_ids_helper_sha256'] = hashlib.sha256(helper).hexdigest()
+    identity['chat_serving'] = _apply_one(site / CHAT_SERVING_RELATIVE, patched_chat_serving,
+                                          (CHAT_SERVING_SHA256,), previous.get('chat_serving'))
     marker.write_text(json.dumps(identity, indent=2) + '\n')
     return identity

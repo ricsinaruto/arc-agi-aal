@@ -14,7 +14,7 @@ import difflib
 from collections import deque
 
 DEFAULTS = {"action": "fresh_context", "streak": 20, "mean_completion": 300, "similarity": 0.9}
-ACTIONS = ("log", "fresh_context")
+ACTIONS = ("fresh_context",)  # rl-min: "log" removed
 LOOP_NOTE = (
     "[Loop rule] Your last {streak} calls took no game action, so this game's conversation was cleared; the board "
     "below is the current one (same level). "

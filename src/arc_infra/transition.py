@@ -7,7 +7,6 @@ segmented objects appeared, disappeared or moved (matched by Duck's shape hash).
 """
 
 import logging
-import os
 import threading
 from collections import OrderedDict, defaultdict
 
@@ -17,7 +16,7 @@ from .objects import segment_host
 from .perception import board_hash
 
 # v7.1 (6 October): segmentation off the GIL (arc_infra.segment_worker); ARC_SEGMENT_WORKERS=0 keeps it in-process.
-SEGMENT_WORKERS = int(os.environ.get("ARC_SEGMENT_WORKERS", "3"))
+SEGMENT_WORKERS = 3
 _POOL = {"pool": None, "failed": None}
 _POOL_LOCK = threading.Lock()
 

@@ -23,7 +23,6 @@ Common fields:
 import dataclasses
 import json
 import os
-import re
 import subprocess
 import types
 import typing
@@ -201,10 +200,7 @@ def remember(cfg, root=None):
 
 # --- dry run: the plan's anchor, roster and data, then the gate --------------------------------------------------------
 def _volume_nonempty(spec, modal_bin):
-    from . import volfetch
-
     vol, _, path = spec.partition(":")
-    vol = volfetch.route(vol, path)  # validation/<run>/ of a per-run record is on its own volume
     try:
         r = subprocess.run([modal_bin, "volume", "ls", "--json", vol, path], capture_output=True, text=True, timeout=60)
     except (OSError, subprocess.SubprocessError) as e:
@@ -217,9 +213,8 @@ def _volume_nonempty(spec, modal_bin):
         return f"{spec}: unreadable listing"
     if not items:
         return f"{spec}: empty"
-    size = str(items[0].get("Size", items[0].get("size", 1)))  # the CLI prints "23.5 KiB", "0 B"
     if len(items) == 1 and str(items[0].get("Type", items[0].get("type", ""))).lower() == "file" and \
-            re.match(r"\s*0+(\.0*)?(\s|$)", size):
+            int(items[0].get("Size", items[0].get("size", 1)) or 0) == 0:
         return f"{spec}: empty file"
     return None
 

@@ -1,13 +1,7 @@
-"""hero-v2 ``drain_half``: dfranzen's "drop half" context management in place of the summary compaction.
-
-"replace our summary compaction with dfranzen's drop half context management" (opt-in, default off:
-every earlier build plays the compaction of ``arena.compaction``). The mechanism follows dfranzen's public ARC-AGI-3
-milestone-2 solution notebook (Apache License 2.0; ``inference/agent/tool_agent.py``: ``_trim_messages_for_context``
-with ``ARC3_CONTEXT_DRAIN_TOKENS``, ``_drop_oldest_history_block``, ``_keep_recent_history_turns`` with
-``ARC3_HISTORY_ASSISTANT_TURNS`` / ``ARC3_HISTORY_TURN_DRAIN`` / ``ARC3_HISTORY_DRAIN_COALESCE``, the forced drain after
-a context-length rejection, ``_trim_tool_text`` with ``ARC3_MIDDLE_TRUNCATION`` and the malformed tool-call hygiene).
-The functions below are re-implementations of that logic on our message lists; their settings are the notebook's
-``setup_env`` values.
+"""hero-v2 ``drain_half``: dfranzen's "drop half" context management, re-implemented on our message
+lists from his public ARC-AGI-3 milestone-2 notebook (Apache License 2.0; ``_trim_messages_for_context``,
+``_drop_oldest_history_block``, ``_keep_recent_history_turns``, the forced drain after a context-length rejection,
+``_trim_tool_text`` and the malformed tool-call hygiene).
 
 - Trigger: our existing compaction trigger (the would-be request's prompt tokens + the completion cap exceed the window,
   i.e. the count exceeds ``_context_budget_tokens``). Then the oldest whole history blocks (a user message and every
@@ -20,71 +14,31 @@ The functions below are re-implementations of that logic on our message lists; t
 - A context-length rejection forces the drain (down to the drain target in one step) before the retry.
 - Between drains the list is only extended (append-only; the prefix cache keeps every turn).
 
-Additions on our side (not in the notebook): the latest *observation* (the turn's board) is protected, not only the
-latest user message (a mid-turn follow-up is a user message too); when the current turn alone overflows the budget its
-oldest tool exchange is dropped (dfranzen's turns yield after a token budget; ours run until an action); and an
-optional one-message note after a drain says what was dropped and that the persistent python state survives, with the
-``harness_fixes`` inventory of live definitions when that sub-fix is on (``note``).
+Additions on our side: the latest *observation* (the turn's board) is protected, not only the latest user message;
+when the current turn alone overflows the budget its oldest tool exchange is dropped; a one-message note after a drain
+says what was dropped and that the persistent python state survives (``note``).
 """
 
 import json
 
-# dfranzen's setup_env: context window (116 + 12)K, max output 12K, ARC3_CONTEXT_DRAIN_TOKENS 58K (capped at
-# budget / 2), ARC3_HISTORY_ASSISTANT_TURNS 150, ARC3_HISTORY_TURN_DRAIN 30, ARC3_HISTORY_DRAIN_COALESCE 1,
-# LOCAL_ANALYZER_TOOL_OUTPUT_TOKENS 3072, ARC3_MIDDLE_TRUNCATION 1.
-DEFAULTS = {
-    "drain_tokens": 59392,
-    "turn_cap": 150,
-    "turn_drain": 30,
-    "coalesce": True,
-    "tool_output_tokens": 3072,
-    "middle_truncation": True,
-    "drop_malformed": True,
-    "note": True,
-}
-BOOLEANS = ("coalesce", "middle_truncation", "drop_malformed", "note")
-# v7.1: ``keep_tokens`` drains to this many tokens instead of ``drain_tokens`` below the budget (no
-# half-budget cap); absent unless set, so earlier builds record the same block.
-OPTIONAL = {"keep_tokens": None}
+# dfranzen's setup_env (window (116 + 12)K, ARC3_CONTEXT_DRAIN_TOKENS 58K capped at budget / 2,
+# ARC3_HISTORY_ASSISTANT_TURNS 150, ARC3_HISTORY_TURN_DRAIN 30, LOCAL_ANALYZER_TOOL_OUTPUT_TOKENS 3072); ours drains 56,960
+SETTING = {"drain_tokens": 56960, "turn_cap": 150, "turn_drain": 30, "coalesce": True, "tool_output_tokens": 3072,
+           "middle_truncation": True, "drop_malformed": True, "note": True}
 
 
 def settings(value):
-    """The study block for ``value`` (None/False: off; True: ``DEFAULTS``; a dict of overrides), or None when off."""
-    if value is None or value is False:
-        return None
-    if value is True:
-        value = {}
-    if not isinstance(value, dict):
-        raise ValueError("drain_half is true/false or a dict of settings")
-    unknown = set(value) - set(DEFAULTS) - set(OPTIONAL)
-    if unknown:
-        raise ValueError(f"Unknown drain_half settings {sorted(unknown)}; known: {sorted(DEFAULTS)}")
-    result = {**DEFAULTS, **value}
-    for key in BOOLEANS:
-        if type(result[key]) is not bool:
-            raise ValueError(f"drain_half {key} is true/false")
-    for key in ("drain_tokens", "turn_cap", "turn_drain", "tool_output_tokens"):
-        if type(result[key]) is not int or result[key] < 0:
-            raise ValueError(f"drain_half {key} is a non-negative integer")
-    if "keep_tokens" in result and (type(result["keep_tokens"]) is not int or result["keep_tokens"] < 1024):
-        raise ValueError("drain_half keep_tokens is an integer >= 1024")
-    if result["tool_output_tokens"] < 64:
-        raise ValueError("drain_half tool_output_tokens is at least 64 (the public loop's floor)")
-    if result["turn_cap"] and result["turn_drain"] >= result["turn_cap"]:
-        raise ValueError("drain_half turn_drain must be below turn_cap (0 turn_cap: no turn cap)")
-    return result
+    from .harness_fixes import exact
+
+    return exact("drain_half", value, SETTING)
 
 
 def role(message):
     return str(message.get("role", "")).strip()
 
 
-def drain_target(budget, drain_tokens, keep_tokens=None):
-    """``(drain, target)``: the drain capped at half the budget and the token level a drain stops at (``keep_tokens``:
-    the target itself, below the budget)."""
-    if keep_tokens:
-        target = min(int(keep_tokens), int(budget))
-        return int(budget) - target, target
+def drain_target(budget, drain_tokens):
+    """``(drain, target)``: the drain capped at half the budget and the token level a drain stops at."""
     drain = min(max(0, int(drain_tokens)), int(budget) // 2)
     return drain, (max(1, int(budget) - drain) if drain else int(budget))
 
@@ -176,7 +130,7 @@ def drain_history(history, *, count, budget, estimate, spec, force=False, is_obs
     - estimate(kept))``. ``kept`` is ``history`` itself when nothing is dropped. ``force`` (a context-length rejection)
     drains to the target whatever the count says and always drops something: one block at least, else the oldest
     exchange of the current turn."""
-    drain, target = drain_target(budget, spec["drain_tokens"], spec.get("keep_tokens"))
+    drain, target = drain_target(budget, spec["drain_tokens"])
     work = list(history)
     protect = latest_observation(work, is_observation)
     if protect is None:
@@ -203,7 +157,7 @@ def drain_history(history, *, count, budget, estimate, spec, force=False, is_obs
     turn_messages = 0
     if spec["turn_cap"]:
         cut = turn_cut(work, max_turns=spec["turn_cap"], drain_turns=spec["turn_drain"],
-                       force=bool(spec["coalesce"] and token_dropped), protect=latest_observation(work, is_observation))
+                       force=bool(token_dropped), protect=latest_observation(work, is_observation))
         if cut:
             turn_messages = cut
             del work[:cut]
@@ -249,6 +203,7 @@ TRUNCATED_CALL_FOLLOWUP = (
     "executed. Keep your reasoning much shorter this time and emit the `python` tool call early enough that it "
     "completes within the output limit. Prefer one small snippet over a long analysis. "
 )
+
 MALFORMED_CALL_FOLLOWUP = (
     "Your previous tool call had arguments that were not valid JSON, so it was not executed. Emit exactly one "
     "`python` tool call whose arguments are a well-formed JSON object. "
@@ -262,11 +217,3 @@ PYTHON_NOTE = (
     " Your python interpreter was not touched: the variables, functions and imports you defined are still there "
     "unless a reset is reported."
 )
-
-
-def aggregate(rows):
-    """Fleet totals of the games' ``context_drain`` rows."""
-    rows = [r for r in rows if r]
-    keys = ("drains", "forced", "turn_cap_drains", "tokens_dropped", "messages_dropped", "turn_exchanges",
-            "malformed_replies", "notes")
-    return {"games": len(rows), **{k: sum(int(r.get(k, 0)) for r in rows) for k in keys}}

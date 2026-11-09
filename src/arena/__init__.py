@@ -2,5 +2,5 @@
 
 Games are admitted to a fixed number of streams; admission, parking and handover follow the study's budget policy
 (level budgets, or the priority scheduler with handover at context evictions); every context is append-only between
-compactions / drains. ``arena.serving_core`` holds the native vLLM start-up (formerly ``qwen_baselines``).
+compactions / drains. ``arena.serving`` starts the vLLM server.
 """

@@ -51,10 +51,13 @@ def last_board(raw, previous=None):
     return np.array(frames[-1], dtype=np.uint8)
 
 
-def replay(env, prefix):
-    """Replay ``prefix`` on ``env`` (fresh from ``Arcade.make``): ``(raw, board)`` after the last action."""
+def replay(env, prefix, trace=None):
+    """Replay ``prefix`` on ``env`` (fresh from ``Arcade.make``): ``(raw, board)`` after the last action. ``trace``
+    (a list) receives ``(action text or None, raw)`` for the first observation and after every action."""
     raw = env.observation_space
     board = last_board(raw)
+    if trace is not None:
+        trace.append((None, raw))
     for text in prefix:
         name, x, y = decode_action(text)
         if name == "RESET":
@@ -64,12 +67,14 @@ def replay(env, prefix):
         if raw is None:
             raise RuntimeError(f"Environment returned no observation while replaying {text}")
         board = last_board(raw, board)
+        if trace is not None:
+            trace.append((text, raw))
     return raw, board
 
 
-def check_replay(env, point):
+def check_replay(env, point, trace=None):
     """Replay a start point and compare with its recording: ``(ok, detail, raw)``."""
-    raw, board = replay(env, point["prefix"])
+    raw, board = replay(env, point["prefix"], trace)
     levels = int(raw.levels_completed)
     state = getattr(raw.state, "name", str(raw.state))
     digest = board_hash(board) if board is not None else None

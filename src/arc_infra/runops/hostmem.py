@@ -159,6 +159,3 @@ def detail(top=4, proc="/proc", shm="/dev/shm", tmp="/tmp", cgroup_dir="/sys/fs/
     return {k: (round(v, 3) if isinstance(v, float) else v) for k, v in m.items()}
 
 
-def thrashing(d, some=40.0, full=10.0):
-    """True when memory pressure says the host is already reclaiming hard (PSI avg10 over the bars)."""
-    return (d.get("infra.host_psi_some") or 0) >= some or (d.get("infra.host_psi_full") or 0) >= full

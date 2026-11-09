@@ -89,6 +89,8 @@ atexit.register(Workspace.flush_all)
 class GameSession:
     """Base class for fleet agents; subclasses implement ``run``."""
 
+    now = staticmethod(time.monotonic)  # try timing (the arena's: arena.phase.monotonic, training cut out)
+
     def __init__(self, game_id, arc, card, client, config, workspace, interpreter, deadline):
         self.game_id, self.arc, self.card = game_id, arc, card
         self.client, self.config = client, config
@@ -105,14 +107,14 @@ class GameSession:
         self.last_action = "RESET"
         self.no_ops = Counter()
         self.status, self.error = "starting", None
-        self.started = time.monotonic()
+        self.started = self.now()
         self.last_observation_at = self.started
 
     def remaining(self):
-        return max(0, self.deadline - time.monotonic())
+        return max(0, self.deadline - self.now())
 
     def runtime_message(self, *, record=True):
-        now = time.monotonic()
+        now = self.now()
         runtime = {
             "elapsed_seconds": round(now - self.started, 1),
             "remaining_seconds": round(max(0, self.deadline - now), 1),
@@ -139,7 +141,7 @@ class GameSession:
     async def step(self, action):
         if self.remaining() <= 0:
             raise TimeoutError("Gameplay deadline reached")
-        issued = time.monotonic()
+        issued = self.now()
         if action.name == "RESET":
             call = self.env.reset
             args = ()
@@ -159,7 +161,7 @@ class GameSession:
             cancelled = True
         self.previous = self.obs
         self.obs = Observation.from_raw(raw, self.previous)
-        self.last_observation_at = time.monotonic()
+        self.last_observation_at = self.now()
         self.steps += 1
         self.level_steps += 1
         if action.name == "RESET":
@@ -177,7 +179,7 @@ class GameSession:
             "action_timing",
             step=self.steps,
             issued_gameplay_seconds=issued - self.started,
-            seconds=time.monotonic() - issued,
+            seconds=self.now() - issued,
         )
         if cancelled:
             raise asyncio.CancelledError
@@ -201,5 +203,5 @@ class GameSession:
             "context_prunes": self.context_prunes,
             "context_compactions": self.context_compactions,
             "compaction_calls": self.compaction_calls,
-            "seconds": time.monotonic() - self.started,
+            "seconds": self.now() - self.started,
         }

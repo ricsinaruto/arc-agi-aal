@@ -11,7 +11,7 @@ MODEL_ID = "Qwen/Qwen3.8-27B-FP8"
 MODEL_REVISION = "017b9c7af6b5689d5dd426a76e0bc077eb5ca20a"
 
 
-REASONING_HISTORY_MODES = ("normalized", "verbatim")
+REASONING_HISTORY_MODES = ("verbatim",)  # duck_transfer.agent supports only verbatim
 
 
 @dataclass
@@ -19,8 +19,7 @@ class Config:
     model: str = MODEL_ID
     model_revision: str = MODEL_REVISION
     base_url: str = "http://127.0.0.1:8000/v1"
-    # "vllm" (also SGLang's vLLM-compatible /tokenize) or "llamacpp" (llama-server token counts).
-    serving_backend: str = "vllm"
+    serving_backend: str = "vllm"  # only vLLM is served (rl-min); kept for the configs and records that carry it
     gameplay_seconds: float = 900
     setup_seconds: float = 600
     parallel_games: int = 25
@@ -38,7 +37,7 @@ class Config:
     # How the assistant's earlier reasoning and content are re-sent (29 September, prefix-cache-v2.md): "normalized"
     # (the public loop: blank lines removed, ends stripped) or "verbatim" (the server's string, <think> tags removed
     # only), so the next prompt re-renders the reply as the tokens the model generated and the prefix cache reuses it.
-    reasoning_history: str = "normalized"
+    reasoning_history: str = "verbatim"
     temperature: float = 1.0
     python_seconds: float = 5
     # Accepted only for historical run configurations; action forcing was removed.
@@ -95,18 +94,12 @@ class Config:
         if not 0 <= self.speculative_tokens <= 5:
             raise ValueError("speculative_tokens must be between 0 and 5")
         if self.reasoning_effort not in allowed_efforts(self.model):
-            choices = ("native for UI-Mate" if allowed_efforts(self.model) == ("native",) else
-                       "high for Nex" if allowed_efforts(self.model) == ("high",) else "xhigh, medium or low")
-            raise ValueError(f"reasoning_effort must be {choices}")
+            raise ValueError("reasoning_effort must be xhigh, medium or low")
 
     @property
     def context_reserve(self):
         # Space for tool results and a continuation summary at the native boundary.
         return max(8192, self.compaction_summary_tokens + 4096)
-
-    @property
-    def context_limit(self):
-        return self.max_context_tokens or self.max_model_len - self.context_reserve
 
     @classmethod
     def load(cls, path: str | Path):

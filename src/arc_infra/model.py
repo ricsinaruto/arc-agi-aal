@@ -123,13 +123,6 @@ class ModelClient:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise TimeoutError("Gameplay deadline reached before token counting")
-        if getattr(self.config, "serving_backend", "vllm") == "llamacpp":
-            # llama-server renders the same template, tools and kwargs and counts the prompt; its
-            # per-slot window is validated once at startup (arena.llamacpp.SlotCapacity).
-            url = self.client.base_url.copy_with(path="/v1/chat/completions/input_tokens")
-            response = await self.client.post(url, json=payload, timeout=remaining)
-            response.raise_for_status()
-            return int(response.json()["input_tokens"])
         url = self.client.base_url.copy_with(path="/tokenize")
         try:
             response = await self.client.post(url, json=payload, timeout=remaining)

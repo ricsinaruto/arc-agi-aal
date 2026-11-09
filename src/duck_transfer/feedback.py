@@ -49,9 +49,6 @@ class StuckTracker:
     """Per-level counters behind the stuck notice."""
 
     def __init__(self, cfg, now=None):
-        self.no_change_limit = cfg.stuck_no_change_actions
-        self.turn_limit = cfg.stuck_turns
-        self.interval = cfg.stuck_notice_turns
         self.reset_level(now)
 
     def reset_level(self, now=None):
@@ -66,26 +63,3 @@ class StuckTracker:
 
     def note_turn(self):
         self.turns += 1
-
-    def stuck(self):
-        return self.no_change >= self.no_change_limit or self.turns >= self.turn_limit
-
-    def notice(self, level, tried, now=None):
-        """The stuck block for the next prompt, or None when not due."""
-        if not self.stuck():
-            return None
-        if self.last_notice is not None and self.turns - self.last_notice < self.interval:
-            return None
-        self.last_notice, self.notices = self.turns, self.notices + 1
-        seconds = int((time.monotonic() if now is None else now) - self.started)
-        tried_text = ", ".join(tried[:12]) + (" ..." if len(tried) > 12 else "") if tried else "none"
-        return (
-            f"Stuck check: {self.turns} turns and {self.actions} actions on level {level} "
-            f"({seconds}s), {self.no_change} consecutive actions produced no board change. "
-            f"Tried on this exact board with no effect: {tried_text}. "
-            "Re-derive the goal from `current_frame.segmentation` (which object differs from "
-            "the others, what a target or slot looks like), probe an untried object or action "
-            "type and read `transition` in the receipt, and if the level is bricked call "
-            "`action(['RESET'])` to restart it (RESET is refused only as the very first action "
-            "of a fresh level)."
-        )

@@ -1,0 +1,350 @@
+{
+ "b2-rl-hread-rd-v1": {
+  "card_env": null,
+  "flags": [
+   "--mamba-ssm-cache-dtype",
+   "bfloat16",
+   "--kv-cache-dtype",
+   "int4_per_token_head",
+   "--block-size",
+   "3136"
+  ],
+  "server": {
+   "cudagraph_capture_sizes": [
+    1,
+    2,
+    4,
+    8,
+    16,
+    32,
+    48,
+    60,
+    64,
+    72,
+    80,
+    88,
+    96,
+    104
+   ],
+   "expert_mask": {
+    "mask": "data/expert_mask/prune-t37-r15b-nvfp4-v1.json",
+    "sha256": "b30b3b44ba4a7637209da4ed4bb96883d926688df912d78d1d177d505b58076e"
+   },
+   "gpu_memory_utilization": "0.92",
+   "lora": {
+    "max_cpu_loras": 2,
+    "max_loras": 1,
+    "max_rank": 16,
+    "moe_backend": "marlin",
+    "mtp": true,
+    "ple_queue_wait": null,
+    "sleep_mode": false
+   },
+   "max_cudagraph_capture_size": 104,
+   "max_model_len": 262144,
+   "max_num_batched_tokens": 4096,
+   "max_num_seqs": 52,
+   "mm_processor_cache_gb": 8.0,
+   "mtp_tokens": 1,
+   "prefix_caching": true,
+   "prefix_match_unit": 16,
+   "prompt_tokens_details": true,
+   "renderer_num_workers": 4,
+   "served_route": null,
+   "serving_fast": {
+    "api_gc": true,
+    "image_cache": true,
+    "logprob_fast": true,
+    "mm_warmup_overlap": true
+   },
+   "serving_kernels": {
+    "draft_experts": "nvfp4",
+    "draft_vocab": "arena16k",
+    "embed_host": true,
+    "hc_fusion": false,
+    "indexer_fp8": false,
+    "kv_cache_4bit": "int4",
+    "mamba_ssm_cache_dtype": "bfloat16",
+    "moe_backend": null,
+    "pin_overlap": true,
+    "ple_uva": true,
+    "topk_sampler": true
+   }
+  },
+  "server_env": {
+   "heldout-read": {
+    "ARC_BOOT_CACHE_SAVE": "1",
+    "ARC_DRAFT_LORA": "1",
+    "ARC_EXPERT_FAST_LOOKUP": "1",
+    "ARC_EXPERT_MASK_COMPACT": "1",
+    "ARC_LORA_NO_PIN": "1",
+    "ARC_MARLIN_BATCH": "1",
+    "ARC_MM_WARMUP_SKIP": "1",
+    "ARC_PINNED_LOAD": "1",
+    "ARC_PLE_CHECK_SKIP": "1",
+    "ARC_PYC_CACHE": "1",
+    "ARC_STABLE_PATCH": "1",
+    "ARENA_CPU_CACHE_GIB": "64",
+    "ARENA_GPU_MEMORY_UTILIZATION": "0.92",
+    "ARENA_PROMPT_TOKENS_DETAILS": "1",
+    "ARENA_READY_GUARD": "180,3000",
+    "ARENA_SETUP_TIMEOUTS": "2700,3600"
+   }
+  }
+ },
+ "rl1-loop-seq-glong-v5": {
+  "card_env": {
+   "0": {
+    "ARC_LOAD_STACKS": "1",
+    "ARC_LORA_SINGLE": null,
+    "ARC_MOE_LORA_BM16": null
+   }
+  },
+  "flags": [
+   "--mamba-ssm-cache-dtype",
+   "bfloat16",
+   "--kv-cache-dtype",
+   "int4_per_token_head",
+   "--block-size",
+   "3200"
+  ],
+  "server": {
+   "cudagraph_capture_sizes": [
+    1,
+    2,
+    4,
+    8,
+    16,
+    24,
+    32,
+    40,
+    48,
+    56,
+    64,
+    72,
+    80,
+    88,
+    96,
+    104,
+    112,
+    120,
+    128,
+    136,
+    144,
+    152,
+    168,
+    184,
+    200,
+    224,
+    256,
+    288,
+    320,
+    384,
+    448,
+    512,
+    576,
+    640,
+    768,
+    896,
+    1024
+   ],
+   "expert_mask": {
+    "mask": "data/expert_mask/prune-t37-r15b-nvfp4-v1.json",
+    "sha256": "b30b3b44ba4a7637209da4ed4bb96883d926688df912d78d1d177d505b58076e"
+   },
+   "gpu_memory_utilization": "0.5",
+   "lora": {
+    "max_cpu_loras": 2,
+    "max_loras": 1,
+    "max_rank": 16,
+    "moe_backend": "marlin",
+    "mtp": true,
+    "ple_queue_wait": null,
+    "sleep_mode": true
+   },
+   "max_cudagraph_capture_size": 1024,
+   "max_model_len": 262144,
+   "max_num_batched_tokens": 8192,
+   "max_num_seqs": 288,
+   "mm_processor_cache_gb": 32.0,
+   "mtp_tokens": 2,
+   "prefix_caching": true,
+   "prefix_match_unit": 16,
+   "prompt_tokens_details": true,
+   "renderer_num_workers": 4,
+   "served_route": "/tmp/arc-served-route",
+   "serving_fast": {
+    "api_gc": true,
+    "image_cache": true,
+    "logprob_fast": true,
+    "mm_warmup_overlap": true
+   },
+   "serving_kernels": {
+    "draft_experts": "nvfp4",
+    "hc_fusion": false,
+    "kv_cache_4bit": "int4",
+    "mamba_ssm_cache_dtype": "bfloat16",
+    "moe_backend": null,
+    "pin_overlap": true,
+    "ple_uva": true,
+    "topk_sampler": false
+   }
+  },
+  "server_env": {
+   "rl-loop": {
+    "ARC_BOOT_CACHE_CARRY": "1",
+    "ARC_BOOT_CACHE_IN": "/runs/boot-cache/rd",
+    "ARC_BOOT_CACHE_KEY": "2",
+    "ARC_BOOT_CACHE_OUT": "/runs/boot-cache/rd",
+    "ARC_BOOT_CACHE_SAVE": "1",
+    "ARC_BOOT_CACHE_SAVE_AFTER": "600",
+    "ARC_DRAFT_LOAD_FILTER": "1",
+    "ARC_EXPERT_FAST_LOOKUP": "1",
+    "ARC_LORA_GRAPH_ONE": "1",
+    "ARC_LORA_NO_PIN": "1",
+    "ARC_MARLIN_BATCH": "1",
+    "ARC_MM_WARMUP_SKIP": "1",
+    "ARC_PINNED_LOAD": "1",
+    "ARC_PLE_CHECK_SKIP": "1",
+    "ARC_PYC_CACHE": "1",
+    "ARC_STABLE_PATCH": "1",
+    "ARENA_GPU_MEMORY_UTILIZATION": "0.5",
+    "ARENA_KV_CACHE_MEMORY_BYTES": "185000000000",
+    "ARENA_PROMPT_TOKENS_DETAILS": "1",
+    "ARENA_READY_GUARD": "180,3000",
+    "ARENA_SETUP_TIMEOUTS": "2700,3600"
+   }
+  }
+ },
+ "rl1-loop-seq-real-v8": {
+  "card_env": {
+   "0": {
+    "ARC_LOAD_STACKS": "1",
+    "ARC_LORA_SINGLE": null,
+    "ARC_MOE_LORA_BM16": null
+   },
+   "1": {
+    "ARC_LOAD_STACKS": "1",
+    "ARC_LORA_SINGLE": null,
+    "ARC_MOE_LORA_BM16": null
+   }
+  },
+  "flags": [
+   "--mamba-ssm-cache-dtype",
+   "bfloat16",
+   "--kv-cache-dtype",
+   "int4_per_token_head",
+   "--block-size",
+   "3200"
+  ],
+  "server": {
+   "cudagraph_capture_sizes": [
+    1,
+    2,
+    4,
+    8,
+    16,
+    24,
+    32,
+    40,
+    48,
+    56,
+    64,
+    72,
+    80,
+    88,
+    96,
+    104,
+    112,
+    120,
+    128,
+    136,
+    144,
+    152,
+    168,
+    184,
+    200,
+    224,
+    256,
+    288,
+    320,
+    384,
+    448,
+    512,
+    576,
+    640,
+    768,
+    896,
+    1024
+   ],
+   "expert_mask": {
+    "mask": "data/expert_mask/prune-t37-r15b-nvfp4-v1.json",
+    "sha256": "b30b3b44ba4a7637209da4ed4bb96883d926688df912d78d1d177d505b58076e"
+   },
+   "gpu_memory_utilization": "0.5",
+   "lora": {
+    "max_cpu_loras": 2,
+    "max_loras": 1,
+    "max_rank": 16,
+    "moe_backend": "marlin",
+    "mtp": true,
+    "ple_queue_wait": null,
+    "sleep_mode": true
+   },
+   "max_cudagraph_capture_size": 1024,
+   "max_model_len": 262144,
+   "max_num_batched_tokens": 8192,
+   "max_num_seqs": 288,
+   "mm_processor_cache_gb": 32.0,
+   "mtp_tokens": 2,
+   "prefix_caching": true,
+   "prefix_match_unit": 16,
+   "prompt_tokens_details": true,
+   "renderer_num_workers": 4,
+   "served_route": "/tmp/arc-served-route",
+   "serving_fast": {
+    "api_gc": true,
+    "image_cache": true,
+    "logprob_fast": true,
+    "logprob_lean": true,
+    "mm_warmup_overlap": true
+   },
+   "serving_kernels": {
+    "draft_experts": "nvfp4",
+    "hc_fusion": false,
+    "kv_cache_4bit": "int4",
+    "mamba_ssm_cache_dtype": "bfloat16",
+    "moe_backend": null,
+    "pin_overlap": true,
+    "ple_uva": true,
+    "topk_sampler": false
+   }
+  },
+  "server_env": {
+   "rl-loop": {
+    "ARC_BOOT_CACHE_CARRY": "1",
+    "ARC_BOOT_CACHE_IN": "/runs/boot-cache/rd",
+    "ARC_BOOT_CACHE_KEY": "2",
+    "ARC_BOOT_CACHE_OUT": "/runs/boot-cache/rd",
+    "ARC_BOOT_CACHE_SAVE": "1",
+    "ARC_BOOT_CACHE_SAVE_AFTER": "600",
+    "ARC_DRAFT_LOAD_FILTER": "1",
+    "ARC_EXPERT_FAST_LOOKUP": "1",
+    "ARC_LORA_GRAPH_ONE": "1",
+    "ARC_LORA_NO_PIN": "1",
+    "ARC_MARLIN_BATCH": "1",
+    "ARC_MM_WARMUP_SKIP": "1",
+    "ARC_PINNED_LOAD": "1",
+    "ARC_PLE_CHECK_SKIP": "1",
+    "ARC_PYC_CACHE": "1",
+    "ARC_STABLE_PATCH": "1",
+    "ARC_TOKEN_SEGMENT_CACHE": "1",
+    "ARENA_GPU_MEMORY_UTILIZATION": "0.5",
+    "ARENA_KV_CACHE_MEMORY_BYTES": "185000000000",
+    "ARENA_PROMPT_TOKENS_DETAILS": "1",
+    "ARENA_READY_GUARD": "180,3000",
+    "ARENA_SETUP_TIMEOUTS": "2700,3600"
+   }
+  }
+ }
+}

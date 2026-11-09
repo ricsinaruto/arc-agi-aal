@@ -8,5 +8,4 @@ Remove these guards only after a validated backend implementation replaces the p
 def validate_settings(settings):
     if settings['kv_cache_dtype'] not in ('auto', 'bfloat16'):
         raise NotImplementedError('Pinned Flash-Next QSA requires BF16 KV; FP8 needs backend/kernel support')
-    if settings['cpu_cache_gib']:
-        raise NotImplementedError('Pinned offloading scheduler rejects QSA CircularBufferSpec; CPU cache needs backend support')
+    # cpu_cache_gib: served through arc_infra.arc_offload_runtime (vllm/arc_offload.py), which leaves the QSA ring out.

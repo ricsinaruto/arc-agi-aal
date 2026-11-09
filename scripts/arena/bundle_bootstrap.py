@@ -16,8 +16,46 @@ PIP_WHEEL = "pip-25.2-py3-none-any.whl"
 PIP_SHA256 = "6d67a2b4e7f14d8b31b8b52648866fa717f45a1eb70e83002f4331d07e953717"
 
 
+PREBUILT_ENV = "ARC_PREBUILT_VENV"
+STAMP = ".arc-requirements.sha256"
+
+
+def requirements_stamp(bundle):
+    """sha256 of the bundle's requirements.txt (every line hash-pinned: --require-hashes)."""
+    return hashlib.sha256((Path(bundle) / "requirements.txt").read_bytes()).hexdigest()
+
+
+def prebuilt_environment(bundle, venv, environ=None):
+    """ARC_PREBUILT_VENV=<dir> (stage H, 26 Oct; T3 boot paid ~30 s for venv + 48 wheels + pip check at every start):
+    a venv the image built from this same hash-locked requirements.txt (its STAMP equal) is copied into place, links
+    kept. Returns the python, or None (no prebuilt, or another requirements file: the install runs as before)."""
+    environ = os.environ if environ is None else environ
+    src = environ.get(PREBUILT_ENV)
+    if not src or not (Path(src) / STAMP).is_file():
+        return None
+    why = None
+    if (Path(src) / STAMP).read_text().strip() != requirements_stamp(bundle):
+        why = "requirements differ"
+    else:  # the same base interpreter as a fresh `python -m venv` here would link
+        home = next((line.split("=", 1)[1].strip() for line in (Path(src) / "pyvenv.cfg").read_text().splitlines()
+                     if line.split("=", 1)[0].strip() == "home"), None) if (Path(src) / "pyvenv.cfg").is_file() else None
+        base = Path(getattr(sys, "_base_executable", None) or sys.executable)
+        mine = Path(home) / f"python{sys.version_info[0]}.{sys.version_info[1]}" if home else None
+        if mine is None or not mine.exists() or mine.resolve() != base.resolve():
+            why = f"base interpreter {mine} != {base}"
+    if why:
+        print(json.dumps({"event": "prebuilt_venv", "used": False, "why": why}), flush=True)
+        return None
+    shutil.copytree(src, venv, symlinks=True)
+    print(json.dumps({"event": "prebuilt_venv", "used": True, "from": src}), flush=True)
+    return str(Path(venv) / "bin/python")
+
+
 def install_agent_environment(bundle, venv, env):
     """Install locked wheels without depending on the host's ensurepip package."""
+    python = prebuilt_environment(bundle, venv, env)
+    if python is not None:
+        return python
     wheel = bundle / "wheels" / PIP_WHEEL
     if hashlib.sha256(wheel.read_bytes()).hexdigest() != PIP_SHA256:
         raise ValueError("Pinned bootstrap pip wheel mismatch")
