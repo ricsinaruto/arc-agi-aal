@@ -35,11 +35,9 @@ def score_one(job, sets_dir, ref_npz, out_path):
     import numpy as np
     from vllm import LLM, SamplingParams
     rows = [json.loads(line) for name in ("held3", "held2") for line in gzip.open(f"{sets_dir}/{name}.jsonl.gz", "rt")]
-    if job.get("stride"):  # a fixed subset (every k-th sequence of each set) for slow (offloaded) candidates
-        rows = rows[::int(job["stride"])]
     if job.get("reverse"):
         rows = rows[::-1]  # batch-order variant for the numeric floor
-    model = job["model"] if job["model"].startswith("/") else f"{ROOT}/{job['model']}"  # absolute: built at boot
+    model = f"{ROOT}/{job['model']}"
     if job.get("dummy"):
         # boot check: config-only copy cut to N layers, random weights, two rows
         import shutil
@@ -135,9 +133,7 @@ def sampler(out, halt, every=30):
 def bootstrap(a, b=None, metric="kl20", reps=2000):
     """95% CI of the position-weighted mean (or of a - b on shared sequences) over sequences."""
     import random
-    ids = sorted(set(a["per_seq"]) & set(b["per_seq"])) if b else sorted(a["per_seq"])  # paired: shared rows only
-    if not ids:
-        return None
+    ids = sorted(a["per_seq"])
     rng = random.Random(0)
 
     def stat(sample):
@@ -145,34 +141,6 @@ def bootstrap(a, b=None, metric="kl20", reps=2000):
         return num / sum(a["per_seq"][i]["n"] for i in sample)
     vals = sorted(stat([rng.choice(ids) for _ in ids]) for _ in range(reps))
     return round(vals[int(0.025 * reps)], 4), round(vals[int(0.975 * reps)], 4)
-
-
-def select_layers(job, done, out):
-    """Pre-registered rule (mmrtx.md, 25 Oct): rank layer groups by (kl20(swap) - kl20(base)) per layer, both on the
-    same stride; add whole groups, cheapest first, until >= min_layers are Humming; predicted kl20 = anchor + sum of
-    their deltas. Builds the symlinked variant and returns the job with model and MMRTX_MOE_HUMMING_LAYERS set."""
-    sel = job["select"]
-    if sel["base"] not in done or any(j not in done for j in sel["group_jobs"].values()):
-        return None
-    base = done[sel["base"]]["kl20"]
-    delta = {g: done[j]["kl20"] - base for g, j in sel["group_jobs"].items()}
-    order = sorted(delta, key=lambda g: delta[g] / len(sel["groups"][g]))
-    chosen, layers = [], []
-    for g in order:
-        if len(layers) >= int(sel["min_layers"]):
-            break
-        chosen.append(g)
-        layers += list(sel["groups"][g])
-    pred = float(sel["anchor_kl20"]) + sum(delta[g] for g in chosen)
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import hum_build
-    hum_build.variant(sel["src"], sel["hum"], sel["dst"], ",".join(map(str, sorted(layers))))
-    info = {"delta": {g: round(v, 4) for g, v in delta.items()}, "order": order, "chosen": chosen,
-            "layers": sorted(layers), "n_layers": len(layers), "predicted_kl20": round(pred, 4)}
-    (out / "select.json").write_text(json.dumps(info, indent=1))
-    print("SELECT " + json.dumps(info), flush=True)
-    env = {**job.get("env", {}), "MMRTX_MOE_HUMMING_LAYERS": ",".join(map(str, sorted(layers)))}
-    return {**{k: v for k, v in job.items() if k != "select"}, "model": sel["dst"], "env": env, "selection": info}
 
 
 def run_jobs(out, jobs, ref, sets):
@@ -184,11 +152,6 @@ def run_jobs(out, jobs, ref, sets):
     done = {}
     for job in json.loads(jobs):
         path = out / f"{job['name']}.json"
-        if "select" in job and not path.exists():
-            job = select_layers(job, done, out)
-            if job is None:
-                print("SELECT FAILED: missing group results", flush=True)
-                continue
         if not path.exists():
             rc = subprocess.run([sys.executable, str(Path(__file__).resolve()), "child", json.dumps(job), f"{ROOT}/{sets}",
                                  f"{ROOT}/ref/{ref}/kl.npz", str(path)]).returncode

@@ -13,44 +13,34 @@ import sys
 import time
 from pathlib import Path
 
-try:
-    import modal
-except ImportError:  # mon.py imports only alerts(); a uv sync without the modal extra can drop it
-    modal = None
+import modal
 
 INODE_CAP = 500_000
 VOLUME = "arc-prolong-runs"
+app = modal.App("arc-volume-usage")
 
-if modal is not None:
-    app = modal.App("arc-volume-usage")
 
-    @app.function(image=modal.Image.debian_slim(python_version="3.12"), cpu=(0.125, 2), timeout=3600,
-                  volumes={"/runs": modal.Volume.from_name(VOLUME)})
-    def walk():
-        """Every file and dir under /runs, grouped by top-level dir (validation/ by its run dirs)."""
-        from collections import Counter
+@app.function(image=modal.Image.debian_slim(python_version="3.12"), cpu=(0.125, 2), timeout=3600,
+              volumes={"/runs": modal.Volume.from_name(VOLUME)})
+def walk():
+    """Every file and dir under /runs, grouped by top-level dir (validation/ by its run dirs)."""
+    from collections import Counter
 
-        n, size, per_n, per_b, new_h = 0, 0, Counter(), Counter(), Counter()
-        hour = time.time() - 3600
-        for root, dirs, files in os.walk("/runs"):
-            parts = os.path.relpath(root, "/runs").split("/")
-            key = "." if parts == ["."] else "/".join(parts[:2]) if parts[0] == "validation" else parts[0]
-            key3 = "/".join(parts[:3] if parts[0] == "validation" else parts[:2])  # growth: one level deeper
-            n += len(dirs) + len(files)
-            per_n[key] += len(dirs) + len(files)
-            for i, f in enumerate(files + dirs):
-                try:
-                    st = os.lstat(os.path.join(root, f))
-                except OSError:
-                    continue
-                if st.st_mtime > hour:  # created or rewritten in the last hour: who is adding inodes
-                    new_h[key3] += 1
-                if i < len(files):
-                    size += st.st_size
-                    per_b[key] += st.st_size
-        top = sorted(per_n, key=lambda k: -per_n[k])[:15]
-        return {"inodes": n, "bytes": size, "top": [[k, per_n[k], per_b[k]] for k in top],
-                "new_1h": sorted(new_h.items(), key=lambda x: -x[1])[:25]}
+    n, size, per_n, per_b = 0, 0, Counter(), Counter()
+    for root, dirs, files in os.walk("/runs"):
+        parts = os.path.relpath(root, "/runs").split("/")
+        key = "." if parts == ["."] else "/".join(parts[:2]) if parts[0] == "validation" else parts[0]
+        n += len(dirs) + len(files)
+        per_n[key] += len(dirs) + len(files)
+        for f in files:
+            try:
+                b = os.lstat(os.path.join(root, f)).st_size
+            except OSError:
+                continue
+            size += b
+            per_b[key] += b
+    top = sorted(per_n, key=lambda k: -per_n[k])[:15]
+    return {"inodes": n, "bytes": size, "top": [[k, per_n[k], per_b[k]] for k in top]}
 
 
 def alerts(v, frac=0.8):

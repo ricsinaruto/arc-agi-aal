@@ -74,6 +74,25 @@ def start_live_progress(bundle, study, trial, working, output):
     return stop, thread
 
 
+def resumed_trial(folder, attempt):
+    """A relaunched preemptible run (ARC_CHECKPOINT_RESUME; arena.checkpoint) meets each trial's folder as the earlier
+    machine left it: ``("done", status)`` when the trial already ended, ``("resume", played seconds)`` when it holds
+    a checkpoint, ``"fresh"`` otherwise (a folder cut before its first checkpoint is set aside, never continued)."""
+    if (folder / "execution.json").is_file():
+        return "done", json.loads((folder / "execution.json").read_text()).get("status")
+    played = []
+    for manifest in sorted(folder.glob("checkpoint/gen-*/manifest.json")):
+        try:
+            played.append(float(json.loads(manifest.read_text())["elapsed_seconds"]))
+        except (OSError, ValueError, KeyError):
+            pass
+    if played:
+        return "resume", min(played)  # the older generation is the one a torn newest falls back to
+    if folder.exists():
+        folder.rename(folder.with_name(f"{folder.name}.lost-before-attempt-{attempt}"))
+    return "fresh", None
+
+
 def trial_lifecycle_lines(process_log, limit=20):
     """The trial's own JSON lifecycle events (starting_trial, trial_result) from its log file."""
     lines = []
@@ -115,7 +134,9 @@ def main():
         raise ValueError("Unknown trial name")
     if args.max_seconds < 600:
         raise ValueError("The run envelope must include setup and cleanup time")
-    working.mkdir(parents=True, exist_ok=False)
+    # A relaunched preemptible run starts in the trials folder its runner restored (scripts/nebius_runner.py).
+    resuming = os.environ.get("ARC_CHECKPOINT_RESUME") == "1"
+    working.mkdir(parents=True, exist_ok=resuming)
     env = {
         **os.environ,
         "PYTHONPATH": str(bundle / "src"),
@@ -231,6 +252,18 @@ def main():
             print(json.dumps({"event": "evolve_process", "result": results["evolve"], "process_log": str(process_log)}), flush=True)
             trials = [{"name": "evolve"}]
         for trial in ([] if args.evolve else trials):
+            trial_env, played = env, 0.0
+            if resuming:
+                earlier, status = resumed_trial(working / "trials" / trial["name"], os.environ.get("ARC_CHECKPOINT_ATTEMPT", "2"))
+                print(json.dumps({"event": "trial_resume", "trial": trial["name"], "decision": earlier,
+                                  "status": status}), flush=True)
+                if earlier == "done":
+                    results[trial["name"]] = "complete" if str(status).startswith("complete") else f"earlier: {status}"
+                    continue
+                if earlier == "fresh":
+                    trial_env = {k: v for k, v in env.items() if k != "ARC_CHECKPOINT_RESUME"}
+                else:
+                    played = status
             trial_competition = bool(competition) and trial.get('competition', True)
             if competition and rerun and not trial_competition:
                 results[trial["name"]] = "skipped: hidden rerun"
@@ -269,6 +302,8 @@ def main():
                 # An unconditional run stop (arena.early_stop ``always``; hero-v2-blocks): the trial plays at most
                 # at_seconds of its longer wall, so it is budgeted by the stop.
                 trial_wall = min(trial_wall, float(stop['at_seconds']))
+            if played:  # a resumed trial needs only the rest of its wall
+                trial_wall = max(1.0, trial_wall - played)
             # Short research runs (harness arm, 3 October: <= 30-minute Modal runs) may shrink the two reserves (the
             # post-trial 120 s and the 300 s per-trial margin) by a study field; the defaults are unchanged.
             reserves = study.get('bootstrap_reserves') or {}
@@ -315,7 +350,7 @@ def main():
                                      "server-check", "prune-quality"):
                     # Live progress (Modal only builds these trials): the trial's own JSON lines are echoed as
                     # they arrive; everything else still goes to the file alone.
-                    returncode = run_echoing(command, env, process_log, timeout=max(1, timeout),
+                    returncode = run_echoing(command, trial_env, process_log, timeout=max(1, timeout),
                                              prefix={"level-bench": '{"event": "level_bench',
                                                      "kernel-quality": '{"event": "kernel_quality',
                                                      "draft-head": '{"event": "draft_head',
@@ -327,7 +362,7 @@ def main():
                     live = start_live_progress(bundle, study, trial, working, args.output)
                     try:
                         with process_log.open("ab") as stream:
-                            returncode = subprocess.run(command, env=env, check=False, timeout=max(1, timeout),
+                            returncode = subprocess.run(command, env=trial_env, check=False, timeout=max(1, timeout),
                                                         stdout=stream, stderr=subprocess.STDOUT).returncode
                     finally:
                         if live is not None:

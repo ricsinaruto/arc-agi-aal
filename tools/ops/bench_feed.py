@@ -27,15 +27,15 @@ WANT = (b'{"kind":"model"', b'{"kind":"level_bench_', b'{"kind":"bon_group"')
 def rc(*args, timeout=240):
     return subprocess.run(["rclone", *args], capture_output=True, timeout=timeout)
 
-def pull(base, st, sub="level-bench"):
+def pull(base, st):
     """Add what is new in each attempt log: generated tokens by minute, level marks, script end, recorded stop."""
-    r = rc("lsjson", "-R", "--files-only", "--include", "*/log.jsonl", f"{base}/{sub}/attempts")
+    r = rc("lsjson", "-R", "--files-only", "--include", "*/log.jsonl", base + "/level-bench/attempts")
     if r.returncode: return
     def one(item):
         label = item["Path"].split("/")[0]; a = st["attempts"].get(label)
         if a is None or item["Size"] < a["off"]: a = {"off": 0, "tok": 0, "mins": [], "marks": []}
         if item["Size"] == a["off"]: return label, a
-        d = rc("cat", "--offset", str(a["off"]), f"{base}/{sub}/attempts/{item['Path']}").stdout
+        d = rc("cat", "--offset", str(a["off"]), f"{base}/level-bench/attempts/{item['Path']}").stdout
         d = d[:d.rfind(b"\n") + 1]
         for line in d.splitlines():
             if not line.startswith(WANT): continue
@@ -95,14 +95,13 @@ def row(run, base=None):
     """Monitor row of a level-bench run, or None when the run has no bench progress file (yet). base: a landed folder's arena/trials."""
     base = base or BUCKET + run + "/arena/working/trials"; f = OUT / f"{run}.bench"
     files = {k: pathlib.Path(f"{f}.{k}") for k in ("progress", "plan", "process", "metrics", "json", "lock")}
-    sub = "heldout-read" if "-hread-" in run else "level-bench"  # RL held-out reads: same layout under their own name
-    if rc("copyto", f"{base}/{sub}/progress.jsonl", str(files["progress"])).returncode or not files["progress"].exists(): return None
-    for k, name in (("plan", f"/{sub}/level-bench-plan.json"), ("process", f"/{sub}-process.log"), ("metrics", f"/{sub}/vllm-metrics.txt")):
+    if rc("copyto", base + "/level-bench/progress.jsonl", str(files["progress"])).returncode or not files["progress"].exists(): return None
+    for k, name in (("plan", "/level-bench/level-bench-plan.json"), ("process", "/level-bench-process.log"), ("metrics", "/level-bench/vllm-metrics.txt")):
         if k != "plan" or not files[k].exists(): rc("copyto", base + name, str(files[k]))
     with open(files["lock"], "w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         st = json.loads(files["json"].read_text()) if files["json"].exists() else {"attempts": {}, "hits": []}
-        pull(base, st, sub)
+        pull(base, st)
         prog = []
         for x in files["progress"].read_text().splitlines():
             try: prog.append(json.loads(x))
@@ -113,7 +112,6 @@ def row(run, base=None):
         def metric(name):
             m = re.search(r"^vllm:" + name + r"(?:\{[^}]*\})? ([-+.\de]+)$", mt, flags=re.M); return float(m.group(1)) if m else None
         hits, asked = metric("prefix_cache_hits_total"), metric("prefix_cache_queries_total")
-        if hits is not None: hits += metric("external_prefix_cache_hits_total") or 0  # CPU KV tier hits count: effective hit, as the 94-95% rule means
         if hits is not None and asked and (not st["hits"] or st["hits"][-1][0] < el): st["hits"].append([el, hits, asked])
         tmp = pathlib.Path(f"{f}.tmp"); tmp.write_text(json.dumps(st, separators=(",", ":"))); tmp.replace(files["json"])
     plan = json.loads(files["plan"].read_text()) if files["plan"].exists() else {}

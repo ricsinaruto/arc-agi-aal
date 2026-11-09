@@ -61,17 +61,12 @@ def _call_id():
         return None
 
 
-def classify(attempt, rerun=False):
-    """The death cause the dead attempt's own records support. ``rerun``: Modal re-ran the same input (same call id),
-    which it does after a preemption or a lost worker, never after the function raised or exited (retries=0). With
-    heartbeats that never saw the host tight, that is a preemption even when no signal was recorded (v17 a8, 30 Oct:
-    "Container terminated due to preemption", no SIGTERM reached the record; 537 GiB free at the last beat)."""
+def classify(attempt):
+    """The death cause the dead attempt's own records support."""
     if hostmem.tight(attempt.get("mem_last") or {}) or hostmem.tight(attempt.get("mem_min") or {}):
         return "host-memory"
     if attempt.get("signal"):
         return f"preemption ({attempt['signal']['name']})"
-    if rerun and attempt.get("mem_last") and attempt.get("mem_min"):
-        return "preemption (platform re-run, no signal recorded; host memory healthy)"
     return "unknown (no signal: OOM kill, worker loss or hard crash)"
 
 
@@ -122,7 +117,7 @@ class RestartGuard:
                 prev["ended"] = {"t": now, "status": "died", "seen_by": me["n"]}
                 auto = bool(self.call_id) and prev.get("call_id") == self.call_id
                 incident = {"id": f"{self.run_id}/a{prev['n']}", "t": now, "dead_attempt": prev["n"],
-                            "restart_attempt": me["n"], "auto": auto, "cause": classify(prev, rerun=auto),
+                            "restart_attempt": me["n"], "auto": auto, "cause": classify(prev),
                             "alive_s": round(prev.get("last_beat", now) - prev.get("started", now)),
                             "since_beat_s": round(now - prev.get("last_beat", now)),
                             "mem_last": prev.get("mem_last"), "signal": prev.get("signal"),

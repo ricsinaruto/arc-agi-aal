@@ -1,23 +1,12 @@
 """mkbundle.py kl RUN JOBS_JSON SECONDS ASSETS | taskread RUN "ARGS" SECONDS ASSETS -> $MMRTX_SCRATCH/bundles/RUN (Nebius image kind).
-entry.sh embeds the script and the job list (image_bundle copies only the entry).
-Env MMRTX_PRE: a shell command run first in /tmp/mm (e.g. `python3 hum_build.py SRC /tmp/cand SCHEMA`; hum_build.py
-is always embedded); MMRTX_DISK_GIB: boot-disk floor (multiple of 93) for builds written to local disk."""
+entry.sh embeds the script and the job list (image_bundle copies only the entry)."""
 import json, subprocess, sys
 from pathlib import Path
 HERE = Path(__file__).resolve().parent
 REPO = Path(".")
 IMAGE = "vllm/vllm-openai@sha256:f5ec69891fb7b855762f40598eea1aa5cad6e4f2f0c2a2f81d270e2bdcd93632"
 kind, run, jobs, seconds, assets = sys.argv[1:6]
-if kind == "kl":  # kl_score reads the token sets and the reference from the bucket mirror
-    assets = ",".join(dict.fromkeys(assets.split(",") + ["mmrtx-models/sets-v2", "mmrtx-models/ref/mmrtx-ref-v2"]))
 assert kind in ("kl", "taskread")
-patch = (HERE / "mmrtx_patch/sitecustomize.py").read_text()
-assert "PYEOF" not in patch
-hum = (HERE / "hum_build.py").read_text()
-assert "PYEOF" not in hum
-PRE = __import__("os").environ.get("MMRTX_PRE", "")
-patch_write = (f"mkdir -p /tmp/mm/mmrtx_patch\ncat > /tmp/mm/mmrtx_patch/sitecustomize.py <<'PYEOF'\n{patch}\nPYEOF\n"
-               f"cat > /tmp/mm/hum_build.py <<'PYEOF'\n{hum}\nPYEOF\n" + (f"cd /tmp/mm && {PRE}\n" if PRE else ""))
 if kind == "taskread":
     files = {n: (HERE / n).read_text() for n in ("taskread.py", "taskread_harness.py")}
     assert not any("PYEOF" in t for t in files.values()) and "'" not in jobs
@@ -26,7 +15,7 @@ if kind == "taskread":
 set -euo pipefail
 export MMRTX_ROOT=/w/mmrtx-models PYTHONUNBUFFERED=1
 mkdir -p /tmp/mm
-{patch_write}{writes}nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || true
+{writes}nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || true
 cd /tmp/mm && python3 taskread.py {jobs}
 """
 else:
@@ -37,7 +26,7 @@ else:
 set -euo pipefail
 export MMRTX_ROOT=/w/mmrtx-models PYTHONUNBUFFERED=1
 mkdir -p /tmp/mm
-{patch_write}cat > /tmp/mm/kl_score.py <<'PYEOF'
+cat > /tmp/mm/kl_score.py <<'PYEOF'
 {src}
 PYEOF
 cat > /tmp/mm/jobs.json <<'JEOF'
@@ -56,15 +45,3 @@ out = subprocess.run([str(REPO / ".venv/bin/python"), str(REPO / ".claude/worktr
                       "image-bundle", "--dest", str(dest), "--script", str(tmp), "--image", IMAGE, "--seconds", seconds,
                       "--assets", assets], capture_output=True, text=True, cwd=REPO)
 print(out.stdout[-2000:], out.stderr[-2000:])
-DISK = __import__("os").environ.get("MMRTX_DISK_GIB")
-if DISK and out.returncode == 0:  # study floor for the boot disk; MANIFEST rehashed as image_bundle writes it
-    import hashlib
-    cp = dest / "configs/comparison.json"
-    study = json.loads(cp.read_text())
-    study["nebius_boot_disk_gib"] = int(DISK)
-    cp.write_text(json.dumps(study, indent=1) + "\n")
-    man = json.loads((dest / "MANIFEST.json").read_text())
-    man["files"] = {q.relative_to(dest).as_posix(): hashlib.sha256(q.read_bytes()).hexdigest()
-                    for q in sorted(dest.rglob("*")) if q.is_file() and q.name != "MANIFEST.json"}
-    (dest / "MANIFEST.json").write_text(json.dumps(man, indent=1) + "\n")
-    print("disk floor", DISK)

@@ -53,11 +53,9 @@ def serve_cmd(model, slots, max_len, spec):
     cmd = ["vllm", "serve", str(ROOT / model), "--served-model-name", "m", "--host", "127.0.0.1", "--port", str(PORT),
            "--trust-remote-code", "--block-size", "128", "--kv-cache-dtype", "fp8",
            "--attention-config", json.dumps({"indexer_kv_dtype": "fp8"}), "--max-model-len", str(max_len),
-           "--gpu-memory-utilization", os.environ.get("MMRTX_UTIL", "0.92"), "--max-num-seqs", str(slots + 2), "--disable-hybrid-kv-cache-manager",
+           "--gpu-memory-utilization", "0.92", "--max-num-seqs", str(slots + 2), "--disable-hybrid-kv-cache-manager",
            "--limit-mm-per-prompt", json.dumps({"image": 0, "video": 0}), "--enable-prefix-caching",
            "--enable-auto-tool-choice", "--tool-call-parser", "minimax_m3", "--reasoning-parser", "minimax_m3"]
-    if os.environ.get("MMRTX_MOE_BACKEND"):  # e.g. humming (with MMRTX_MOE_A16=1 + VLLM_HUMMING_ONLINE_QUANT_CONFIG)
-        cmd += ["--moe-backend", os.environ["MMRTX_MOE_BACKEND"]]
     if spec:
         cmd += ["--speculative-config", json.dumps({"method": "dspark", "num_speculative_tokens": int(spec),
                                                     "draft_sample_method": "probabilistic"})]
@@ -114,12 +112,6 @@ def score(out, order, mark, bundle):
     return {"right": sum(per.values()), "outputs": outputs, "per_task": per}
 
 
-def hum_schema(spec):
-    """'uint3:32' -> the no-zero-point Humming weight schema hum_build.py writes."""
-    dtype, group = spec.split(":")
-    return {"quant_method": "humming", "b_dtype": dtype, "group_size": int(group), "has_zero_point": False}
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True)
@@ -130,18 +122,7 @@ def main():
     ap.add_argument("--slots", type=int, default=6)
     ap.add_argument("--max-len", type=int, default=131072)
     ap.add_argument("--spec", type=int, default=0)
-    ap.add_argument("--cap", type=int, default=0, help="reply cap (default 98,304: the minimax arm's)")
-    ap.add_argument("--util", default="", help="vLLM gpu-memory-utilization (default 0.92)")
-    ap.add_argument("--hum-layers", default="", help="comma list of Humming layers in a mixed model")
-    ap.add_argument("--humming", default="", help="DTYPE:GROUP (e.g. uint3:32) of the model's hum_build experts")
     a = ap.parse_args()
-    if a.util:
-        os.environ["MMRTX_UTIL"] = a.util
-    if a.humming:  # mmrtx_patch/sitecustomize.py: routed experts stored in this Humming schema (hum_build.py), served as is
-        os.environ.update(PYTHONPATH=str(Path(__file__).resolve().parent / "mmrtx_patch") + os.pathsep + os.environ.get("PYTHONPATH", ""),
-                          MMRTX_MOE_HUMMING=json.dumps(hum_schema(a.humming)))
-        if a.hum_layers:  # mixed model (hum_build.py variant): only these layers are Humming
-            os.environ["MMRTX_MOE_HUMMING_LAYERS"] = a.hum_layers
     OUT.mkdir(parents=True, exist_ok=True)
     began = time.time()
     try:
@@ -216,8 +197,6 @@ def main():
         except OSError:
             time.sleep(0.1)
     overrides = json.loads(json.dumps(OVERRIDES))
-    if a.cap:  # per-reply think budget: a reply cut here gets the harness's TRUNCATED nudge and the attempt goes on
-        overrides["replace_arm"]["cap"] = overrides["study"]["completion_cap"] = int(a.cap)
     overrides["trial"] = {"marks": {"slice": a.mark}, "curve_step": 95000, "tiers": [1000000000], "copies": 1}
     stop_file = stop_paths(OUT, {})[0]
 

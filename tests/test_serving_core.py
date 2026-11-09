@@ -19,7 +19,6 @@ PARENT_LINES = {
     "# would trade the known-safe GPU reserve for KV cache that vLLM can size itself.",
     'GPU_MEMORY_UTILIZATION = "0.92"',
     '        "num_speculative_tokens": 3,',
-    "            f\"{root_record['argv_sha256']} != {argv_sha256}\"",  # + the live cmdline (27 Oct)
 }
 
 
@@ -43,7 +42,7 @@ def test_fork_differs_from_reviewed_parent_only_in_utilization_and_mtp_reporting
     removed = {line[2:] for line in difflib.ndiff(parent, fork) if line.startswith("- ")}
     added = [line[2:] for line in difflib.ndiff(parent, fork) if line.startswith("+ ")]
     assert removed == PARENT_LINES
-    assert 10 <= len(added) <= 28  # + the start_server argv wait and its live cmdline (27 Oct)
+    assert 10 <= len(added) <= 25
     assert not any(line.startswith(("def ", "import ", "from ", "class ")) for line in added)
     assert any("GPU_MEMORY_UTILIZATION_ENV" in line for line in added)
     assert any(flash_serving.SETUP_SHA256 in line for line in added)

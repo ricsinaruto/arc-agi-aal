@@ -1,9 +1,0 @@
-{"t": 53.8, "epoch": 1793146888.5, "kind": "seq_ahead_pending", "groups": 16, "prepared": 0}
-{"t": 192.9, "epoch": 1793147027.6, "kind": "seq_resume", "step": 1, "pending_groups": 16}
-{"t": 279.2, "epoch": 1793147113.9, "kind": "seq_start", "step": 1, "setup_seconds": 279.1}
-{"t": 281.8, "epoch": 1793147116.5, "kind": "seq_train", "step": 1, "play_seconds": 0.1, "groups": 16}
-{"t": 281.9, "epoch": 1793147116.7, "kind": "seq_early_ahead", "step": 2, "specs": 192, "groups": 16, "during_play": 0}
-{"t": 519.8, "epoch": 1793147354.5, "kind": "seq_accumulate", "one_call": true, "groups": 16, "call_util": 66.8, "setup_seconds": 17.0, "window_wait_seconds": 17.4}
-{"t": 538.0, "epoch": 1793147372.8, "kind": "step", "step": 2, "groups": 16}
-{"t": 618.8, "epoch": 1793147453.5, "kind": "seq_phase", "step": 2, "play_seconds": 0.1, "stop": {"aborted": 0, "drain_s": 0.001, "sleep_s": 1.895, "unpark_s": 7.947, "switch_s": 9.843}, "start": {"park_s": 67.823, "wake_s": 2.137, "load_s": 10.571, "switch_s": 80.532, "save_wait_s": 0.913}}
-{"t": 1722.5, "epoch": 1793148557.3, "kind": "seq_end", "why": "deadline", "step": 2}
