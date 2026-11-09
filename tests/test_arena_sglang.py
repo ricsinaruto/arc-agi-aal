@@ -140,11 +140,7 @@ def test_sglang_controller_owns_server_and_stops_after_trials_or_capacity_failur
         stopped.append(True)
         return {'port_free': True}
 
-    real_run = sglang_run.subprocess.run
-
     def run(command, **kwargs):
-        if not (isinstance(command, list) and '--trial' in command):
-            return real_run(command, **kwargs)  # global patch: another test's leaked thread (CI red 9d9a9a591)
         commands.append(command)
         assert kwargs['timeout'] == 2400
         assert command[command.index('--base-url') + 1] == 'http://127.0.0.1:8001/v1'

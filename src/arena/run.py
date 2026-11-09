@@ -81,7 +81,7 @@ def main(argv=None):
         # The level bench sizes its own wall from what is left (arena.level_bench.LevelBench.wall_seconds).
         if (not competition
                 and trial["kind"] not in ("level-bench", "expert-quant", "expert-usage", "server-check",
-                                          "prune-quality")
+                                          "prune-quality", "mtp-screen")
                 and hard_end - time.time() < wall + 480):
             raise TimeoutError("Insufficient time for a full arena trial")
         if study.get("backend") == "sglang":
@@ -170,6 +170,37 @@ def main(argv=None):
                                                                                                    1e9)))))
             execution["report"] = {k: report.get(k) for k in ("status", "errors", "skipped")}
             execution["status"] = report["status"]
+            raise _Done
+        if trial["kind"] == "mtp-screen":
+            # MTP exactness screen (19 October): play-settings sampling with the served draft vs plain (arc2.mtp_screen)
+            from arc2.mtp_screen import run_mtp_screen
+
+            report = asyncio.run(run_mtp_screen(study, trial, source=args.source, output=folder,
+                                                base_url=args.base_url, deadline_epoch=hard_end - 180))
+            execution["report"] = {k: report.get(k) for k in ("status", "drafts", "samples", "tokens", "errors",
+                                                              "summary", "rescore", "accepted_per_position")}
+            execution["status"] = report["status"]
+            raise _Done
+        if trial["kind"] == "nll-parity":
+            # TTT parity reference (26 October): served log-probs of true answers (arc2.nll_parity)
+            from arc2.nll_parity import run_nll_parity
+
+            report = asyncio.run(run_nll_parity(study, trial, source=args.source, output=folder,
+                                                base_url=args.base_url))
+            execution["report"] = report
+            execution["status"] = report["status"]
+            raise _Done
+        if trial["kind"] == "arc2":
+            # ARC-AGI-2 arm (9 October): static tasks, verify-and-refine (src/arc2); no arcade, no scorecard.
+            from arc2.trial import run_arc2
+
+            report = asyncio.run(run_arc2(study, trial, source=args.source, output=folder, server_dir=args.server_dir,
+                                          base_url=args.base_url, deadline_epoch=hard_end - 180,
+                                          python=args.analysis_python))
+            execution["report"] = report
+            execution["status"] = report["status"]
+            if report["status"] == "error":
+                raise RuntimeError("arc2 trial failed: " + "; ".join(report["task_errors"])[:2000])
             raise _Done
         if trial["kind"] == "level-bench":
             from .level_bench import run_level_bench

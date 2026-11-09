@@ -132,7 +132,10 @@ def test_offload_command_preserves_native_flags(monkeypatch, tmp_path):
     assert command[:3] == ['serve', '--max-num-seqs', '25']
     config = json.loads(command[command.index('--kv-transfer-config') + 1])
     assert config['kv_connector_extra_config']['cpu_bytes_to_use'] == 16 * 1024**3
+    assert config['kv_connector_extra_config']['offload_prompt_only'] is False
     assert '--no-disable-hybrid-kv-cache-manager' in command
+    assert config['kv_connector'] == 'ArcOffloadingConnector' and config['kv_connector_module_path'] == 'vllm.arc_offload'
+    assert (tmp_path / 'usr/local/lib/python3.12/dist-packages/vllm/arc_offload.py').is_file()
 
 
 def test_graph_override_reaches_pinned_recipe_tuning_without_other_changes(monkeypatch, tmp_path):

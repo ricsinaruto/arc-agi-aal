@@ -1,0 +1,19 @@
+{
+  "id": "richardcsaky/l4-p2p-probe",
+  "title": "l4-p2p-probe",
+  "code_file": "l4_p2p_probe.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": false,
+  "machine_shape": "NvidiaL4",
+  "docker_image": "gcr.io/kaggle-private-byod/python@sha256:37c64f7dd9c54116ecd1bcc88817c5469b88387388fade02bfa8bf3fc647d461",
+  "docker_image_pinning_type": "original",
+  "dataset_sources": [],
+  "competition_sources": [
+    "arc-prize-2026-arc-agi-2"
+  ],
+  "kernel_sources": [],
+  "model_sources": []
+}

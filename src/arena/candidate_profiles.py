@@ -4,7 +4,10 @@ from pathlib import Path
 
 from arc_infra.model_templates import (
     HOLO4_27B_MODEL,
+    HOLO4_35B_MODEL,
     MINICPM_MODEL,
+    NEMOTRON35_BOLT_MODEL,
+    NEMOTRON35_SUPER_VL_MODEL,
     NEMOTRON_LIGHTNING_MODEL,
     NEMOTRON_SUPER_MODEL,
     NEX_MODEL,
@@ -31,6 +34,15 @@ class Candidate:
     reasoning_parser: str = 'qwen3'
     extra_args: tuple = ()  # appended to the pinned serve command (e.g. an attention backend)
     declared_context: int | None = None  # config.json max_position_embeddings when it exceeds the served (tokenizer-bounded) context
+    # stock vLLM (arena.stock_serving; Nemotron 3.5): runtime 'stock' serves on a pinned stock vLLM
+    # folder (dataset + tar sha256) instead of the Flash fork; stock_env pins its variables; reasoning_plugin is a
+    # parser file shipped with the checkpoint
+    runtime: str = 'fork'
+    stock_dataset: str | None = None
+    stock_sha256: str | None = None
+    stock_env: tuple = ()
+    reasoning_plugin: str | None = None
+    template_extra: tuple = ()  # chat-template switches the study sends with every request (default: preserve_thinking)
 
     @property
     def manifest(self):
@@ -122,9 +134,65 @@ HOLO4_27B = Candidate('holo4-27b-nvfp4', HOLO4_27B_MODEL,
     '6a02909667ba91dcd45e01be13c4d49992112510', 'Qwen3_5ForConditionalGeneration',
     'compressed-tensors', 'compressed-tensors', 'xhigh', 0, 0,
     extra_args=('--attention-backend', 'TRITON_ATTN', '--kv-cache-dtype', 'fp8'))
+# Holo4-35B-A3B-NVFP4 (H Company, Apache 2.0; model screen in the arc2 v37 harness): the same
+# compressed-tensors recipe as Holo4-27B-NVFP4 (FP8 attention / GDN projections with static input scales, NVFP4
+# weight-only MLP and shared experts, calibrated FP8 KV) on the Qwen3.6-35B-A3B shape (40 layers, 10 full attention
+# with 2 KV heads of 256; 256 experts, 8 active; vision kept). 22.5 GB. No MTP tensors (config declares one layer).
+# Qwen3.6's template: thinking on/off only; earlier reasoning is rendered only with preserve_thinking.
+HOLO4_35B = Candidate('holo4-35b-a3b-nvfp4', HOLO4_35B_MODEL,
+    '5631eb8e4743adb7c057373e5d4194ac57f2b614', 'Qwen3_5MoeForConditionalGeneration',
+    'compressed-tensors', 'compressed-tensors', 'native', 0, 0,
+    extra_args=('--attention-backend', 'TRITON_ATTN', '--kv-cache-dtype', 'fp8'))
+# Nemotron 3.5 Super VL and Bolt (NVIDIA, OpenMDW-1.1; screen them like Holo4 in the arc2 v37 harness,
+# highest effort): nemotron_h_omni (Mamba-2 / attention with 2 KV heads of 128 / latent MoE, C-RADIO vision), which only
+# stock vLLM nightlies serve (Super VL's card: nightly 3f1bcfd8 or v0.32.0; Bolt's: nightly 77154ca6 or newer, so one
+# runtime at 3f1bcfd8 serves both). Thinking on (enable_thinking, no medium_effort) is the highest effort; the template's
+# truncate_history_thinking is turned off by the study (earlier reasoning kept, as with Flash). Serve flags from the
+# cards, without speculation (as the Holo4 screen) and with video/audio off. Super VL: ModelOpt mixed NVFP4 experts /
+# FP8 mixers, 75 GB, MTP head (4,120 tensors) not loaded, 1M declared positions served at 262,144. Bolt 24GB: IQ2-XXS
+# experts (ggml packing) with NVFP4 Mamba and Q8_0 embeddings, b12x linear/MoE kernels, the V2 model runner, FP8 KV.
+# Images: vLLM's default 999 a prompt (a conversation carries the task's pictures and every shown grid).
+STOCK_VLLM = ('richardcsaky/arc-stock-vllm-3f1bcfd8', '16c76540938d2769bac521352edd2ba109b3944701dcc935bdd9815265231041')
+NEMOTRON35_SUPER_VL = Candidate('nemotron35-super-vl-nvfp4', NEMOTRON35_SUPER_VL_MODEL,
+    '59b8721646c38111a242da18218859fb2b454322', 'NemotronH_Omni_Reasoning_V3',
+    'modelopt_mixed', None, 'native', 0, 4120, reasoning_parser='nemotron_v3', declared_context=1048576,
+    extra_args=('--async-scheduling', '--prefix-match-unit', '16', '--enable-mamba-shared-prefix-checkpoint',
+                '--mamba-backend', 'flashinfer', '--mamba-ssm-cache-dtype', 'float16',
+                '--enable-mamba-cache-stochastic-rounding', '--mamba-cache-philox-rounds', '5',
+                '--mamba-cache-mode', 'align', '--limit-mm-per-prompt', '{"image":999,"video":0,"audio":0}'),
+    runtime='stock', stock_dataset=STOCK_VLLM[0], stock_sha256=STOCK_VLLM[1],
+    template_extra=(('truncate_history_thinking', False),))
+NEMOTRON35_BOLT = Candidate('nemotron35-bolt-24gb', NEMOTRON35_BOLT_MODEL,
+    'c6cc2e8ffa353403213d6b9b18aaf8eb684d705a', 'NemotronH_Omni_Reasoning_V3',
+    'modelopt', None, 'native', 0, 0, reasoning_parser='ultra_v3',
+    extra_args=('--load-format', 'auto', '--enable-chunked-prefill', '--kv-cache-dtype', 'fp8',
+                '--linear-backend', 'b12x', '--moe-backend', 'b12x', '--attention-backend', 'FLASHINFER',
+                '--mamba-backend', 'flashinfer', '--mamba-ssm-cache-dtype', 'bfloat16',
+                '--mamba-cache-dtype', 'bfloat16', '--mamba-cache-mode', 'align',
+                '--limit-mm-per-prompt', '{"image":999,"video":0,"audio":0}'),
+    runtime='stock', stock_dataset=STOCK_VLLM[0], stock_sha256=STOCK_VLLM[1],
+    stock_env=(('VLLM_USE_V2_MODEL_RUNNER', '1'),), reasoning_plugin='ultra_v3_reasoning_parser.py',
+    template_extra=(('truncate_history_thinking', False),))
+# Bolt at FP8 (the quality upper bound when it fits with usable KV): the BF16 release quantized at load
+# by stock vLLM's online FP8 (per output channel weights, dynamic per-token activations, llm-compressor's FP8_DYNAMIC
+# shape; weights materialized layer by layer, so the load peak stays near the FP8 size, ~76 GB). Serve flags of the
+# BF16 card plus Super VL's hybrid-cache flags (same nemotron_h_omni family): fine prefix matching, FP16 SSM state with
+# stochastic rounding; BF16 KV (2 KV heads x 128 on 8 attention layers: 8 KiB a token).
+NEMOTRON35_BOLT_FP8 = Candidate('nemotron35-bolt-fp8', 'nvidia/NVIDIA-Nemotron-3.5-Bolt-74B-A9B-BF16',
+    '567021037ff88364143e24ea05e6abd0f72086ff', 'NemotronH_Omni_Reasoning_V3',
+    None, None, 'native', 0, 0, reasoning_parser='ultra_v3',
+    extra_args=('--quantization', 'fp8_per_channel', '--load-format', 'auto', '--enable-chunked-prefill',
+                '--async-scheduling', '--prefix-match-unit', '16', '--enable-mamba-shared-prefix-checkpoint',
+                '--attention-backend', 'FLASHINFER', '--mamba-backend', 'flashinfer',
+                '--mamba-ssm-cache-dtype', 'float16', '--enable-mamba-cache-stochastic-rounding',
+                '--mamba-cache-philox-rounds', '5', '--mamba-cache-mode', 'align',
+                '--limit-mm-per-prompt', '{"image":999,"video":0,"audio":0}'),
+    runtime='stock', stock_dataset=STOCK_VLLM[0], stock_sha256=STOCK_VLLM[1],
+    reasoning_plugin='ultra_v3_reasoning_parser.py', template_extra=(('truncate_history_thinking', False),))
 PROFILES = {p.name: p for p in (NEX, QWEN_27_NVFP4, QWEN_27_FP8, UI_MATE_9B, UI_MATE_27B,
                                MINICPM_2B, QWEN_36_NVFP4, NEMOTRON_SUPER, NEMOTRON_LIGHTNING, QWEN35_122B,
-                               ORNITH_35B, HOLO4_27B)}
+                               ORNITH_35B, HOLO4_27B, HOLO4_35B, NEMOTRON35_SUPER_VL, NEMOTRON35_BOLT,
+                               NEMOTRON35_BOLT_FP8)}
 
 
 def from_study(study):

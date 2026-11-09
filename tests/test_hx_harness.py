@@ -185,6 +185,27 @@ def test_the_reflector_fires_on_requests_streaks_revisits_and_deaths():
     assert r.summary() == {"notices": 4, "no_change": 1, "revisits": 1, "requests": 1, "deaths": 1}
 
 
+def test_reflect_skip_death_gives_no_step_back_on_a_death_turn():
+    def run(skip):
+        r = hx.Reflector(hx.settings({"reflect": True, "reflect_style": 2, "reflect_stall": 50, "reflect_no_change": 2,
+                                      "reflect_deaths": 2, "reflect_min_gap": 1, "reflect_skip_death": skip}))
+        history = [Entry("", grid(), 0)]
+        r.update(history, {}, 0, 0, 0)
+        history += [Entry("DOWN", grid(2), 1), Entry("RESET", grid(), 2), Entry("DOWN", grid(2), 3)]
+        r.update(history, {1: {"game_over": True}, 3: {"game_over": True}}, 0, 1, 100)
+        on_death = r.notice(1)
+        # Later, without a death: two interior no-ops fire the streak in both settings.
+        history += [Entry("RESET", grid(), 4), Entry("UP", grid(), 5), Entry("UP", grid(), 6)]
+        r.update(history, {}, 0, 3, 200)
+        return on_death, r.notice(1)
+
+    on_death, later = run(0)
+    assert on_death.startswith("STEP BACK (harness check: 2 deaths on this level)") and later is not None
+    on_death, later = run(1)
+    assert on_death is None and later.startswith("STEP BACK (harness check: your last 2 actions changed nothing")
+    assert hx.settings({"reflect": True})["reflect_skip_death"] == 0 and hx.settings({"memo": True})["memo_limits"] == 0
+
+
 def test_the_minimum_gap_holds_back_a_second_notice():
     r = hx.Reflector(hx.settings({"reflect": True, "reflect_no_change": 1, "reflect_min_gap": 3}))
     history = [Entry("", grid(), 0), Entry("UP", grid(), 1)]
@@ -752,6 +773,90 @@ def test_notes_persist_and_render(full_box):
     assert hx.notes_line(full_box.hx_state["notes"]).endswith("goal: reach the red cell")
     run(full_box, "print(note('controls', 'UP adds a cell'))", game)
     assert list(full_box.hx_state["notes"]) == ["goal", "controls"]
+
+
+def test_memo_limits_says_the_limits_and_reports_a_cut_or_a_drop():
+    from duck_transfer.sandbox import StatefulSandbox
+
+    original, plain, fixed = bootstraps()
+    game = AsciiGame(level=1)
+    outputs = {}
+    for limits in (0, 1):
+        block = hx.settings({"memo": True, "memo_limits": limits})
+        sandbox = StatefulSandbox(hx.with_toolbox(plain, block), color_chars=original["ARC_COLOR_CHARS"])
+        try:
+            out = run(sandbox, "note('long', 'x' * 450)\nfor i in range(12):\n    note('k%d' % i, 'v')", game)
+            assert not out["error"], out
+            assert len(sandbox.hx_state["notes"]) == 12 and "long" not in sandbox.hx_state["notes"]
+            outputs[limits] = out.get("stdout") or ""
+        finally:
+            sandbox.close()
+    assert outputs[0] == ""
+    assert "[note] 'long' was cut from 450 to 400 characters" in outputs[1]
+    assert "[note] 12 entries at most: the oldest, 'long', was dropped" in outputs[1]
+    base = "Tool session rules:\n- one"
+    text = hx.system_prompt("x\n\n\n" + base, hx.settings({"memo": True, "memo_limits": 1}))
+    assert "at most 12 entries of 400 characters" in text and "every user turn shows your notes" not in text
+    assert "every user turn shows your notes" in hx.system_prompt("x\n\n\n" + base, hx.settings({"memo": True}))
+
+
+def test_playbook_is_one_text_that_a_trim_carries():
+    from duck_transfer.sandbox import StatefulSandbox
+
+    original, plain, fixed = bootstraps()
+    block = hx.settings({"memo": True, "memo_style": 1})
+    sandbox = StatefulSandbox(hx.with_toolbox(plain, block), color_chars=original["ARC_COLOR_CHARS"])
+    game = AsciiGame(level=1)
+    try:
+        assert hx.playbook_text(None) == hx.PLAYBOOK_EMPTY
+        run(sandbox, "note('goal', 'reach the red cell')", game)
+        assert hx.playbook_text(sandbox.hx_state).startswith(hx.PLAYBOOK_NOTES + "- goal: reach the red cell")
+        out = run(sandbox, "playbook('Working model: UP moves - checked')\nprint(len(playbook('y' * 5200)))", game)
+        assert not out["error"] and "[playbook] cut from 5200 to 5,000 characters" in out["stdout"]
+        assert out["stdout"].strip().endswith("5000") and hx.playbook_text(sandbox.hx_state) == "y" * 5000
+    finally:
+        sandbox.close()
+    text = hx.system_prompt("x\n\n\nTool session rules:\n- one", block)
+    assert "Your playbook:" in text and "`checked`" in text and "note(key, text)" not in text
+    assert hx.settings({"memo": True})["memo_style"] == 0
+    plain_box = StatefulSandbox(hx.with_toolbox(plain, hx.settings({"memo": True})), color_chars=original["ARC_COLOR_CHARS"])
+    try:
+        assert "NameError" in str(run(plain_box, "playbook('x')", game)["error"])
+    finally:
+        plain_box.close()
+
+
+async def test_open_playbook_replaces_notes_and_is_shown_at_a_level_start_and_after_a_cut(tmp_path):
+    """v8.2 (memo_style 2): no note(), no length limit, a receipt per write, shown in full at a level start and in
+    every cut note; never in an ordinary turn."""
+    transport = Transport("playbook('Working model: UP moves - checked. ' + 'x' * 6000)\naction(['UP'])",
+                          "try:\n    note('a', 'b')\nexcept Exception:\n    print('no note')\n"
+                          "print(len(playbook()))\naction(['UP'])", "action(['UP'])")
+    agent, env, game, gate = arena_agent(tmp_path, transport, ArenaTransferDuckAgent)
+    agent.apply_harness_fixes(True)
+    agent.apply_context_drain(True)
+    agent.apply_dfr_harness(True)
+    agent.apply_hx_harness({"toolbox": True, "memo": True, "memo_style": 2})
+    obs = [observation(board()), observation(board((10, 10)), levels=1), observation(board((10, 10), (20, 20)), levels=1),
+           observation(board((30, 30)), levels=1)]
+    env.observations = iter(obs[1:])
+    env.observation_space = raw(obs[0])
+    agent.config.max_actions = 3
+    result = await agent.run()
+    assert result["error"] is None
+    system = transport.payloads[0]["messages"][0]["content"]
+    assert hx.PLAYBOOK_OPEN_SYSTEM in system and "Three things survive every cut" in system
+    assert "note(key, text)" not in system and "5,000" not in system
+    outputs = [json.loads(m["content"]).get("stdout", "") for m in transport.payloads[-1]["messages"] if m["role"] == "tool"]
+    assert "[playbook] saved, 6035 characters" in outputs[0] and outputs[1].split() == ["no", "note", "6035"]
+    turns = [texts(turn) for turn in user_turns(transport.payloads[-1])]
+    assert hx.PLAYBOOK_LEVEL in turns[1] and hx.PLAYBOOK_SHOWN + "Working model: UP moves - checked. " + "x" * 6000 in turns[1]
+    assert "Your playbook" not in turns[0] and "Your playbook" not in turns[2] and "Your notes" not in "".join(turns)
+    note = (await asyncio.to_thread(agent.drain_note, 4, 1000))["content"]
+    assert hx.PLAYBOOK_SHOWN + "Working model: UP moves" in note and note.index("Your playbook") < note.index("[Harness inventory]")
+    stats = result["hx_harness"]
+    assert stats["playbook_chars"] == 6035 and stats["playbook_writes"] == 1 and stats["playbook_shown"] == 1
+    assert hx.playbook_block({}) == hx.PLAYBOOK_EMPTY
 
 
 async def test_phase_two_flags_in_the_agent(tmp_path):

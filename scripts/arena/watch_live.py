@@ -117,12 +117,7 @@ def main(argv=None):
     path, record = launch_record(args.run_id)
     import modal
 
-    try:  # per-run volumes (28 Oct): the record's own volume
-        from arc_infra.runops import volfetch
-        vol = volfetch.route(VOLUME, f"validation/{args.run_id}/arena")
-    except ImportError:
-        vol = VOLUME
-    volume = modal.Volume.from_name(vol)
+    volume = modal.Volume.from_name(VOLUME)
     call = modal.FunctionCall.from_id(record["function_call_id"])
     print(stamp(), "watching", args.run_id, record["function_call_id"], "record", path, flush=True)
     last_show = 0.0
