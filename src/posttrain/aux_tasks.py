@@ -961,7 +961,9 @@ def run_step_program(code, cases, *, timeout=10.0, memory_bytes=2 << 30):
            "OMP_NUM_THREADS": "1"}
     with tempfile.TemporaryDirectory(prefix="aux-sandbox-") as cwd:
         try:
-            proc = subprocess.run([sys.executable, "-I", "-c", script], input=payload, capture_output=True,
+            # -s -P, not -I: -I implies -E, which ignored PYTHONHASHSEED above (set/str-hash order random per run;
+            # rl0 f3b96a41). The env is built explicitly; -S is not used: numpy (allowed) lives in site-packages.
+            proc = subprocess.run([sys.executable, "-s", "-P", "-c", script], input=payload, capture_output=True,
                                   text=True, timeout=timeout, cwd=cwd, env=env)
         except subprocess.TimeoutExpired:
             return {"timeout": True}

@@ -71,11 +71,10 @@ def verify_hardware():
     cards = [line for line in output.splitlines() if line.strip()]
     if (
         len(cards) != 1
-        or "RTX PRO 6000" not in cards[0]
-        or "Blackwell" not in cards[0]
+        or not (("RTX PRO 6000" in cards[0] and "Blackwell" in cards[0]) or "B200" in cards[0] or "B300" in cards[0])
         or int(cards[0].rsplit(",", 1)[1]) < 95000
     ):
-        raise RuntimeError(f"Require exactly one RTX PRO 6000 Blackwell 96 GB; found {cards}")
+        raise RuntimeError(f"Require exactly one RTX PRO 6000 Blackwell 96 GB, B200 or B300; found {cards}")
     return cards[0]
 
 

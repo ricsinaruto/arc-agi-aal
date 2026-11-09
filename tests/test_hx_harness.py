@@ -185,6 +185,27 @@ def test_the_reflector_fires_on_requests_streaks_revisits_and_deaths():
     assert r.summary() == {"notices": 4, "no_change": 1, "revisits": 1, "requests": 1, "deaths": 1}
 
 
+def test_reflect_skip_death_gives_no_step_back_on_a_death_turn():
+    def run(skip):
+        r = hx.Reflector(hx.settings({"reflect": True, "reflect_style": 2, "reflect_stall": 50, "reflect_no_change": 2,
+                                      "reflect_deaths": 2, "reflect_min_gap": 1, "reflect_skip_death": skip}))
+        history = [Entry("", grid(), 0)]
+        r.update(history, {}, 0, 0, 0)
+        history += [Entry("DOWN", grid(2), 1), Entry("RESET", grid(), 2), Entry("DOWN", grid(2), 3)]
+        r.update(history, {1: {"game_over": True}, 3: {"game_over": True}}, 0, 1, 100)
+        on_death = r.notice(1)
+        # Later, without a death: two interior no-ops fire the streak in both settings.
+        history += [Entry("RESET", grid(), 4), Entry("UP", grid(), 5), Entry("UP", grid(), 6)]
+        r.update(history, {}, 0, 3, 200)
+        return on_death, r.notice(1)
+
+    on_death, later = run(0)
+    assert on_death.startswith("STEP BACK (harness check: 2 deaths on this level)") and later is not None
+    on_death, later = run(1)
+    assert on_death is None and later.startswith("STEP BACK (harness check: your last 2 actions changed nothing")
+    assert hx.settings({"reflect": True})["reflect_skip_death"] == 0 and hx.settings({"memo": True})["memo_limits"] == 0
+
+
 def test_the_minimum_gap_holds_back_a_second_notice():
     r = hx.Reflector(hx.settings({"reflect": True, "reflect_no_change": 1, "reflect_min_gap": 3}))
     history = [Entry("", grid(), 0), Entry("UP", grid(), 1)]
@@ -754,6 +775,90 @@ def test_notes_persist_and_render(full_box):
     assert list(full_box.hx_state["notes"]) == ["goal", "controls"]
 
 
+def test_memo_limits_says_the_limits_and_reports_a_cut_or_a_drop():
+    from duck_transfer.sandbox import StatefulSandbox
+
+    original, plain, fixed = bootstraps()
+    game = AsciiGame(level=1)
+    outputs = {}
+    for limits in (0, 1):
+        block = hx.settings({"memo": True, "memo_limits": limits})
+        sandbox = StatefulSandbox(hx.with_toolbox(plain, block), color_chars=original["ARC_COLOR_CHARS"])
+        try:
+            out = run(sandbox, "note('long', 'x' * 450)\nfor i in range(12):\n    note('k%d' % i, 'v')", game)
+            assert not out["error"], out
+            assert len(sandbox.hx_state["notes"]) == 12 and "long" not in sandbox.hx_state["notes"]
+            outputs[limits] = out.get("stdout") or ""
+        finally:
+            sandbox.close()
+    assert outputs[0] == ""
+    assert "[note] 'long' was cut from 450 to 400 characters" in outputs[1]
+    assert "[note] 12 entries at most: the oldest, 'long', was dropped" in outputs[1]
+    base = "Tool session rules:\n- one"
+    text = hx.system_prompt("x\n\n\n" + base, hx.settings({"memo": True, "memo_limits": 1}))
+    assert "at most 12 entries of 400 characters" in text and "every user turn shows your notes" not in text
+    assert "every user turn shows your notes" in hx.system_prompt("x\n\n\n" + base, hx.settings({"memo": True}))
+
+
+def test_playbook_is_one_text_that_a_trim_carries():
+    from duck_transfer.sandbox import StatefulSandbox
+
+    original, plain, fixed = bootstraps()
+    block = hx.settings({"memo": True, "memo_style": 1})
+    sandbox = StatefulSandbox(hx.with_toolbox(plain, block), color_chars=original["ARC_COLOR_CHARS"])
+    game = AsciiGame(level=1)
+    try:
+        assert hx.playbook_text(None) == hx.PLAYBOOK_EMPTY
+        run(sandbox, "note('goal', 'reach the red cell')", game)
+        assert hx.playbook_text(sandbox.hx_state).startswith(hx.PLAYBOOK_NOTES + "- goal: reach the red cell")
+        out = run(sandbox, "playbook('Working model: UP moves - checked')\nprint(len(playbook('y' * 5200)))", game)
+        assert not out["error"] and "[playbook] cut from 5200 to 5,000 characters" in out["stdout"]
+        assert out["stdout"].strip().endswith("5000") and hx.playbook_text(sandbox.hx_state) == "y" * 5000
+    finally:
+        sandbox.close()
+    text = hx.system_prompt("x\n\n\nTool session rules:\n- one", block)
+    assert "Your playbook:" in text and "`checked`" in text and "note(key, text)" not in text
+    assert hx.settings({"memo": True})["memo_style"] == 0
+    plain_box = StatefulSandbox(hx.with_toolbox(plain, hx.settings({"memo": True})), color_chars=original["ARC_COLOR_CHARS"])
+    try:
+        assert "NameError" in str(run(plain_box, "playbook('x')", game)["error"])
+    finally:
+        plain_box.close()
+
+
+async def test_open_playbook_replaces_notes_and_is_shown_at_a_level_start_and_after_a_cut(tmp_path):
+    """v8.2 (memo_style 2): no note(), no length limit, a receipt per write, shown in full at a level start and in
+    every cut note; never in an ordinary turn."""
+    transport = Transport("playbook('Working model: UP moves - checked. ' + 'x' * 6000)\naction(['UP'])",
+                          "try:\n    note('a', 'b')\nexcept Exception:\n    print('no note')\n"
+                          "print(len(playbook()))\naction(['UP'])", "action(['UP'])")
+    agent, env, game, gate = arena_agent(tmp_path, transport, ArenaTransferDuckAgent)
+    agent.apply_harness_fixes(True)
+    agent.apply_context_drain(True)
+    agent.apply_dfr_harness(True)
+    agent.apply_hx_harness({"toolbox": True, "memo": True, "memo_style": 2})
+    obs = [observation(board()), observation(board((10, 10)), levels=1), observation(board((10, 10), (20, 20)), levels=1),
+           observation(board((30, 30)), levels=1)]
+    env.observations = iter(obs[1:])
+    env.observation_space = raw(obs[0])
+    agent.config.max_actions = 3
+    result = await agent.run()
+    assert result["error"] is None
+    system = transport.payloads[0]["messages"][0]["content"]
+    assert hx.PLAYBOOK_OPEN_SYSTEM in system and "Three things survive every cut" in system
+    assert "note(key, text)" not in system and "5,000" not in system
+    outputs = [json.loads(m["content"]).get("stdout", "") for m in transport.payloads[-1]["messages"] if m["role"] == "tool"]
+    assert "[playbook] saved, 6035 characters" in outputs[0] and outputs[1].split() == ["no", "note", "6035"]
+    turns = [texts(turn) for turn in user_turns(transport.payloads[-1])]
+    assert hx.PLAYBOOK_LEVEL in turns[1] and hx.PLAYBOOK_SHOWN + "Working model: UP moves - checked. " + "x" * 6000 in turns[1]
+    assert "Your playbook" not in turns[0] and "Your playbook" not in turns[2] and "Your notes" not in "".join(turns)
+    note = (await asyncio.to_thread(agent.drain_note, 4, 1000))["content"]
+    assert hx.PLAYBOOK_SHOWN + "Working model: UP moves" in note and note.index("Your playbook") < note.index("[Harness inventory]")
+    stats = result["hx_harness"]
+    assert stats["playbook_chars"] == 6035 and stats["playbook_writes"] == 1 and stats["playbook_shown"] == 1
+    assert hx.playbook_block({}) == hx.PLAYBOOK_EMPTY
+
+
 async def test_phase_two_flags_in_the_agent(tmp_path):
     boards = [board(), board((10, 10)), board((10, 10), (20, 20)), board((10, 10), (20, 20), (30, 30))]
     codes = ["note('goal', 'find it')\nregister_sim(lambda r, a: r)\nprint(autopilot(lambda f: 'UP', max_actions=1))",
@@ -864,3 +969,191 @@ def test_memo_once_shows_notes_only_on_change_drain_or_level():
     assert hx.memo_turn("Your notes: a", (1, 0, 0), shown)[0] == "Your notes: a"  # after a drain
     assert hx.memo_turn("Your notes: a", (0, 0, 1), shown)[0] == "Your notes: a"  # new level
     assert hx.memo_turn(None, (0, 0, 0), shown) == (None, shown)
+
+
+async def test_kept_lines_hold_the_win_rule_and_tested_rules_beside_the_playbook(tmp_path):
+    """keep_rules 2 (10 October): won(text) once per cleared level, keep_rule(text, test) only when the test holds on
+    the recorded transitions, a later break is marked and told; playbook_log records what the model carries."""
+    transport = Transport(
+        "playbook('Working model: UP moves - checked.')\naction(['UP'])",
+        "won('The   block reached the corner.')\nwon('something else')\nprint(won()[0]['text'])\n"
+        "action(['UP', 'UP', 'UP', 'UP', 'UP'])",
+        "def moves(t):\n    return True if str(t.action) == 'UP' else None\n"
+        "def early(t):\n    return t.after_frame.step < 8\n"
+        "print(keep_rule('UP is the only move', moves), keep_rule('steps stay low', early))\n"
+        "keep_rule('never holds', lambda t: False)\nkeep_rule('says nothing', lambda t: None)\n"
+        "playbook('rewritten')\naction(['UP', 'UP'])",
+        "action(['UP'])")
+    agent, env, game, gate = arena_agent(tmp_path, transport, ArenaTransferDuckAgent)
+    agent.apply_harness_fixes(True)
+    agent.apply_context_drain(True)
+    agent.apply_dfr_harness(True)
+    agent.apply_hx_harness({"toolbox": True, "memo": True, "memo_style": 2, "keep_rules": 2, "playbook_log": 1})
+    obs = [observation(board())] + [observation(board((10 + k, 10)), levels=1) for k in range(9)]
+    env.observations = iter(obs[1:])
+    env.observation_space = raw(obs[0])
+    agent.config.max_actions = 9
+    result = await agent.run()
+    assert result["error"] is None
+    system = transport.payloads[0]["messages"][0]["content"]
+    assert hx.KEEP_SYSTEM in system and hx.KEEP_RULES_SYSTEM in system
+    outputs = [json.loads(m["content"]).get("stdout", "") for m in transport.payloads[-1]["messages"] if m["role"] == "tool"]
+    assert "[kept] level 1: saved" in outputs[1] and "already kept and stays as written" in outputs[1]
+    assert "The block reached the corner." in outputs[1]
+    assert "rule 'moves': held on all 6 steps" in outputs[2] and "rule 'early': held on all 6" in outputs[2]
+    assert "the test fails at step 1" in outputs[2] and "applies to 0 recorded steps; it needs 5" in outputs[2]
+    turns = [texts(turn) for turn in user_turns(transport.payloads[-1])]
+    assert hx.KEEP_LEVEL in turns[1] and hx.PLAYBOOK_LEVEL not in "".join(turns) and hx.KEPT_HEAD not in turns[1]
+    assert hx.KEEP_DUE.format(level=1) not in "".join(turns)
+    assert hx.KEEP_BROKEN.format(name="early", step=8) in turns[3]
+    note = (await asyncio.to_thread(agent.drain_note, 4, 1000))["content"]
+    assert hx.PLAYBOOK_SHOWN + "rewritten\n\n" + hx.KEPT_HEAD in note
+    assert "- Level 1 was completed by: The block reached the corner." in note
+    assert "- Rule (held on 9 steps): UP is the only move" in note and "- BROKEN at step 8 (re-derive it): steps stay low" in note
+    stats = result["hx_harness"]
+    assert stats["kept_wins"] == 1 and stats["kept_rules"] == 2 and stats["kept_broken"] == 1
+    rows = [json.loads(line) for line in (tmp_path / "log.jsonl").read_text().splitlines()]
+    snaps = [(r["reason"], r["levels"]) for r in rows if r["kind"] == "playbook_snapshot"]
+    assert snaps == [("level_start", 0), ("level_start", 1), ("first_action", 1)]
+    first = next(r for r in rows if r["kind"] == "playbook_snapshot" and r["reason"] == "first_action")
+    assert first["kept"][0]["text"] == "The block reached the corner." and first["playbook"].startswith("Working model")
+    assert any(r["kind"] == "kept_rule_broken" and r["name"] == "early" for r in rows)
+
+
+async def test_a_missing_win_line_is_asked_for_twice_and_the_plain_arm_is_unchanged(tmp_path):
+    codes = ["action(['UP'])", "action(['UP'])", "action(['UP'])", "action(['UP'])", "action(['UP'])"]
+    boards = [board()] + [board((10 + k, 10)) for k in range(5)]
+
+    async def play(block):
+        transport = Transport(*codes)
+        agent, env, game, gate = arena_agent(tmp_path / str(len(block)), transport, ArenaTransferDuckAgent)
+        agent.apply_harness_fixes(True)
+        agent.apply_context_drain(True)
+        agent.apply_dfr_harness(True)
+        agent.apply_hx_harness(block)
+        obs = [observation(boards[0])] + [observation(b, levels=1) for b in boards[1:]]
+        env.observations = iter(obs[1:])
+        env.observation_space = raw(obs[0])
+        agent.config.max_actions = 5
+        result = await agent.run()
+        assert result["error"] is None
+        return transport
+
+    base = {"toolbox": True, "memo": True, "memo_style": 2}
+    kept = await play({**base, "keep_rules": 1, "playbook_log": 1})
+    turns = [texts(turn) for turn in user_turns(kept.payloads[-1])]
+    due = hx.KEEP_DUE.format(level=1)
+    assert [due in turn for turn in turns] == [False, False, True, True, False]
+    assert hx.KEEP_RULES_SYSTEM not in kept.payloads[0]["messages"][0]["content"]
+    plain, logged = await play(base), await play({**base, "playbook_log": 1, "reflect_min_gap": 3})
+    assert plain.payloads == logged.payloads  # the record changes no request
+async def test_no_think_asks_for_plan_lines_and_drops_the_words_about_hidden_reasoning(tmp_path):
+    boards = [board(), board((10, 10)), board((10, 10), (20, 20))]
+    settings = {"economy": False, "memo": True, "memo_style": 2, "no_think": 1}
+    agent, transport, result = await run_agent(tmp_path, boards, ["action(['UP'])", "action(['UP'])"], settings)
+    assert result["error"] is None
+    system = json.dumps(transport.payloads[0]["messages"][0]["content"])
+    assert "without a hidden reasoning phase" in system and "as few in-game actions as possible" in system
+    assert "thinking time is the scarce resource" not in system and "your reasoning in the dropped part" not in system
+    assert "what you wrote in the dropped part is gone" in system
+    turns = [texts(user_turns(p)[-1]) for p in transport.payloads]
+    assert all(hx.NO_THINK_TURN in turn and "Action economy" not in turn for turn in turns)
+    stats = agent.hx_stats
+    assert stats["no_think_replies"] == len(transport.payloads) and stats["no_think_with_text"] <= stats["no_think_replies"]
+    # Off, nothing changes.
+    agent, transport, result = await run_agent(tmp_path / "off", boards, ["action(['UP'])"], {"memo": True, "memo_style": 2})
+    system = json.dumps(transport.payloads[0]["messages"][0]["content"])
+    assert "hidden reasoning phase" not in system and "your reasoning in the dropped part is gone" in system
+    assert hx.NO_THINK_TURN not in texts(user_turns(transport.payloads[0])[-1]) and "no_think_replies" not in agent.hx_stats
+
+
+def test_no_think_step_back_does_not_speak_of_deliberation():
+    def notice(no_think):
+        r = hx.Reflector(hx.settings({"reflect": True, "reflect_style": 2, "reflect_stall": 50, "reflect_no_change": 2,
+                                      "reflect_min_gap": 1, "no_think": no_think}))
+        history = [Entry("", grid(), 0)]
+        r.update(history, {}, 0, 0, 0)
+        history += [Entry("UP", grid(), 1), Entry("UP", grid(), 2)]
+        r.update(history, {}, 0, 1, 100)
+        return r.notice(1)
+
+    plain, quiet = notice(0), notice(1)
+    assert "more deliberation will not fix it" in plain and "deliberation" not in quiet
+    assert "The current approach is not working. In this reply: name the belief you are least sure of" in quiet
+    assert quiet == plain.replace(hx.STEP_BACK_DELIBERATION, "")
+
+
+async def test_mixed_thinking_prefill_keeps_the_request_and_reads_the_call_from_the_continuation(tmp_path):
+    import httpx
+
+    from arena import adaptive
+
+    class Mixed(Transport):
+        async def post(self, url, **kwargs):
+            payload = kwargs["json"]
+            if not payload.get("continue_final_message"):
+                return await super().post(url, **kwargs)
+            self.payloads.append(copy.deepcopy(payload))
+            text = (" the piece moved up.\nBelief: UP moves it.\nThis call: one more UP, expect a move.\n<tool_call>\n"
+                    + json.dumps({"name": "python", "arguments": {"code": "action(['UP'])"}}) + "\n</tool_call>")
+            return httpx.Response(200, request=httpx.Request("POST", "http://local/v1/chat/completions"), json={
+                "choices": [{"finish_reason": "stop", "message": {"role": "assistant", "content": None,
+                                                                  "reasoning_content": text}}],
+                "usage": {"completion_tokens": 90, "prompt_tokens": 7000}})
+
+    import copy
+
+    boards = [board(), board((10, 10)), board((10, 10), (20, 20)), board((10, 10), (20, 20), (30, 30))]
+    transport = Mixed("action(['UP'])")
+    agent, env, game, gate = arena_agent(tmp_path, transport, ArenaTransferDuckAgent)
+    agent.apply_harness_fixes(True)
+    agent.apply_dfr_harness(True)
+    agent.apply_hx_harness({"economy": True, "memo": True, "memo_style": 2})
+    agent.adaptive = adaptive.AdaptiveThinking({"light": "prefill", "max_light_streak": 3}, "xhigh")
+    obs = [observation(b) for b in boards]
+    env.observations = iter(obs[1:])
+    env.observation_space = raw(obs[0])
+    agent.config.max_actions = 3
+    result = await agent.run()
+    assert result["error"] is None and agent.steps == 3
+    first, second, third = transport.payloads[:3]
+    assert "continue_final_message" not in first and adaptive.LIGHT_TURN not in texts(user_turns(first)[-1])
+    assert second["continue_final_message"] is True and second["add_generation_prompt"] is False
+    assert second["messages"][-1] == {"role": "assistant", "content": adaptive.LIGHT_PREFILL}
+    assert second.get("tool_choice") == first.get("tool_choice") != "none"
+    assert second["chat_template_kwargs"] == first["chat_template_kwargs"]
+    assert second["messages"][0] == first["messages"][0]            # the system block is the thinking request's
+    assert adaptive.LIGHT_TURN in texts(user_turns(second)[-1])
+    reply = [m for m in third["messages"] if m["role"] == "assistant"][-2]  # the light reply, as kept in the history
+    assert reply["content"].startswith("Last result: the piece moved up.") and "<tool_call>" not in reply["content"]
+    assert reply["tool_calls"][0]["function"]["name"] == "python" and not reply.get("reasoning_content")
+    assert agent.light_stats["replies"] == 2 and agent.light_stats["calls"] == 2
+    assert agent.adaptive.summary()["reasons"] == {"first": 1, "light": 2}
+
+
+def test_light_reply_without_a_call_and_the_light_rule():
+    from arena import adaptive
+
+    message = {"role": "assistant", "content": " nothing moved, I am not sure why.", "reasoning_content": None}
+    assert adaptive.light_reply(message, 1) is False
+    assert message["content"] == "Last result: nothing moved, I am not sure why." and message["tool_calls"] is None
+    bare = {"role": "assistant", "content": 'ok.\n{"name": "python", "arguments": {"code": "print(1)"}}'}
+    assert adaptive.light_reply(bare, 2) is True and json.loads(bare["tool_calls"][0]["function"]["arguments"]) == {"code": "print(1)"}
+    served = {"role": "assistant", "content": " it moved.\nThis call: UP again.", "reasoning": None, "tool_calls": [
+        {"id": "c1", "type": "function", "function": {"name": "python", "arguments": '{"code": "action([\'UP\'])"}'}}]}
+    assert adaptive.light_reply(served, 3) is True and served["tool_calls"][0]["id"] == "c1"   # parsed by the server
+    assert served["content"] == "Last result: it moved.\nThis call: UP again."
+    own = {"role": "assistant", "content": " ok.\n\n<tool_call>\n<function=python>\n<parameter=code>\nx = 1\nprint(x)\n"
+                                           "</parameter>\n</function>\n</tool_call>"}
+    assert adaptive.light_reply(own, 4) is True and own["content"] == "Last result: ok."        # the template's form
+    assert json.loads(own["tool_calls"][0]["function"]["arguments"]) == {"code": "x = 1\nprint(x)"}
+    a = adaptive.AdaptiveThinking({"light": "prefill", "max_light_streak": 2}, "xhigh")
+    assert a.decide(0) == {"enable_thinking": True, "reasoning_effort": "xhigh"} and not a.last_light  # the first thinks
+    a.note_action(changed=True, level_completed=False, game_over=False)
+    assert a.reason(0) is None and a.decide(0) == {} and a.last_light  # after a routine result: light
+    assert a.reason(0) == "no_action"                                # a light reply that took no action
+    a.note_action(changed=True, level_completed=True, game_over=False)
+    assert a.reason(0) == "surprise"                                 # a level start thinks
+    a.decide(0)
+    a.note_action(changed=True, level_completed=False, game_over=False)
+    assert a.reason(1) == "compaction"                               # so does the reply after a context cut

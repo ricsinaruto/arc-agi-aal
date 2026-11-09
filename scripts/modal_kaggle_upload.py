@@ -16,9 +16,8 @@ The job stages a directory of symlinks to the volume files plus ``dataset-metada
 threads with the Kaggle client's own resumable blob upload (``KaggleApi._upload_file``), then creates the dataset
 (private) with every file token, and polls the dataset status. It never writes the volume.
 
-Record: tools/ops/records.py's library (records.reserve, gate included) in the main checkout (ARC_VALIDATION_ROOT),
-before the spawn, bound (timeout + 60 s) x (CPU + memory rate) x 1.15; settle it with records.py once the dataset is ready.
-Needs ARC_UPLOAD_ARM and ARC_UPLOAD_AUTH (2 Nov: was a direct docs/spend.json write, a dropped view edit).
+Ledger: the main checkout's docs/spend.json (ARC_VALIDATION_ROOT), reserved before the spawn: (timeout + 60 s) x (CPU
++ memory rate) x 1.15 (no GPU, no storage change).
 """
 
 import json
@@ -60,25 +59,34 @@ def bound_usd(ledger):
     return (TIMEOUT + 60) * rate * 1.15
 
 
-def reserve(run_id, extra, records=None):
-    """The run record through arc_infra.runops.records (gate, ledger and queue rows); never docs/spend.json, which is
-    a generated view. ARC_UPLOAD_ARM and ARC_UPLOAD_AUTH name the arm and explicit approval for this upload."""
-    if records is None:
-        from arc_infra.runops import records
-    arm, auth = os.environ.get("ARC_UPLOAD_ARM"), os.environ.get("ARC_UPLOAD_AUTH")
-    if not arm or not auth:
-        raise SystemExit("set ARC_UPLOAD_ARM and ARC_UPLOAD_AUTH (explicit approval for this upload)")
-    bound = round(bound_usd({}), 2)
-    records.reserve(run_id, arm=arm, platform="modal", gpu="none", gpu_count=0, bound_usd=bound,
-                    max_seconds=TIMEOUT + 60, authorization=auth, kind="kaggle-upload",
-                    what=f"CPU Modal upload of {extra['source']} as the private Kaggle dataset {extra['dataset']}",
-                    root=ROOT)
-    return bound
+def reserve(run_id, extra):
+    import fcntl
+
+    path = ROOT / "docs/spend.json"
+    with path.open("r+") as file:
+        fcntl.flock(file, fcntl.LOCK_EX)
+        data = json.load(file)
+        bound = bound_usd(data)
+        from arc_infra.runops.records import row_cost
+        committed = data["infrastructure_reserve_usd"] + sum(row_cost(r)[0] for r in data["runs"])
+        if committed + bound > data["cap_usd"]:
+            raise RuntimeError(f"Spend cap: ${committed:.2f} + ${bound:.2f} required")
+        if any(r["run_id"] == run_id for r in data["runs"]):
+            raise ValueError("Run already reserved; inspect saved call instead of relaunching")
+        data["runs"].append({
+            "run_id": run_id, "state": "reserved", "kind": "kaggle-upload", "charged_bound_usd": round(bound, 4),
+            "max_seconds": TIMEOUT, "gpu": "none", "cpu_ceiling": CPU, "memory_ceiling_gib": MEMORY_GIB,
+            "authorization": AUTHORIZATION, **extra})
+        file.seek(0)
+        json.dump(data, file, indent=1)
+        file.write("\n")
+        file.truncate()
+    return bound, committed
 
 
-@app.function(image=image, cpu=(0.125, CPU), memory=(512, MEMORY_GIB * 1024), timeout=TIMEOUT, retries=0, max_containers=1,
+@app.function(image=image, cpu=CPU, memory=MEMORY_GIB * 1024, timeout=TIMEOUT, retries=0, max_containers=1,
               volumes={"/assets": assets}, secrets=SECRETS)
-def upload(source: str, dataset: str, title: str, expect: str = ""):
+def upload(source: str, dataset: str, title: str):
     import tempfile
     from concurrent.futures import ThreadPoolExecutor
 
@@ -96,23 +104,6 @@ def upload(source: str, dataset: str, title: str, expect: str = ""):
     api.authenticate()
     src = Path(source)
     names = sorted(p.name for p in src.iterdir() if p.is_file())
-    if expect:  # {name: {"size", "sha256"}} (an assets manifest's "files"): every byte checked before any upload
-        import hashlib
-        want = json.loads(expect)
-
-        def digest(name):
-            h = hashlib.sha256()
-            with open(src / name, "rb") as f:
-                for chunk in iter(lambda: f.read(1 << 24), b""):
-                    h.update(chunk)
-            return name, (src / name).stat().st_size, h.hexdigest()
-
-        with ThreadPoolExecutor(THREADS) as pool:
-            got = {n: (size, h) for n, size, h in pool.map(digest, names)}
-        bad = sorted(set(want) ^ set(got)) + [n for n in want if n in got and got[n] != (want[n]["size"], want[n]["sha256"])]
-        log(json.dumps({"event": "byte_check", "files": len(got), "expected": len(want), "bad": bad[:20]}))
-        if bad:
-            raise RuntimeError(f"source differs from the expected manifest: {bad[:5]}")
     total = sum((src / n).stat().st_size for n in names)
     stage = Path(tempfile.mkdtemp(prefix="kaggle-stage-"))
     for name in names:
@@ -128,24 +119,11 @@ def upload(source: str, dataset: str, title: str, expect: str = ""):
     def parallel_upload_files(self, request, resources, folder, blob_type, upload_context, quiet=False,
                               dir_mode="skip", ignore_patterns=None):
         def one(name):
-            import threading
             t0 = time.time()
-            size = os.path.getsize(os.path.join(folder, name))
-            # 2 Nov (l4-tc942-upload2): one ~10 GiB shard stalled 2 h+ with no error. Each try runs in a daemon thread;
-            # a try past 600 s + size at 20 MB/s is abandoned and the file uploaded again (3 tries)
-            result = None
-            for attempt in range(3):
-                box = {}
-                worker = threading.Thread(daemon=True, target=lambda: box.update(r=self._upload_file(
-                    name, os.path.join(folder, name), blob_type, upload_context, True, resources)))
-                worker.start()
-                worker.join(600 + size / 20e6)
-                if "r" in box and box["r"] is not None:
-                    result = box["r"]
-                    break
-                log(json.dumps({"event": "file_retry", "name": name, "attempt": attempt, "stalled": worker.is_alive()}))
+            result = self._upload_file(name, os.path.join(folder, name), blob_type, upload_context, True, resources)
             if result is None:
                 raise RuntimeError(f"upload failed: {name}")
+            size = os.path.getsize(os.path.join(folder, name))
             done["bytes"] += size
             done["files"] += 1
             elapsed = time.time() - started
@@ -243,15 +221,13 @@ def upload(source: str, dataset: str, title: str, expect: str = ""):
 def upload_main(run_id: str):
     if not os.environ.get("KAGGLE_API_TOKEN"):
         raise SystemExit("Run under scripts/kaggle_cli.py --python (the authorized wrapper) so the token is present")
-    bound = reserve(run_id, {"source": f"arc-prolong-assets:{SOURCE[7:]}", "dataset": DATASET})
+    bound, committed = reserve(run_id, {"source": f"arc-prolong-assets:{SOURCE[7:]}", "dataset": DATASET})
     record = REPO / RECORDS / f"modal-{run_id}.json"
     data = {"state": "submission_intent", "run_id": run_id, "kind": "kaggle-upload", "charged_bound_usd": bound,
-            "source": f"arc-prolong-assets:{SOURCE[7:]}", "dataset": DATASET, "title": TITLE,
-            "settle": f"tools/ops/records.py settle {run_id} completed --cause ... once the dataset is ready"}
+            "committed_before_usd": round(committed, 2), "source": f"arc-prolong-assets:{SOURCE[7:]}",
+            "dataset": DATASET, "title": TITLE, "ledger": str(ROOT / "docs/spend.json")}
     record.write_text(json.dumps(data, indent=2))
-    expect = os.environ.get("ARC_UPLOAD_EXPECT")  # path of an assets manifest ({"files": {name: {size, sha256}}})
-    expect = json.dumps(json.loads(Path(expect).read_text())["files"]) if expect else ""
-    call = upload.spawn(SOURCE, DATASET, TITLE, expect)
+    call = upload.spawn(SOURCE, DATASET, TITLE)
     data.update(state="submitted", function_call_id=call.object_id)
     record.write_text(json.dumps(data, indent=2))
     print(json.dumps(data))

@@ -10,6 +10,8 @@ from arc_infra.model_templates import (
     NEX_MODEL,
     NEX_REVISION,
     ORNITH_35B_MODEL,
+    QWEN35_4B_MODEL,
+    QWEN36_FP8_MODEL,
     QWEN35_122B_MODEL,
     QWEN36_MODEL,
 )
@@ -31,6 +33,9 @@ class Candidate:
     reasoning_parser: str = 'qwen3'
     extra_args: tuple = ()  # appended to the pinned serve command (e.g. an attention backend)
     declared_context: int | None = None  # config.json max_position_embeddings when it exceeds the served (tokenizer-bounded) context
+    # (file beside the inventories, sha256): served with --chat-template in place of the checkpoint's own template
+    chat_template: tuple | None = None
+    env: tuple = ()  # (name, value) pairs set in the server's environment
 
     @property
     def manifest(self):
@@ -122,9 +127,43 @@ HOLO4_27B = Candidate('holo4-27b-nvfp4', HOLO4_27B_MODEL,
     '6a02909667ba91dcd45e01be13c4d49992112510', 'Qwen3_5ForConditionalGeneration',
     'compressed-tensors', 'compressed-tensors', 'xhigh', 0, 0,
     extra_args=('--attention-backend', 'TRITON_ATTN', '--kv-cache-dtype', 'fp8'))
+# Qwen3.5-4B (Apache-2.0; RL restart, 11 October: the small model of the minimal proof): 32 layers (8 full gated
+# attention with 4 KV heads of 256, 24 Gated DeltaNet), dense MLP, vision tower kept, 4.66B parameters, native BF16
+# (9.3 GB, no quantization argument). The checkpoint carries a one-layer MTP head (15 tensors); it is not loaded
+# (MTP-0), so play, the later training and the test sample from the same network. BF16 KV ("auto"). Served with the
+# Qwen3.8 (Flash) chat template ("definitely flash style"): the tokenizers share vocabulary, merges
+# and every id the template emits, so a request renders to the token ids Flash receives, effort line included.
+QWEN38_TEMPLATE = ('qwen38-chat-template.jinja', 'c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041')
+# v2 ("rerun the 4B model with the same fixes tailored to it"): the checkpoint's own template with
+# one line changed, the preserve_thinking gate of Qwen3.6's template (the 4B's drops every reasoning block before the
+# last user turn, i.e. all but one or two in a game; the harness keeps them), no effort line ('native'); MTP head at 2
+# draft tokens (the model card's vLLM command). Dense BF16: no quantization path.
+QWEN35_4B_TEMPLATE = ('qwen35-4b-preserve-thinking.jinja',
+                      '7bae0b09ae5484e04695a56bdb42c0063cffa3f27e85649a8c9b08d34cbb2aa7')
+QWEN35_4B = Candidate('qwen35-4b', QWEN35_4B_MODEL,
+    '851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a', 'Qwen3_5ForConditionalGeneration',
+    None, None, 'native', 2, 15, chat_template=QWEN35_4B_TEMPLATE)
+# Qwen3.6-35B-A3B, official FP8 (Apache-2.0; RL step 0, "run the same 2 tests ... with
+# qwen3.6-35b-a3b"): 40 layers (10 full gated attention with 2 KV heads of 256, 30 Gated DeltaNet), 256 experts with
+# 8 active plus a shared expert, vision tower kept. FP8 e4m3 weights with 128x128 block scales and dynamic activation
+# scales (BF16 embeddings, lm_head, norms and vision): 34.9 GiB, against 67 GiB in BF16, which would leave about 18 GiB
+# of cache on the 96 GB card (12 streams at a 65,536 window, against the 30). No KV scheme declared: BF16 KV.
+# The one-layer MoE MTP head (1,560 tensors) is not loaded (MTP-0). Same vocabulary, merges and added-token ids as
+# Qwen3.5-4B (and so as Flash), so it is served with Flash's template like the 4B.
+# v2 ("the template fixed to its own ... add the MTP head ... fix the expert layer issue"): the
+# checkpoint's own chat template (no effort dial: 'native'; preserve_thinking on, arc_infra.model_templates), the MTP
+# head at 2 draft tokens (the model card's vLLM command), and the expert layers pinned to vLLM's Triton FP8
+# block-scaled kernel: with 'auto' the MoE oracle chose DeepGEMM with power-of-two (E8M0) scales on this GPU, the
+# path vLLM's own config auto-disables for qwen3_5_moe's dense layers for accuracy loss. VLLM_USE_DEEP_GEMM=0 (vLLM's
+# own advice in that warning) also keeps E8M0 activation scales out of the Triton expert path.
+# v3 (screen, 12 October): experts back on vLLM's default (DeepGEMM E8M0): against a BF16 reference both kernels sit
+# equally close (top-5 KL ~0.01 on 6 recorded requests) and Triton doubled the decode step (98 ms against 47).
+QWEN36_FP8 = Candidate('qwen36-35b-a3b-fp8', QWEN36_FP8_MODEL,
+    '95a723d08a9490559dae23d0cff1d9466213d989', 'Qwen3_5MoeForConditionalGeneration',
+    'fp8', 'fp8', 'native', 2, 1560)
 PROFILES = {p.name: p for p in (NEX, QWEN_27_NVFP4, QWEN_27_FP8, UI_MATE_9B, UI_MATE_27B,
                                MINICPM_2B, QWEN_36_NVFP4, NEMOTRON_SUPER, NEMOTRON_LIGHTNING, QWEN35_122B,
-                               ORNITH_35B, HOLO4_27B)}
+                               ORNITH_35B, HOLO4_27B, QWEN35_4B, QWEN36_FP8)}
 
 
 def from_study(study):

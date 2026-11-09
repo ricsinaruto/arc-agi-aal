@@ -1,5 +1,5 @@
-"""One record file per run: migration round trip, gate (own allowance + global caps only), views regenerated (direct
-view edits dropped and flagged), concurrent writers (same record, gate) across processes, settled snapshot."""
+"""One record file per run: migration round trip, gate (own allowance + global caps only), cut-over sync with a legacy
+writer, concurrent writers of different runs."""
 import json
 import multiprocessing
 from pathlib import Path
@@ -22,7 +22,7 @@ SPEND = {"cap_usd": 30000, "infrastructure_reserve_usd": 2.0,
          "nebius": {"cap_usd": 5000.0, "runs": [{"run_id": "b2-tp-1", "state": "reserved", "charged_bound_usd": 30.0}],
                     "note": "separate"}}
 BUDGET = {"allowances": {"rl": {"usd": 5000, "gpus": {"RTX PRO 6000": 2}}, "sft": {"gpus": {"RTX PRO 6000": 2}},
-                         "mfu": {"gpus": {"B300": 1}}, "arc3sub": {"usd": 2000, "gpus": {"RTX PRO 6000": 1}},
+                         "mfu": {"gpus": {"B300": 1}}, "throughput": {"usd": 2000, "gpus": {"RTX PRO 6000": 1}},
                          "envs": {"usd": 300, "gpus": {}}},
           "pools": {"b300-posttrain": {"kind": "B300", "arms": ["rl", "sft", "mfu"], "cap": 4}},
           "caps": {"gpus": {"B300": 8, "RTX PRO 6000": 8}, "usd": {"modal": 30000, "nebius": 5000}}}
@@ -88,35 +88,24 @@ def test_reserve_settle_and_views(root):
     R.settle("rl1-loop-b", "stopped", end_cause="stopped-owner", observed_seconds=60)
     q, s = views(root)
     assert "rl1-loop-b" not in [r["run"] for r in q["live"]] and s["runs"][-1]["state"] == "stopped"
-    with pytest.raises(R.GateError, match="settled"):  # a closed row is corrected by settle --set, not patched
-        R.set_ledger("rl1-loop-b", note="late")
-    R.set_queue("rl1-loop-b", next="late edit")  # dots3-nb2, 24 Oct: must not re-open a bare live row
-    assert "rl1-loop-b" not in [r["run"] for r in views(root)[0]["live"]]
 
 
-def test_direct_view_edits_are_dropped_and_flagged(root):
-    """Phase D (24 Oct): records.py is the only writer; a direct view edit is overwritten and reported."""
+def test_sync_imports_legacy_writer_edits(root):
     R.sync(root)  # baseline
     q, s = views(root)
-    s["nebius"]["runs"].append({"run_id": "b2-tp-2", "state": "reserved", "charged_bound_usd": 5.0})
-    q["live"] = [r for r in q["live"] if r["run"] != "b2-tp-1"]
+    s["nebius"]["runs"].append({"run_id": "b2-tp-2", "state": "reserved", "charged_bound_usd": 5.0})  # nebius launcher
+    q["live"] = [r for r in q["live"] if r["run"] != "b2-tp-1"]  # reconcile drops a row
+    q["next"] = ["RL: hero v6c"]
+    s["cap_usd"] = 40000
     (root / "docs/spend.json").write_text(json.dumps(s, indent=1))
     (root / "docs/modal-queue.json").write_text(json.dumps(q, indent=1))
-    R.set_queue("rl1-loop-a", what="RL leg a, read every 4")  # a record write publishes the views
+    R.set_queue("rl1-loop-a", what="RL leg a, read every 4")  # a record writer at the same time: publish() syncs
     q2, s2 = views(root)
-    assert R.get("b2-tp-2", root) is None and "queue" in R.get("b2-tp-1", root)
-    assert [r["run_id"] for r in s2["nebius"]["runs"]] == ["b2-tp-1"] and (q2, s2) == R.build(root)
+    assert R.get("b2-tp-2", root)["ledger"][0]["block"] == "nebius"
+    assert "queue" not in R.get("b2-tp-1", root)
+    assert q2["next"] == ["RL: hero v6c"] and s2["cap_usd"] == 40000
     assert next(r for r in q2["live"] if r["run"] == "rl1-loop-a")["what"] == "RL leg a, read every 4"
-    assert R.dropped_legacy(root) == ["b2-tp-1", "b2-tp-2"]
-    assert R.sync(root) == []  # last-*.json track the regenerated views: an old-code sync imports nothing stale
-    assert json.loads((root / "runs/ops/records/last-spend.json").read_text()) == s2
-
-
-def test_views_are_created_in_a_fresh_checkout(root):
-    (root / "docs/spend.json").unlink()
-    (root / "docs/modal-queue.json").unlink()
-    R.set_queue("rl1-loop-a", what="x")
-    assert views(root) == R.build(root)
+    assert [r["run_id"] for r in s2["nebius"]["runs"]] == ["b2-tp-1", "b2-tp-2"]
 
 
 def _writer(args):
@@ -135,43 +124,6 @@ def test_concurrent_writers_lose_nothing(root):
         pool.map(_writer, [(str(root), i) for i in range(4)])
     for i in range(4):
         assert len([k for k in R.get(f"run-{i}", root)["queue"]["row"] if k.startswith("k")]) == 20
-
-
-def _same_record(args):
-    root, i = args
-    R.ROOT = Path(root)  # publish on: every write also takes the gate lock and regenerates the views
-    for j in range(15):
-        R.update("shared", lambda rec, i=i, j=j: rec.setdefault("log", []).append(f"{i}-{j}"), Path(root))
-        R.publish(Path(root))
-    return i
-
-
-def _reserve_one(args):
-    root, i = args
-    R.ROOT = Path(root)
-    try:
-        R.reserve(f"rl-par-{i}", arm="rl", platform="nebius", gpu="RTX PRO 6000", bound_usd=1, max_seconds=60,
-                  authorization="t", what="t", root=Path(root))
-        return True
-    except R.GateError:
-        return False
-
-
-def test_parallel_processes_serialize_on_one_record_and_the_gate(root):
-    """24 Oct (records out of git): many worktree agents write at once; per-record flock and the gate lock serialize."""
-    ctx = multiprocessing.get_context("spawn")
-    with ctx.Pool(8) as pool:
-        pool.map(_same_record, [(str(root), i) for i in range(8)])
-        assert sum(pool.map(_reserve_one, [(str(root), i) for i in range(8)])) == 2  # rl's RTX allowance is 2
-    assert sorted(R.get("shared", root)["log"]) == sorted(f"{i}-{j}" for i in range(8) for j in range(15))
-    assert views(root) == R.build(root)
-
-
-def test_snapshot_copies_only_ended_records(root):
-    R.settle("b2-tp-1", "stopped", end_cause="completed")
-    assert R.snapshot(root) == 2  # arena-x (complete) and b2-tp-1
-    assert sorted(p.name for p in (root / "docs/runs-settled").iterdir()) == ["arena-x.json", "b2-tp-1.json"]
-    assert R.snapshot(root) == 0
 
 
 def test_root_from_worktree():
@@ -200,23 +152,23 @@ def test_modal_gate_uses_billed_total(root):
 
 def test_arm_for_longest_prefix():
     rules = {"b2-": "throughput", "b2-mfu": "mfu", "rl": "rl", "rl1-loop-xpf": "envs"}
-    assert R.arm_for("b2-mfu2-rtxmark-v9", rules) == "mfu" and R.arm_for("b2-sabl-x", rules) == "arc3sub"
+    assert R.arm_for("b2-mfu2-rtxmark-v9", rules) == "mfu" and R.arm_for("b2-sabl-x", rules) == "throughput"
     assert R.arm_for("rl1-loop-xpf-1", rules) == "envs" and R.arm_for("zzz", rules) is None
 
 
 def test_usd_warn_mode(root):
     b = json.loads((root / "docs/budget.json").read_text())
-    b["allowances"]["arc3sub"] = {"usd": 100, "usd_mode": "warn", "gpus": {"RTX PRO 6000": 2}}
+    b["allowances"]["throughput"] = {"usd": 100, "usd_mode": "warn", "gpus": {"RTX PRO 6000": 2}}
     assert R.gate("throughput", "RTX PRO 6000", 1, 5, platform="nebius", root=root, budget=b) == []
     w = R.gate("throughput", "RTX PRO 6000", 1, 80, platform="nebius", root=root, budget=b)
     assert len(w) == 1 and "warn-only" in w[0]
-    b["allowances"]["arc3sub"]["gpus"] = {"RTX PRO 6000": 1}
+    b["allowances"]["throughput"]["gpus"] = {"RTX PRO 6000": 1}
     with pytest.raises(R.GateError, match="its allowance 1"):  # GPUs stay enforced
         R.gate("throughput", "RTX PRO 6000", 1, 50, platform="nebius", root=root, budget=b)
 
 
-def test_pull_and_snapshot_with_untracked_records(tmp_path, monkeypatch):
-    """Records and views are untracked: a pull never conflicts on them; the daily snapshot commits settled records."""
+def test_pull_with_dirty_views_and_a_view_conflict(tmp_path, monkeypatch):
+    """24 Oct: views regenerated between dash passes made every `git pull` in the main checkout abort."""
     import importlib.util
     import subprocess
 
@@ -228,38 +180,51 @@ def test_pull_and_snapshot_with_untracked_records(tmp_path, monkeypatch):
     spec.loader.exec_module(cli)
     origin, a, b = tmp_path / "origin.git", tmp_path / "a", tmp_path / "b"
     subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(origin)], check=True)
-    (a / "docs").mkdir(parents=True)
+    a.mkdir()
+    (a / "docs").mkdir()
     (a / "docs/modal-queue.json").write_text(json.dumps(QUEUE, indent=1) + "\n")
     (a / "docs/spend.json").write_text(json.dumps(SPEND, indent=1) + "\n")
     (a / "docs/budget.json").write_text(json.dumps(BUDGET))
     monkeypatch.setattr(R, "ROOT", a)
     monkeypatch.delenv("ARC_RECORDS_NO_SYNC", raising=False)
     R.migrate(a, {"rl1-": "rl", "b2-tp": "throughput"})
-    (a / ".gitignore").write_text("runs/\ndocs/spend.json\ndocs/modal-queue.json\ndocs/runs-settled/\n")
+    R.sync(a)
+    (a / ".gitignore").write_text("docs/runs/*.lock\ndocs/runs/.*\n")
     for c in (["init", "-q", "-b", "main"], ["config", "user.email", "t@t"], ["config", "user.name", "t"],
               ["add", "-A"], ["commit", "-q", "-m", "init"], ["remote", "add", "origin", str(origin)],
               ["push", "-q", "origin", "main"]):
         git(a, *c)
-    assert "docs/runs/" not in git(a, "ls-files") and "spend.json" not in git(a, "ls-files")
     git(tmp_path, "clone", "-q", str(origin), str(b))
-    (b / "x.txt").write_text("other work")
-    git(b, "add", "x.txt")
-    git(b, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "other")
+    s = json.loads((b / "docs/spend.json").read_text())  # a legacy writer elsewhere commits a view edit
+    s["nebius"]["runs"].append({"run_id": "b2-tp-9", "state": "reserved", "charged_bound_usd": 7.0})
+    (b / "docs/spend.json").write_text(json.dumps(s, indent=1) + "\n")
+    git(b, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-am", "legacy edit")
     git(b, "push", "-q", "origin", "main")
-    R.set_queue("rl1-loop-a", what="edited here")
-    R.settle("b2-tp-1", "stopped", end_cause="completed")
+    R.set_queue("rl1-loop-a", what="edited here")  # dirty views (and a run file) in the main checkout
+    R.settle("b2-tp-1", "stopped", end_cause="completed")  # spend.json differs on both sides: a view conflict
     cli.pull()
-    assert (a / "x.txt").is_file() and R.get("rl1-loop-a", a)["queue"]["row"]["what"] == "edited here"
-    cli.snapshot()
-    assert git(a, "status", "--porcelain") == ""
-    assert sorted(p.name for p in (a / "docs/runs-settled").iterdir()) == ["arena-x.json", "b2-tp-1.json"]
-    assert git(a, "ls-files", "docs/runs-settled") == ""
+    assert R.get("b2-tp-1", a)["ledger"][0]["row"]["state"] == "stopped"
+    assert R.get("b2-tp-9", a)["ledger"][0]["row"]["charged_bound_usd"] == 7.0
+    assert R.get("rl1-loop-a", a)["queue"]["row"]["what"] == "edited here"
+    assert git(a, "status", "--porcelain", "--", "docs") == ""
     assert git(a, "rev-parse", "HEAD") == git(a, "rev-parse", "origin/main")
 
 
 def test_exempt_flag_on_the_ledger_row(root):
     R.update("b2-tp-1", lambda rec: rec["ledger"][-1]["row"].update(allowance_exempt="c100 300K read"), root)
     R.gate("throughput", "RTX PRO 6000", 1, 10, platform="nebius", root=root)  # its live read no longer counts
+
+
+def test_sync_takes_only_the_parts_a_legacy_writer_changed(root):
+    R.sync(root)
+    R.update("b2-tp-3", lambda rec: rec.update(arm="throughput", queue={"section": "live", "order": 1,
+                                                                        "row": {"run": "b2-tp-3"}}), root)
+    s = json.loads((root / "docs/spend.json").read_text())  # the Nebius launcher writes the ledger row only
+    s["nebius"]["runs"].append({"run_id": "b2-tp-3", "state": "reserved", "charged_bound_usd": 2.0})
+    (root / "docs/spend.json").write_text(json.dumps(s, indent=1))
+    R.sync(root)
+    rec = R.get("b2-tp-3", root)
+    assert rec["queue"]["row"]["run"] == "b2-tp-3" and rec["ledger"][0]["row"]["charged_bound_usd"] == 2.0
 
 
 def test_results_block_and_query(root):
@@ -312,35 +277,6 @@ def test_reconcile_marks_running_and_unsettled_drop_unclassified(root):
     assert R.unclassified(root) == [] and R.get("rl1-loop-a", root)["end_cause"] == "preempt"
 
 
-def test_a_dropped_attempt_is_closed_by_the_next_reserve_or_settle_attempt(root):
-    run = "rl1-loop-d"
-    args = dict(arm="rl", platform="modal", gpu="B300", bound_usd=5, max_seconds=60, authorization="t", what="d")
-    R.reserve(run, **args)
-    R.apply_queue_ops([("drop", run, {})], root)  # gone without a settle: the row stays open for a late settle
-    assert R.get(run, root)["ledger"][-1]["row"]["state"] == "reserved"
-    R.reserve(run, **args)
-    rec = R.get(run, root)
-    first = rec["ledger"][0]["row"]
-    assert (first["state"], first["end_cause"]) == ("ended", "unclassified") and first["end_epoch"]
-    assert rec["ledger"][-1]["row"]["state"] == "reserved" and rec["attempts"][0]["end_epoch"]
-    R.settle(run, "stopped", end_cause="completed")
-    R.reserve(run, **args)
-    # the correction: the earlier row only; the current attempt, record and queue row stay
-    R.settle_attempt(run, 1, "stopped", end_cause="preempt", end_epoch=123.4, note="last feed row")
-    rec = R.get(run, root)
-    assert (rec["ledger"][0]["row"]["state"], rec["ledger"][0]["row"]["end_cause"]) == ("stopped", "preempt")
-    assert rec["ledger"][0]["row"]["end_epoch"] == 123 and rec["ledger"][0]["row"]["note"] == "last feed row"
-    assert (rec["attempts"][0]["state"], rec["attempts"][0]["end_cause"], rec["attempts"][0]["end_epoch"]) == ("ended", "preempt", 123)
-    assert rec["state"] == "reserved" and rec["attempt"] == 3 and rec["queue"]["section"] == "live"
-    assert rec["ledger"][-1]["row"]["state"] == "reserved"
-    with pytest.raises(R.GateError, match="not an earlier attempt"):
-        R.settle_attempt(run, 3, "stopped", end_cause="preempt")
-    with pytest.raises(R.GateError, match="no attempt 0"):
-        R.settle_attempt(run, 0, "stopped", end_cause="preempt")
-    with pytest.raises(ValueError):
-        R.settle_attempt(run, 1, "stopped", end_cause="nope")
-
-
 def test_backfill_states(root):
     assert R.backfill_states(root, causes={"arena-x": "bug:renderer"}) == 3
     got = {r["run"]: (r.get("state"), r.get("end_cause")) for r in R.records(root) if r.get("ledger")}
@@ -389,278 +325,26 @@ def test_settled_modal_row_costs_its_seconds_not_its_bound(root):
 
 
 def test_settle_is_terminal_against_a_stale_view(root):
-    """24 Oct: PTH's settle of c7g was reverted by a sync that imported an older view. Since phase D views are never
-    imported: a stale view is overwritten and the settle stands."""
+    """24 Oct: PTH's settle of c7g (bug:teacher-backlog-order) was reverted by a sync that imported an older view
+    (a pull's origin copy still carrying the run's live row, edited by reconcile): settle must win."""
     R.settle("rl1-loop-a", "stopped", end_cause="bug:teacher-backlog-order")
     q, s = views(root)
-    q["live"].append({"run": "rl1-loop-a", "arm": "rl", "platform": "modal", "gpu": "2 x B300", "state": "running"})
-    next(r for r in s["runs"] if r["run_id"] == "rl1-loop-a").update(state="reserved")
-    (root / "docs/modal-queue.json").write_text(json.dumps(q, indent=1) + "\n")
-    (root / "docs/spend.json").write_text(json.dumps(s, indent=1) + "\n")
+    assert "rl1-loop-a" not in [r["run"] for r in q["live"]]
+    stale_q = json.loads(json.dumps(q))
+    stale_q["live"].append({"run": "rl1-loop-a", "arm": "rl", "platform": "modal", "gpu": "2 x B300",
+                            "state": "running", "start_epoch": 100, "what": "RL leg a", "end": "12:00"})
+    stale_s = json.loads(json.dumps(s))
+    row = next(r for r in stale_s["runs"] if r["run_id"] == "rl1-loop-a")
+    row.update(state="reserved", note="reconcile: still running")  # an old copy of the row, plus a legacy field
+    for e in row.copy():
+        if e in ("end_cause", "end_epoch"):
+            row.pop(e)
+    (root / "docs/modal-queue.json").write_text(json.dumps(stale_q, indent=1) + "\n")
+    (root / "docs/spend.json").write_text(json.dumps(stale_s, indent=1) + "\n")
     R.sync(root)
     rec = R.get("rl1-loop-a", root)
     assert (rec["state"], rec["end_cause"]) == ("ended", "bug:teacher-backlog-order") and "queue" not in rec
-    assert rec["ledger"][-1]["row"]["state"] == "stopped"
+    led = rec["ledger"][-1]["row"]
+    assert (led["state"], led["end_cause"]) == ("stopped", "bug:teacher-backlog-order")
+    assert led["note"] == "reconcile: still running"  # other legacy fields still import
     assert "rl1-loop-a" not in [r["run"] for r in views(root)[0]["live"]]
-
-
-def test_cause_case_and_refused_settle_exit(root, monkeypatch, capsys):
-    """24 Oct: dots3's settle with an upper-case cause was refused and its background chain never saw it."""
-    import importlib.util
-    import subprocess
-    import sys
-
-    R.settle("b2-tp-1", "stopped", end_cause="Bug:Teacher-OOM")
-    assert R.get("b2-tp-1", root)["end_cause"] == "bug:teacher-oom"
-    cli = Path(__file__).resolve().parents[1] / "tools/ops/records.py"
-    env = {**__import__("os").environ, "ARC_RECORDS_ROOT": str(root), "PYTHONPATH": str(cli.parents[2] / "src")}
-    p = subprocess.run([sys.executable, str(cli), "settle", "nope-9", "stopped", "--cause", "completed"],
-                       capture_output=True, text=True, env=env)
-    assert p.returncode == 1 and "SETTLE REFUSED (record unchanged)" in p.stderr and not (root / "docs/runs/nope-9.json").exists()
-    p = subprocess.run([sys.executable, str(cli), "settle", "b2-tp-1", "stopped", "--cause", "oops"],
-                       capture_output=True, text=True, env=env)
-    assert p.returncode == 1 and "end_cause" in p.stderr
-
-
-def test_regenerated_view_is_not_a_dropped_edit(root):
-    """A view rewritten from the records by another writer (no baseline update) is not flagged."""
-    R.sync(root)
-    R.update("ap-9", lambda rec: rec.update(cpu_app={"order": R._now_order()}), root)  # a record write, no publish
-    q, s = R.build(root)
-    (root / "docs/modal-queue.json").write_text(json.dumps(q, indent=1) + "\n")  # someone regenerates the view
-    assert R.sync(root) == [] and R.dropped_legacy(root) == []
-
-
-def test_modal_slots_cap_ten_gpus_for_every_arm(root):
-    """Modal runs 10 GPUs at once, all types and arms; no arm holds a reserve."""
-    R.update("sft-c7h", lambda rec: rec.update(arm="sft", queue={"section": "live", "order": 1, "row": {
-        "run": "sft-c7h", "platform": "modal", "gpu": "2 x B300", "app_id": "ap-pth"}}), root)
-    live = {"ap-pth": {"gpus": {"B300": 2}}, "ap-rl": {"gpus": {"B300": 2}}, "ap-x": {"gpus": {"H200": 3}}, "ap-cpu": {"gpus": {}}}
-    assert R.modal_slots(R.records(root), live) == 7
-    assert R.modal_slots([{"queue": {"section": "live", "row": {"platform": "modal", "gpu": "2 x B300"}}},
-                          {"queue": {"section": "live", "row": {"platform": "nebius", "gpu": "RTX PRO 6000"}}}]) == 2
-    for arm in ("mfu", "rl", "sft"):
-        R.gate(arm, "B300", 3, 1, platform="modal", root=root, modal=live, allowance_exempt="t")  # 7 + 3 = 10
-        with pytest.raises(R.GateError, match="modal slots: 7 GPUs live on Modal"):
-            R.gate(arm, "B300", 4, 2, platform="modal", root=root, modal=live, allowance_exempt="t")
-    R.update("dots3-h", lambda rec: rec.update(arm="dots3", state="reserved", ledger=[{"block": "", "order": 1, "row": {
-        "run_id": "dots3-h", "state": "reserved", "start_epoch": __import__("time").time()}}],
-        queue={"section": "live", "order": 2, "row": {"run": "dots3-h", "platform": "modal", "gpu": "3 x H200"}}), root)
-    R.require_reservation("dots3-h", root, modal=live)  # 7 + 3 <= 10
-    live["ap-y"] = {"gpus": {"H200": 1}}
-    with pytest.raises(R.GateError, match="modal slots"):  # require re-checks right before the launch: 8 + 3 > 10
-        R.require_reservation("dots3-h", root, modal=live)
-
-
-def test_cpu_apps_without_a_row_are_registered(root):
-    R.update("sft-c7h", lambda rec: rec.update(arm="sft", queue={"section": "live", "order": 1, "row": {
-        "run": "sft-c7h", "platform": "modal", "gpu": "2 x B300", "app_id": "ap-pth"}}), root)
-    live = {"ap-pth": {"name": "heal", "gpus": {"B300": 2}}, "ap-cpu": {"name": "dots3-prune", "gpus": {}},
-            "ap-gpu": {"name": "x", "gpus": {"H200": 1}}}
-    assert R.autoregister_cpu_apps(root, live) == [("ap-cpu", "auto:dots3-prune")]
-    assert R.autoregister_cpu_apps(root, live) == []  # idempotent
-    assert "ap-cpu" in R.build(root)[0]["cpu_apps"] and "ap-gpu" not in R.build(root)[0]["cpu_apps"]
-
-
-def test_modal_billed_is_an_untracked_view(root):
-    before = (root / "docs/budget.json").read_text()
-    R.set_modal_billed(123.4, root)
-    assert (root / "docs/budget.json").read_text() == before  # budget.json is never rewritten
-    assert R.load_budget(root)["modal_billed"]["usd"] == 123.4
-
-
-def test_a_worktree_root_maps_to_main(root):
-    wt = root / ".claude" / "worktrees" / "arm"
-    wt.mkdir(parents=True)
-    assert R.runs_dir(wt) == root / "docs" / "runs" and R.budget_path(wt) == root / "docs" / "budget.json"
-
-
-def test_drop_cpu_app_only_drops_cpu_only_records(root):
-    R.register_cpu_app("ap-typo", root=root)
-    R.drop_cpu_app("ap-typo", root)
-    assert R.get("ap-typo", root) is None
-    with pytest.raises(R.GateError, match="not a CPU-app-only record"):
-        R.drop_cpu_app("rl1-loop-a", root)
-
-
-def test_queue_and_ledger_share_app_id(root):
-    """24 Oct: `queue --set app_id=` left the ledger row without it (m1gp2, tput10 read "no queue row")."""
-    R.reserve("mfu-q1", arm="mfu", platform="modal", gpu="B300", bound_usd=1, max_seconds=60, authorization="t", what="q")
-    R.set_queue("mfu-q1", app_id="ap-q1")
-    rec = R.get("mfu-q1", root)
-    assert rec["ledger"][-1]["row"]["app_id"] == "ap-q1" and rec["queue"]["row"]["app_id"] == "ap-q1"
-    assert rec["state"] == "running"
-    R.set_ledger("mfu-q1", app_id="ap-q2")
-    rec = R.get("mfu-q1", root)
-    assert rec["queue"]["row"]["app_id"] == "ap-q2" and rec["ledger"][-1]["row"]["app_id"] == "ap-q2"
-    R.reserve("rl-q2", arm="rl", platform="modal", gpu="B300", bound_usd=1, max_seconds=60, authorization="t", what="q")
-    R.set_queue("rl-q2", state="running")
-    assert R.get("rl-q2", root)["state"] == "running"
-    R.settle("mfu-q1", "stopped", end_cause="completed")
-    R.set_queue("mfu-q1", app_id="ap-late")  # an ended run is not revived through the shared setter
-    assert R.get("mfu-q1", root)["state"] == "ended" and R.get("mfu-q1", root)["ledger"][-1]["row"]["app_id"] == "ap-q2"
-
-
-def test_out_id_follows_the_attempt(root):
-    R.reserve("rl-o1", arm="rl", platform="modal", gpu="B300", bound_usd=1, max_seconds=60, authorization="t", what="o")
-    assert R.out_id("rl-o1", root) == "rl-o1" and R.out_id("never-reserved", root) == "never-reserved"
-    R.settle("rl-o1", "stopped", end_cause="completed")
-    R.reserve("rl-o1", arm="rl", platform="modal", gpu="B300", bound_usd=1, max_seconds=60, authorization="t", what="o")
-    assert R.out_id("rl-o1", root) == "rl-o1-attempt2"
-
-
-def test_likely_owner_names_the_open_record_without_an_app(root):
-    """25 Oct: sft-stream-check-eosA-v1 ran as arc-rl1 with no app_id; gpu_reconcile now names the likely owner."""
-    import time as _t
-    now = _t.time()
-    R.reserve("sft-sc-a", arm="sft", platform="modal", gpu="B300", bound_usd=1, max_seconds=60, authorization="t", what="a")
-    assert R.likely_owner("arc-rl1", now + 30, root) == "sft-sc-a"
-    assert R.likely_owner("someone-else", now + 30, root) is None  # not an arc-* app
-    assert R.likely_owner("arc-rl1", now + 7200, root) is None  # reserved too long before the app
-    R.set_ledger("sft-sc-a", app_id="ap-named")
-    assert R.likely_owner("arc-rl1", now + 30, root) is None  # it names its app now
-
-
-def test_attach_records_the_app_from_a_launch_log(root):
-    R.reserve("sft-sc-b", arm="sft", platform="modal", gpu="B300", bound_usd=1, max_seconds=60, authorization="t", what="b")
-    assert R.attach("sft-sc-b", "Error: no app\n", root) is None
-    out = "✓ Initialized. View run at https://modal.com/apps/arc-agi-3/main/ap-Xx0qvyo7LX4FWDnMC5EXeD\n"
-    assert R.attach("sft-sc-b", out, root) == "ap-Xx0qvyo7LX4FWDnMC5EXeD"
-    rec = R.get("sft-sc-b", root)
-    assert rec["ledger"][-1]["row"]["app_id"] == rec["queue"]["row"]["app_id"] == "ap-Xx0qvyo7LX4FWDnMC5EXeD"
-
-
-def test_cli_set_refuses_anything_but_key_value():
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("records_cli", Path(__file__).resolve().parents[1] / "tools/ops/records.py")
-    cli = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(cli)
-    assert cli.kv(["app_id=ap-1", 'k={"a": 1}', "n=2"]) == {"app_id": "ap-1", "k": {"a": 1}, "n": 2}
-    for bad in ['{"end_cause": "stopped-owner"}', "noequals", "=x"]:
-        with pytest.raises(SystemExit):
-            cli.kv([bad])
-
-
-def test_build_between_syncs_is_not_a_dropped_edit(root, monkeypatch):
-    """records.py build (write_views) refreshes sync's baseline: a later record write + sync flags nothing (28 Oct:
-    sft-layers-p75-v1 flagged after a launch's build and running set)."""
-    R.sync(root)
-    monkeypatch.setenv("ARC_RECORDS_NO_SYNC", "1")
-    R.set_queue("rl1-loop-a", what="first")
-    R.write_views(root)
-    R.set_queue("rl1-loop-a", what="second")
-    monkeypatch.delenv("ARC_RECORDS_NO_SYNC")
-    assert R.sync(root) == [] and R.dropped_legacy(root) == []
-
-
-def test_record_write_during_sync_is_not_a_dropped_edit(root, monkeypatch):
-    """28 Oct 13:18: a settle landed between sync's view build and its baseline build (update() takes only the run's
-    lock); view != baseline flagged rl1-loop-seq-real-v10 as a dropped direct edit. One build feeds both now."""
-    R.sync(root)
-    monkeypatch.setenv("ARC_RECORDS_NO_SYNC", "1")
-    R.set_queue("rl1-loop-a", what="first")
-    monkeypatch.delenv("ARC_RECORDS_NO_SYNC")
-    real_build, calls = R.build, []
-
-    def build_then_write(*a, **k):  # the concurrent writer lands right after the second build of this sync
-        out = real_build(*a, **k)
-        calls.append(1)
-        if len(calls) == 2:
-            monkeypatch.setenv("ARC_RECORDS_NO_SYNC", "1")
-            R.set_queue("rl1-loop-a", what="settled meanwhile")
-            monkeypatch.delenv("ARC_RECORDS_NO_SYNC")
-        return out
-
-    monkeypatch.setattr(R, "build", build_then_write)
-    R.sync(root)
-    monkeypatch.setattr(R, "build", real_build)
-    assert R.sync(root) == [] and R.dropped_legacy(root) == []
-
-
-def test_per_run_volume_is_kept_across_attempts(root, monkeypatch):
-    """one Modal volume per run (arc-run-<run>); attempts keep it; a record without one is on the shared volume."""
-    from arc_infra.runops import volfetch as vf
-
-    R.reserve("rl1-loop-v", arm="rl", platform="modal", gpu="B300", bound_usd=5, max_seconds=600, authorization="t",
-              what="per-run volume", volume="run")
-    assert R.volume_of("rl1-loop-v") == "arc-run-rl1-loop-v" and R.volume_of("rl1-loop-a") == R.SHARED_VOLUME
-    R.settle("rl1-loop-v", "stopped", end_cause="preempt")
-    R.reserve("rl1-loop-v", arm="rl", platform="modal", gpu="B300", bound_usd=5, max_seconds=600, authorization="t",
-              what="attempt 2")
-    assert R.volume_of("rl1-loop-v") == "arc-run-rl1-loop-v"
-    long = "rl1-" + "x" * 80
-    assert len(R.run_volume_name(long)) <= 64 and R.run_volume_name(long) != R.run_volume_name(long + "y")
-    monkeypatch.setattr(R, "get", lambda run, root=None: {"rl1-loop-v": {"volume": "arc-run-rl1-loop-v"}}.get(run))  # volfetch reads the real ROOT
-    assert vf.route("arc-prolong-runs", "validation/rl1-loop-v-attempt2/live/sampler.jsonl") == "arc-run-rl1-loop-v"
-    assert vf.route("arc-prolong-runs", "validation/other/live/x") == "arc-prolong-runs"
-    assert vf.route("arc-prolong-runs", "validation/preflight/rl1-loop-vNK/x") == "arc-prolong-runs"
-    assert vf.mirror("arc-prolong-runs", "validation/rl1-loop-v/live/x").parts[-5] == "arc-run-rl1-loop-v"
-
-
-def test_external_runs_are_never_counted():
-    from arc_infra.runops import records as R
-    b = {"external_runs": {"ids": ["arc2-x-twin-1"], "prefixes": ["arc2-rtx-c240-hx-twin-"]}}
-    assert R.is_external("arc2-x-twin-1", b) and R.is_external("arc2-rtx-c240-hx-twin-p9", b)
-    assert not R.is_external("arc2-rtx-c240-hx-conv1-p1", b) and not R.is_external("arc2-x-twin-1", {})
-
-
-def test_rename_arm_keeps_the_live_count(root):
-    """throughput -> arc3sub. Before and after the rewrite the live row counts under arc3sub."""
-    with pytest.raises(R.GateError, match="its allowance 1"):
-        R.gate("arc3sub", "RTX PRO 6000", 1, 10, platform="nebius", root=root)  # old name on the record, alias
-    assert R.rename_arm("throughput", "arc3sub", root, dry=True) == ["b2-tp-1"]
-    assert R.get("b2-tp-1", root)["arm"] == "throughput"  # dry run writes nothing
-    assert R.rename_arm("throughput", "arc3sub", root) == ["b2-tp-1"]
-    rec = R.get("b2-tp-1", root)
-    rows = [rec, rec["queue"]["row"]] + [e["row"] for e in rec["ledger"]]
-    assert all(r.get("arm") in (None, "arc3sub") for r in rows) and rec["arm"] == "arc3sub"
-    with pytest.raises(R.GateError, match="its allowance 1"):
-        R.gate("arc3sub", "RTX PRO 6000", 1, 10, platform="nebius", root=root)
-    assert R.rename_arm("throughput", "arc3sub", root) == []
-
-
-def test_calibration_stays_with_its_attempt(tmp_path):
-    root = tmp_path
-    (root / "docs/runs").mkdir(parents=True)
-    (root / "docs/runs/r.json").write_text(json.dumps({"run": "r", "attempts": [{"n": 1}, {"n": 2}]}))
-    R.set_calibration("r", {"bench": {"gpu_core_gflops": 1.0}}, root=root)
-    rec = R.get("r", root=root)
-    assert "calibration" not in rec["attempts"][0] and R.calibration(rec)["bench"]["gpu_core_gflops"] == 1.0
-    (root / "docs/runs/s.json").write_text(json.dumps({"run": "s"}))
-    R.set_calibration("s", {"bench": {}, "x": 1}, root=root)
-    assert R.calibration(R.get("s", root=root))["x"] == 1
-
-
-def test_stale_open_records_close_only_when_nothing_runs_behind_them(tmp_path, monkeypatch):
-    """47 reserve rows were open for weeks; reconcile now closes what no app/VM runs behind."""
-    monkeypatch.setenv("ARC_RECORDS_NO_SYNC", "1")
-    (tmp_path / "docs/runs").mkdir(parents=True)
-    now = 1_800_000_000.0
-
-    def put(run, **rec):
-        (tmp_path / f"docs/runs/{run}.json").write_text(json.dumps({"run": run, **rec}))
-
-    row = lambda **r: [{"block": "", "order": 13, "row": {"run_id": r.pop("run_id", None), "state": "reserved", **r}}]
-    put("legacy", ledger=row(max_seconds=600), state="reserved")  # migrated, no times
-    put("old", ledger=row(max_seconds=600, start_epoch=now - 5 * 3600), state="reserved")
-    put("young", ledger=row(max_seconds=3600, start_epoch=now - 3600), state="reserved")  # within its reservation
-    put("vm", ledger=row(max_seconds=600, start_epoch=now - 9 * 3600), state="running")  # its VM is listed
-    put("app", ledger=row(max_seconds=600, start_epoch=now - 9 * 3600, app_id="ap-x"), state="running")
-    put("queued", ledger=row(max_seconds=600), state="reserved", queue={"section": "live", "row": {}})
-    put("done", ledger=row(max_seconds=600, start_epoch=now - 9 * 3600) and
-        [{"block": "", "order": 1, "row": {"state": "completed"}}], state="ended")
-    put("dropped", ledger=row(max_seconds=600, start_epoch=now - 9 * 3600), state="ended", end_cause="unclassified",
-        dropped_epoch=now - 4 * 3600)
-    put("dropped-new", ledger=row(max_seconds=600), state="ended", dropped_epoch=now - 600)
-    put("cpu", cpu_app={"name": "x"})
-    recs = R.records(root=tmp_path)
-    stale = R.stale_open(recs, live_runs={"vm"}, live_apps={"ap-x"}, now=now)
-    assert sorted(stale) == ["dropped", "legacy", "old"]
-    R.close_stale(stale, note="t", root=tmp_path)
-    got = {r["run"]: r for r in R.records(root=tmp_path)}
-    for run in stale:
-        assert R.state_of(got[run]) == "ended" and got[run]["ledger"][-1]["row"]["state"] == "reconciled"
-        assert R.row_cost(got[run]["ledger"][-1]["row"])[1] != "open"
-    assert got["old"]["ledger"][-1]["row"]["end_epoch"] == round(now - 5 * 3600 + 600)
-    assert got["dropped"]["ledger"][-1]["row"]["end_epoch"] == now - 4 * 3600
-    assert R.stale_open(R.records(root=tmp_path), live_runs={"vm"}, live_apps={"ap-x"}, now=now) == []

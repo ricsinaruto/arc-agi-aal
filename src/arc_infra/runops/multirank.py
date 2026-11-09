@@ -39,7 +39,6 @@ def _child(fn, rank, world, inp, port, timeout, q):
     os.environ.update(MASTER_ADDR="127.0.0.1", MASTER_PORT=str(port), RANK=str(rank), WORLD_SIZE=str(world))
     try:
         dist.init_process_group("gloo", rank=rank, world_size=world, timeout=timedelta(seconds=timeout))
-        dist.barrier()  # every rank's mesh is up before any returns (an early destroy broke a peer's connect: flake)
         res = fn(rank, world, inp)
         q.put((rank, "ok", res))
     except BaseException:  # noqa: BLE001 - every failure goes back to the parent

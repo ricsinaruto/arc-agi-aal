@@ -368,5 +368,5 @@ def test_renderer_workers_and_mm_processor_cache_reach_the_server(monkeypatch, t
     assert r.server_command() == ["serve", "model", "--renderer-num-workers", "4", "--mm-processor-cache-gb", "1.0"]
     assert result["mm_processor_cache_gb"] == 1.0
     with pytest.raises(ValueError):
-        configure(NS(), tmp_path, mm_processor_cache_gb=8)
+        configure(NS(), tmp_path, mm_processor_cache_gb=33)  # the limit is 0..32 GiB
     assert "study['server'].get('mm_processor_cache_gb')" in (ROOT / "src/arena/serving.py").read_text()

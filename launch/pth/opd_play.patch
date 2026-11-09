@@ -1,0 +1,96 @@
+commit 303c14bc2055a6aa401d1f6a86efb0588bc668b6
+Author: ricsinaruto <owner@example.invalid>
+Date:   Thu Oct 22 13:13:12 2026 +0200
+
+    OPD harness: weights follower (newest complete version, stage+apply, version tags on rollouts), loop_stop via vLLM repetition_detection with a strided check overlay
+    
+    Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+diff --git a/src/arc_infra/fleet.py b/src/arc_infra/fleet.py
+index 6f7efbb3..6edc8011 100644
+--- a/src/arc_infra/fleet.py
++++ b/src/arc_infra/fleet.py
+@@ -92,8 +92,10 @@ class SessionHTTP:
+         self.generation_retries = 0
+         self.rollout_path, self.rollout_previous, self.rollout_tools, self.rollout_n = None, None, None, 0
+         self.rollout_logprobs = False  # study rollout_record "logprobs": the engine's per-token values too (22 Oct)
++        self.loop_stop = None  # study loop_stop: vLLM repetition_detection on gameplay requests (OPD, 22 Oct)
++        self.weights_version = None  # () -> the served weights version (arena.weights_follow.current), OPD
+ 
+-    def record_rollout(self, payload, data):
++    def record_rollout(self, payload, data, version=None):
+         """The study's ``rollout_record`` (PTH healing, 18 Oct): one ``posttrain.rl_rollouts`` row per gameplay reply
+         (the request as a delta against this session's previous one, the reply, usage); no token log-probabilities
+         (the healing teacher re-encodes the reply). Pings and side requests (no tools, max_tokens <= 16) are skipped."""
+@@ -112,6 +114,8 @@ class SessionHTTP:
+                "reply": choice["message"], "finish_reason": choice.get("finish_reason"), "usage": data.get("usage") or {}}
+         if self.rollout_logprobs:
+             row.update(sampled_logprobs(choice.get("logprobs"), row["sampling"]))
++        if self.weights_version is not None:  # the weights that sampled it: at the request's start and end
++            row["version"], row["version_end"] = version, self.weights_version()
+         if payload.get("tools") != self.rollout_tools or not self.rollout_n:
+             row["tools"] = self.rollout_tools = payload.get("tools")
+         self.rollout_path.parent.mkdir(parents=True, exist_ok=True)
+@@ -129,6 +133,9 @@ class SessionHTTP:
+             payload["cache_salt"] = f"arc-public-replica-{self.replica}"
+             if self.rollout_logprobs and self.rollout_path is not None and not extra and payload.get("tools"):
+                 payload.update(logprobs=True, top_logprobs=20, return_tokens_as_token_ids=True)
++            if self.loop_stop and not extra and payload.get("tools") and int(payload.get("max_tokens") or 1 << 30) > 16:
++                payload["repetition_detection"] = dict(self.loop_stop)
++            version = self.weights_version() if self.weights_version is not None else None
+             kwargs["json"] = payload
+             record = {"instance_id": self.instance_id, "started_monotonic": time.monotonic()}
+             if extra:
+@@ -164,7 +171,7 @@ class SessionHTTP:
+                     record["finish_reason"] = data["choices"][0]["finish_reason"]
+                     if self.rollout_path is not None and not extra:
+                         try:
+-                            self.record_rollout(payload, data)
++                            self.record_rollout(payload, data, version)
+                         except Exception as exc:  # noqa: BLE001 - never ends the game
+                             record["rollout_error"] = f"{type(exc).__name__}: {exc}"[:200]
+                     if payload.get("logprobs"):  # the harness sees the engine's reply without the added fields
+diff --git a/src/arena/trial.py b/src/arena/trial.py
+index 30eae7c9..0cde1bb2 100644
+--- a/src/arena/trial.py
++++ b/src/arena/trial.py
+@@ -447,6 +447,15 @@ class Trial:
+             keeper = KeepAlive(scheduler, gate, {g.game_id: w for g, w in zip(games, workers, strict=True)},
+                                keep_spec, window=window + self.cap, log=self.gate_log)
+             keeping = asyncio.create_task(keeper.run())
++        follower = following = None
++        if study.get("weights_follow"):  # OPD (22 Oct): the trainer's newest weights, applied in place while playing
++            from arc_infra.serving import MODEL
++
++            from .weights_follow import WeightsFollower
++
++            follower = WeightsFollower(study["weights_follow"], base_url=self.base_url,
++                                       model=study.get("served_model") or MODEL, output=self.output, log=self.gate_log)
++            following = asyncio.create_task(follower.run())
+         last_progress = 0.0
+         try:
+             while wall.remaining() > 0 and any(not t.done() for t in tasks):
+@@ -470,6 +479,9 @@ class Trial:
+                 self.end_reason = "wall" if wall.remaining() <= 0 else "all_workers_done"
+         finally:
+             scheduler.wall_end()
++            if following is not None:
++                following.cancel()
++                await asyncio.gather(following, return_exceptions=True)
+             if keeping is not None:
+                 keeping.cancel()
+                 await asyncio.gather(keeping, return_exceptions=True)
+@@ -679,6 +691,13 @@ class Trial:
+             if self.study.get("rollout_record"):
+                 client.client.rollout_path = self.output / "games" / game.game_id / "rollout.jsonl"
+                 client.client.rollout_logprobs = self.study.get("rollout_record") == "logprobs"
++                if self.study.get("weights_follow"):
++                    from .weights_follow import current
++
++                    client.client.weights_version = current
++            if self.study.get("loop_stop"):  # OPD (22 Oct): vLLM repetition_detection, e.g. 32-1024 tokens x 3
++                client.client.loop_stop = {k: int(v) for k, v in self.study["loop_stop"].items()
++                                           if k in ("min_pattern_size", "max_pattern_size", "min_count")}
+             agent = cls(
+                 game.game_id, arc, card, client, cfg, self.output / "games" / game.game_id,
+                 self.analysis_python, time.monotonic() + self.wall_seconds + 3600,

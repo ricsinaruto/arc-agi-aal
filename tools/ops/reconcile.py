@@ -40,21 +40,11 @@ def receipts():
     """{run id lowercased: path} of the Nebius launch receipts."""
     return {p.name[7:-5].lower(): p for p in REC.glob("nebius-*.json")}
 
-def ledger_states(recs=None):
-    """{id: state}: every ledger row by its run_id, and each record's run id by its CURRENT attempt (latest row), so a
-    relaunch under the same id (row "<run>/attempt-2") is not read as attempt 1's settled row (RL 26 Oct)."""
-    if recs is None:
-        sys.path.insert(0, str(ROOT / "src"))
-        from arc_infra.runops import records
-        recs = records.records()
-    out = {}
-    for r in recs:
-        rows = [e["row"] for e in r.get("ledger") or []]
-        for row in rows:
-            out[str(row.get("run_id") or r["run"])] = row.get("state")
-        if rows:
-            out[str(r["run"])] = rows[-1].get("state")
-    return out
+def ledger_states():
+    d = paths.read_json(ROOT / "docs/spend.json"); rows = list(d.get("runs") or [])
+    for v in d.values():
+        if isinstance(v, dict) and isinstance(v.get("runs"), list): rows += v["runs"]
+    return {str(r.get("run_id") or r.get("run")): r.get("state") for r in rows if isinstance(r, dict)}
 
 MODAL_OK = True
 
@@ -86,10 +76,8 @@ def modal_jobs(now):
     try:
         r = subprocess.run([PY, "-c", code, *[v["fc"] for v in todo.values()]], capture_output=True, text=True, timeout=120)
         st = json.loads(r.stdout.strip().splitlines()[-1]) if r.returncode == 0 else {}
-        listed = paths.modal_apps(modal)
-        if listed is None:
-            raise RuntimeError("Modal app listing unknown")  # carry last known states below, never "ended"
-        apps = [(ts(a["created_at"]), a["app_id"]) for a in listed if a.get("state") != "stopped"]
+        apps = [(ts(a["created_at"]), a["app_id"]) for a in json.loads(subprocess.run([modal, "app", "list", "--json"], capture_output=True, text=True, timeout=60).stdout)
+                if a.get("state") != "stopped"]
         boxes = {}
         for c in json.loads(subprocess.run([modal, "container", "list", "--json"], capture_output=True, text=True, timeout=60).stdout):
             boxes[c["app_id"]] = min(boxes.get(c["app_id"], 1e18), ts(c["start_time"]))
@@ -160,8 +148,10 @@ END = ("complete", "completed", "done", "finished", "stopped", "failed", "cancel
 def app_ended(app_id, _c={}):
     """True when Modal no longer lists the app as running (listed once per pass; False when the listing fails)."""
     if "s" not in _c:
-        listed = paths.modal_apps(str(ROOT / ".venv/bin/modal"))  # None: unknown (failed or empty listing)
-        _c["s"] = None if listed is None else {a["app_id"] for a in listed if a.get("state") != "stopped"}
+        try: _c["s"] = {a["app_id"] for a in ({k.lower().replace(" ", "_"): v for k, v in x.items()} for x in json.loads(subprocess.run(
+                            [str(ROOT / ".venv/bin/modal"), "app", "list", "--json"], capture_output=True, text=True, timeout=60).stdout))
+                        if a.get("state") != "stopped"}  # modal 1.2 vs 1.5 key styles
+        except Exception: _c["s"] = None
     # only real app ids: a launcher's placeholder ("pending", None) is not an ended app
     return str(app_id or "").startswith("ap-") and _c["s"] is not None and app_id not in _c["s"]
 
@@ -248,18 +238,6 @@ def run(st, log=print):
     ops, info = plan(q, vms, modal, now, st)
     (paths.SCRATCH / "mon").mkdir(parents=True, exist_ok=True)
     (paths.SCRATCH / "mon/state.json").write_text(json.dumps({"t": now, "nebius_ok": vms is not None, "modal_ok": MODAL_OK, "runs": info}))
-    if vms is not None and MODAL_OK:  # records nothing runs behind (reserve rows left open): closed once both listings worked
-        try:
-            sys.path.insert(0, str(ROOT / "src"))
-            from arc_infra.runops import records
-            listed = paths.modal_apps(str(ROOT / ".venv/bin/modal"))
-            if listed is not None:
-                live = set(vms) | {e["run"].lower() for e in q.get("live", []) + q.get("queued", [])}
-                stale = records.stale_open(records.records(), live_runs=live,
-                                           live_apps={a["app_id"] for a in listed if a.get("state") != "stopped"}, now=now)
-                records.close_stale(stale, note="reconcile: no app/VM listed past the reservation")
-                for r in stale: log("records: closed stale", r)
-        except Exception as exc: log("stale sweep failed:", exc)
     if not ops: return info
     try: cards = json.loads((paths.SCRATCH / "mon/cards.json").read_text())
     except Exception: cards = {}

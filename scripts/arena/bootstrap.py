@@ -191,7 +191,9 @@ def main():
         stop_program = ("from arc_infra.serving import load_recipe; import sys; "
                         "load_recipe(sys.argv[1],sys.argv[2]).stop_owned_server()")
         current_env = server_env(trials[0]) if trials and not args.evolve else {}
-        if study.get("start_in_trial_loop") and not args.evolve:
+        if study.get("no_server"):  # train-only runs (SFT arm, 17 Oct): the trainer has the card; no vLLM boot (~10 min)
+            pass
+        elif study.get("start_in_trial_loop") and not args.evolve:
             # Server diagnostics (expert usage, 28 September): the first trial's server may fail to start; starting
             # it inside the trial loop costs only that trial instead of the whole run.
             current_env = None
@@ -242,7 +244,7 @@ def main():
                 print(json.dumps({"event": "trial_skipped", "trial": trial["name"],
                                   "reason": results[trial["name"]]}), flush=True)
                 continue
-            if server_env(trial) != current_env:
+            if server_env(trial) != current_env and not study.get("no_server"):
                 subprocess.run([python, "-c", stop_program, str(working / "serving"), args.input_root],
                                env=env, check=False, timeout=180)
                 restart = time.time()
@@ -274,7 +276,7 @@ def main():
             reserves = study.get('bootstrap_reserves') or {}
             budget = started + args.max_seconds - float(reserves.get('end_seconds', 120)) - time.time()
             margin = float(reserves.get('trial_seconds', 300))
-            if trial["kind"] in ("level-bench", "expert-usage", "prune-quality"):
+            if trial["kind"] in ("level-bench", "expert-usage", "prune-quality", "rl-loop"):
                 # The bench sizes its own wall from what is left (at least its min_wall_seconds); the
                 # expert-usage trial runs its passes until shortly before this timeout.
                 trial_wall = min(trial_wall, budget - 300)
@@ -312,7 +314,7 @@ def main():
             try:
                 timeout = budget if trial_competition and rerun else min(budget, trial_wall + TRIAL_GRACE)
                 if trial["kind"] in ("level-bench", "kernel-quality", "draft-head", "expert-quant", "expert-usage",
-                                     "server-check", "prune-quality"):
+                                     "server-check", "prune-quality", "train-probe"):
                     # Live progress (Modal only builds these trials): the trial's own JSON lines are echoed as
                     # they arrive; everything else still goes to the file alone.
                     returncode = run_echoing(command, env, process_log, timeout=max(1, timeout),
@@ -322,7 +324,8 @@ def main():
                                                      "expert-quant": '{"event": "expert_quant',
                                                      "expert-usage": '{"event": "expert_usage',
                                                      "server-check": '{"event": "server_check',
-                                                     "prune-quality": '{"event": "prune_quality'}[trial["kind"]])
+                                                     "prune-quality": '{"event": "prune_quality',
+                                                     "train-probe": '{"event": "train_probe'}[trial["kind"]])
                 else:
                     live = start_live_progress(bundle, study, trial, working, args.output)
                     try:

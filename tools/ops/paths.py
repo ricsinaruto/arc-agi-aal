@@ -30,33 +30,3 @@ def read_json(path, tries=10):
                 print(f"WARNING {p.name} unreadable, using last good copy from {time.strftime('%H:%M', time.gmtime(good.stat().st_mtime))} UTC", file=sys.stderr)
                 return json.loads(good.read_text())
             time.sleep(0.5)
-
-
-def modal_apps(modal_bin=None, timeout=60):
-    """`modal app list --json` rows (keys lower_snake), or None when the listing is UNKNOWN: a non-zero exit, empty
-    output, unparsable JSON or an empty list (the workspace always lists recent apps; an empty list is an API failure,
-    24 Oct: api.modal.com unreachable read as every app gone). Callers must treat None as unknown, never as gone."""
-    import json as _json
-    import subprocess as _sp
-
-    modal_bin = modal_bin or str(ROOT_PATH / ".venv/bin/modal")
-    try:
-        r = _sp.run([modal_bin, "app", "list", "--json"], capture_output=True, text=True, timeout=timeout)
-        rows = _json.loads(r.stdout) if r.returncode == 0 and r.stdout.strip() else None
-    except (_sp.SubprocessError, OSError, ValueError):
-        return None
-    if not isinstance(rows, list) or not rows:
-        return None
-    return [{k.lower().replace(" ", "_"): v for k, v in a.items()} for a in rows]
-
-
-# dashboards show the local time (this machine's zone, UTC+1 in winter), labelled by zone name
-import datetime as _dt
-def local(t=None):
-    """A datetime in local time: from an epoch, a "YYYY-MM-DD HH:MM[:SS]" UTC string, an aware datetime, or now."""
-    if t is None: return _dt.datetime.now().astimezone()
-    if isinstance(t, (int, float)): return _dt.datetime.fromtimestamp(t).astimezone()
-    if isinstance(t, str): return _dt.datetime.fromisoformat(t[:19].replace("T", " ")).replace(tzinfo=_dt.timezone.utc).astimezone()
-    return t.astimezone()
-def tz():
-    return local().strftime("%Z")
