@@ -1,0 +1,23 @@
+{
+ "run": "sft-score-v9c-ho-v1",
+ "what": "Teacher targets for V9C ho10x11's sp80 wa30 sk48 lf52 bp35 tries (excl5 dropped): 636 ex, 60.78M tokens, 20.46M reply, 2 B300, for the d16 resume; judged by every file scored, none empty.",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/nd-v9c-ho-v1",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 2,
+  "deadline_s": 6000,
+  "out": "/runs/validation/sft-score-v9c-ho-v1",
+  "row_graph": true,
+  "dest": "/runs/validation/sft-score-v9c-ho-v1/files",
+  "merge": true,
+  "local_io": true,
+  "local_io_ahead": 4,
+  "stage_inline": true
+ }
+}

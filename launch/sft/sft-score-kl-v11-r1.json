@@ -1,0 +1,22 @@
+{
+ "run": "sft-score-kl-v11-r1",
+ "what": "retry 1 of 2 of sft-score-kl-v11 (slow-host exit at 13.9K median launch tok/s): same code and settings, a new container; trunk/sft teacher scoring pass for KL + QAD, ONE B300, fixed scorer + row graph, writing into a scratch dest (graph-v1 scratch: 84.7% util, writer tail 0.3-0.4 s; kl-v9/v10 into the pool: 72-76%, tail 1.6 s) and moved into the s2-kl-v2 pool at the end (files already in the pool skipped); slow-host guard: exits cleanly if the median host launch rate of examples 3-10 is under 15K tok/s (manual relaunch, at most 2 retries); stop rule: sustained util <80% or tok/s <13.2K",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 3600,
+  "out": "/runs/validation/sft-score-kl-v11-r1",
+  "row_graph": true,
+  "dest": "/runs/validation/sft-score-kl-v11-r1/files",
+  "merge": true,
+  "slow_host_floor": 15000,
+  "slow_host_after": 10
+ }
+}

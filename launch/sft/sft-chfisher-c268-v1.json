@@ -1,0 +1,145 @@
+{
+ "run": "sft-chfisher-c268-v1",
+ "what": "trunk/sft eval-only (within-expert channel pruning): mask-Fisher and first-order attribution per routed-expert intermediate channel of ckpt-268 (unit mask on down_proj columns, main KL loss backward per example) over 40 excl5-game held-out examples past the 56-example slice; plus ckpt-268's own slice and full held-out KL on the int4 g32 grid (the grid a 320-wide expert can use) with per-row dumps, and the g128 slice as a check of 0.12574. Test B300, < 40 min.",
+ "train": {
+  "student": "/assets/sft-heal/student-p75",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "out": "/runs/validation/sft-chfisher-c268-v1/train",
+  "lr": 3e-06,
+  "warmup": 0,
+  "rewarm": 0,
+  "total_steps": 268,
+  "final_lr_frac": 1.0,
+  "batch_reply_tokens": 250000,
+  "window": 49152,
+  "prefix_chunk": 8192,
+  "loss_chunk": 2048,
+  "mtp_weight": 1.0,
+  "ckpt_steps": 0,
+  "ckpt_seconds": 3600,
+  "keep_ckpts": 2,
+  "eval_steps": 0,
+  "eval_examples": 56,
+  "eval_full_examples": 155,
+  "eval_full_steps": [
+   268
+  ],
+  "heldout_data": "/runs/sft-data/s2-heldout-v1",
+  "seed": 0,
+  "loss": "kl",
+  "teacher_k": 131,
+  "fake_quant": true,
+  "fast_attention": true,
+  "gdn_fast": true,
+  "gdn_keep": true,
+  "hyper_fast": true,
+  "sel_cache": true,
+  "keep_layers": 1,
+  "paged_states": true,
+  "mem_budget_gib": 256.0,
+  "metrics_seconds": 15.0,
+  "union_attention": true,
+  "qat_fused": false,
+  "util_every": 1.0,
+  "exclude_pairs": [
+   [
+    "b2-mfu2-pthboot-v2",
+    "vc33"
+   ],
+   [
+    "b2-mfu2-pthboot-v3",
+    "re86"
+   ],
+   [
+    "b2-mfu2-pthboot-v3",
+    "vc33"
+   ],
+   [
+    "b2-sft4x-opd0-hl2-v1",
+    "lf52"
+   ],
+   [
+    "b2-sft4x-opd0-hlate-v1",
+    "lf52"
+   ],
+   [
+    "b2-sft4x-opd0-hlate-v1",
+    "sp80"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1a",
+    "cn04"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1a",
+    "lp85"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1a",
+    "vc33"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1b",
+    "wa30"
+   ],
+   [
+    "b2-sft4x-opd1-bg1-v1",
+    "ls20"
+   ],
+   [
+    "b2-sft4x-opd1-bg1-v1",
+    "re86"
+   ],
+   [
+    "b2-sft4x-opd2-bg2-v1",
+    "sk48"
+   ],
+   [
+    "b2-sft4x-opd3-bg3-v1",
+    "ka59"
+   ],
+   [
+    "b2-sft4x-opd3-bg3-v1",
+    "tu93"
+   ],
+   [
+    "b2-sft4x-opdS-bg1-v1",
+    "re86"
+   ],
+   [
+    "b2-sft4x-opdS-bg1-v3",
+    "re86"
+   ],
+   [
+    "b2-sft4x-opdS-bg1-v6",
+    "re86"
+   ]
+  ],
+  "grad_clip": 1.0,
+  "init_ckpt": "/runs/validation/sft-p75-cur20-c231-v1/train/ckpt-268",
+  "init_fresh_data": true,
+  "curriculum": false,
+  "stop_step": 268,
+  "stop_ckpt": false,
+  "eval_resume": true,
+  "eval_dump": true,
+  "qat_group": 32,
+  "eval_variants": [
+   {
+    "name": "g128",
+    "group": 128
+   }
+  ],
+  "channel_fisher": {
+   "n": 40,
+   "games": [
+    "ar25",
+    "ft09",
+    "lp85",
+    "tu93",
+    "vc33"
+   ],
+   "skip": 56
+  }
+ }
+}

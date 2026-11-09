@@ -1,0 +1,25 @@
+{
+ "run": "sft-p75-probe-3e6",
+ "what": "P1 lr probe for trunk/sft: plain SFT of the t75 student from D on training-15 replies at lr 3e-6, 8 steps of 62.5K reply tokens; judged by held-out reply loss at steps 4 and 8 vs step 0 (pick the lr with the largest drop that stays finite and monotone); also measures tok/s and peak VRAM for sizing",
+ "train": {
+  "student": "/runs/validation/sft-heal-round-sA-D-1e5/train/student",
+  "data": "/runs/sft-data/s1-v4",
+  "out": "/runs/validation/sft-p75-probe-3e6/train",
+  "lr": 3e-06,
+  "warmup": 2,
+  "rewarm": 1,
+  "total_steps": 8,
+  "final_lr_frac": 1.0,
+  "batch_reply_tokens": 62500,
+  "window": 49152,
+  "prefix_chunk": 8192,
+  "loss_chunk": 2048,
+  "mtp_weight": 1.0,
+  "ckpt_steps": 0,
+  "ckpt_seconds": 3600,
+  "keep_ckpts": 1,
+  "eval_steps": 4,
+  "eval_examples": 21,
+  "seed": 0
+ }
+}

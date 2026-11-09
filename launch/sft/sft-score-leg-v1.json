@@ -1,0 +1,20 @@
+{
+ "run": "sft-score-leg-v1",
+ "what": "trunk/sft teacher scoring leg, 1 B300, <=30 min: BF16 teacher scoring s2-kl-v2 held-out then priority examples into a scratch folder; a 75 s sweep over prefill chunk x logit rows (16K..32K x 2K..4K), then the fastest size without allocator retries for ~5 min; bars for the 2-card relaunch: util >95% sustained, VRAM >95% (>=255 GiB in use), zero allocator retries, >=18.3K ctx tok/s per card",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 675,
+  "out": "/runs/validation/sft-score-leg-v1",
+  "dest": "/runs/validation/sft-score-leg-v1/files",
+  "sizes": "16384x2048,24576x2048,32768x2048,24576x4096,32768x4096",
+  "per_size_s": 75
+ }
+}

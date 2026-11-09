@@ -1,0 +1,18 @@
+{
+ "run": "sft-score-leg2c-v1",
+ "what": "trunk/sft 2-card scoring leg, 2 x 1 B300, <=15 min of scoring into the s2-kl-v2 pool (skips scored files): 8-16 reserved CPUs per card (owner exception; kl-v5 host launch rate 11-12K vs 19.3K), cgroup CPU throttling and host launch rate logged per example, the row block as one CUDA graph captured thread-locally before the loader starts; stop rule per card: <80% util or <13.2K tok/s sustained",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 2,
+  "deadline_s": 900,
+  "out": "/runs/validation/sft-score-leg2c-v1",
+  "row_graph": true
+ }
+}

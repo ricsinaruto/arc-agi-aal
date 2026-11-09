@@ -1,0 +1,25 @@
+{
+ "run": "sft-score-long-v1c",
+ "what": "Teacher targets for shard 1's unscored rest of sft-score-long-v1 after the same CUDA OOM a minute after shard 0 (teacher.py OOM retry fixed, bad9f0721), 1 B300, per-example peak memory. Fix-and-relaunch.",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/nd-long-v1",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 6000,
+  "out": "/runs/validation/sft-score-long-v1c",
+  "row_graph": true,
+  "dest": "/runs/validation/sft-score-long-v1c/files",
+  "merge": true,
+  "slow_host_floor": 15000,
+  "slow_host_after": 10,
+  "local_io": true,
+  "local_io_ahead": 4,
+  "priority": "/runs/sft-data/nd-long-v1/priority-rest1.json"
+ }
+}

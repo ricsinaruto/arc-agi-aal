@@ -1,0 +1,24 @@
+{
+ "run": "sft-score-nd-b-v1",
+ "what": "Teacher targets for nd-v87b-b1 (score the newly built data): v8.7b plays on the INT3-requant build (v87b64-kf-c110-9h, tp-cg3, tp-cg4), rebuilt text-exact, curve >= 0.9; train-15 only. 485 examples, 43.03M tokens incl. context, 17.52M reply. BF16 Flash top-128 + 3 forced ids, same config as s2-rest-v1 scoring. 1 B300, ~43 min at 16.5K tok/s + load.",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/nd-v87b-b1",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 3300,
+  "out": "/runs/validation/sft-score-nd-b-v1",
+  "row_graph": true,
+  "dest": "/runs/validation/sft-score-nd-b-v1/files",
+  "merge": true,
+  "slow_host_floor": 15000,
+  "slow_host_after": 10,
+  "local_io": true,
+  "local_io_ahead": 4
+ }
+}

@@ -1,0 +1,66 @@
+{
+ "run": "sft-layers-p75c1028-v2",
+ "what": "Greedy layer-drop scoring on p75 ckpt-1028: which 16 of its 48 layers cost least, as trained (128 experts, top-k 10, INT8 dense, int4 KV), KL(uncut || cut) on 30 windows of the 15 train games, greedy KL and KL per cost to 16, the deep cut's set and its first 4 / 8 / 12 as references. Eval-only, 1 B300. Judged by the curve against the deep cut's set.",
+ "layers": {
+  "student": "/runs/validation/sft-p75-kd-c893-v1/train/ckpt-1028/student",
+  "windows": "/assets/sft-heal/layer-tf-train15.json",
+  "out": "/runs/validation/sft-layers-p75c1028-v2",
+  "depth": 16,
+  "lazy": 6,
+  "cost_full": 2.0,
+  "tokens": 4096,
+  "scored": 2048,
+  "fast": true,
+  "trained_format": true,
+  "sets": {
+   "deep4": [
+    44,
+    32,
+    39,
+    42
+   ],
+   "deep8": [
+    44,
+    32,
+    39,
+    42,
+    41,
+    35,
+    33,
+    36
+   ],
+   "deep12": [
+    44,
+    32,
+    39,
+    42,
+    41,
+    35,
+    33,
+    36,
+    29,
+    30,
+    34,
+    31
+   ],
+   "deep16": [
+    44,
+    32,
+    39,
+    42,
+    41,
+    35,
+    33,
+    36,
+    29,
+    30,
+    34,
+    31,
+    25,
+    17,
+    4,
+    11
+   ]
+  }
+ }
+}

@@ -1,0 +1,17 @@
+{
+ "run": "sft-score-kl-v1",
+ "what": "trunk/sft teacher scoring pass for KL + QAD, 2 x 1 B300: BF16 Flash teacher per card with the fast paths, top-128 plus forced <|im_end|>, </think>, <tool_call> at every reply position of the s2-kl-v1 pool (held-out first, then the curve>=0.9 train pairs), each example written to <data>/teacher/ and committed as done; ends when the pool is done (deadline 1 h of scoring); resumable; judged by every example scored and finite",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/s2-kl-v1",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 2,
+  "deadline_s": 3600,
+  "out": "/runs/validation/sft-score-kl-v1"
+ }
+}

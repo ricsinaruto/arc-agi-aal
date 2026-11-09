@@ -1,0 +1,126 @@
+{
+ "run": "sft-k256-qad-v1r",
+ "what": "trunk/sft KL + QAD main run on k256: the k256r15b student (/assets/sft-heal/student-k256r15b) on 2 B300s (shard.py: routed experts sharded on the expert dim) distilled toward BF16 Flash's top-128 (+3 forced) targets on s2-kl-v2 for one pass (231 steps at 250K reply tokens), seed 0, served-format QAD: fake_quant on the int3served grid, dense_int8_train, kv_train kv4; lr 3e-6 (probe pick: 1e-5 unstable, gn 7.11 > 1.5x 4.26 at step 2), warm-up 15, clip 1.0, constant lr; slice every 24 steps + full held-out at 0 and 231; async checkpoints every 30 min. Then -v1b (cur20-v3 curriculum pass, 231 -> 268). Judged by held-out reply KL vs p75's ckpt-231 (0.1243) and ckpt-268. Relaunch of sft-k256-qad-v1 (Modal preemption 30 Oct 00:08 at step 47, its hourly ckpt-45 unfinalised): same config, checkpoints every 30 min, restart policy resume.",
+ "gpus": 2,
+ "lr_pending": "set train.lr from the k256 probes before launch",
+ "train": {
+  "student": "/assets/sft-heal/student-k256r15b",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "out": "/runs/validation/sft-k256-qad-v1r/train",
+  "lr": 3e-06,
+  "warmup": 15,
+  "rewarm": 0,
+  "total_steps": 231,
+  "final_lr_frac": 1.0,
+  "batch_reply_tokens": 250000,
+  "window": 49152,
+  "prefix_chunk": 8192,
+  "loss_chunk": 2048,
+  "mtp_weight": 1.0,
+  "ckpt_steps": 0,
+  "ckpt_seconds": 1800,
+  "keep_ckpts": 2,
+  "eval_steps": 24,
+  "eval_examples": 56,
+  "eval_full_examples": 155,
+  "eval_full_steps": [
+   0,
+   231
+  ],
+  "heldout_data": "/runs/sft-data/s2-heldout-v1",
+  "seed": 0,
+  "loss": "kl",
+  "teacher_k": 131,
+  "fake_quant": true,
+  "fast_attention": true,
+  "gdn_fast": true,
+  "gdn_keep": true,
+  "hyper_fast": true,
+  "sel_cache": true,
+  "keep_layers": 1,
+  "paged_states": true,
+  "mem_budget_gib": 256.0,
+  "metrics_seconds": 15.0,
+  "union_attention": true,
+  "qat_fused": true,
+  "util_every": 1.0,
+  "exclude_pairs": [
+   [
+    "b2-mfu2-pthboot-v2",
+    "vc33"
+   ],
+   [
+    "b2-mfu2-pthboot-v3",
+    "re86"
+   ],
+   [
+    "b2-mfu2-pthboot-v3",
+    "vc33"
+   ],
+   [
+    "b2-sft4x-opd0-hl2-v1",
+    "lf52"
+   ],
+   [
+    "b2-sft4x-opd0-hlate-v1",
+    "lf52"
+   ],
+   [
+    "b2-sft4x-opd0-hlate-v1",
+    "sp80"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1a",
+    "cn04"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1a",
+    "lp85"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1a",
+    "vc33"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1b",
+    "wa30"
+   ],
+   [
+    "b2-sft4x-opd1-bg1-v1",
+    "ls20"
+   ],
+   [
+    "b2-sft4x-opd1-bg1-v1",
+    "re86"
+   ],
+   [
+    "b2-sft4x-opd2-bg2-v1",
+    "sk48"
+   ],
+   [
+    "b2-sft4x-opd3-bg3-v1",
+    "ka59"
+   ],
+   [
+    "b2-sft4x-opd3-bg3-v1",
+    "tu93"
+   ],
+   [
+    "b2-sft4x-opdS-bg1-v1",
+    "re86"
+   ],
+   [
+    "b2-sft4x-opdS-bg1-v3",
+    "re86"
+   ],
+   [
+    "b2-sft4x-opdS-bg1-v6",
+    "re86"
+   ]
+  ],
+  "grad_clip": 1.0,
+  "qat_grid": "int3served",
+  "dense_int8_train": true,
+  "kv_train": "kv4"
+ }
+}

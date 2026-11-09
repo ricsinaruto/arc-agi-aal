@@ -1,8 +1,0 @@
-{
-  "source": "vllm/parser/qwen3.py",
-  "runtime_image": "vllm/vllm-openai:qwen38-flash-next",
-  "runtime_amd64_digest": "sha256:0aea30240f3e3d9ffae8526643950e170eb5fa07fc427016a9dd90892afa2aa3",
-  "sha256": "8a7ee658322de7b736ea5b0f802d70dd07a124b5878b4f8ad2f99eca8e1d35fb",
-  "license": "Apache-2.0",
-  "scope": "Unmodified pinned runtime source; tests execute constructor and extract_reasoning with an isolated engine stub, not GPU inference"
-}

@@ -1,0 +1,18 @@
+{
+ "run": "sft-score-leg-v6",
+ "what": "trunk/sft teacher scoring leg 6, 1 B300, <=20 min: the row block as one CUDA graph now capturable (forced ids masked with index_fill_; leg-v5 fell back to eager: 18.9K tok/s, util 92.0% over 559 s); 15 min of scoring (the decline shows after 300 s), per-example writer backlog, gen-2 GC count and pause (gc.freeze after load), RSS, pinned pool, allocator reserved vs allocated; bars: >=18.3K tok/s end to end, >=95% util, >=255 GiB",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 900,
+  "out": "/runs/validation/sft-score-leg-v6",
+  "dest": "/runs/validation/sft-score-leg-v6/files"
+ }
+}

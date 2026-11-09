@@ -1,0 +1,23 @@
+{
+ "run": "sft-score-allkl-v1",
+ "what": "KL-on-every-token test, scoring leg: the BF16 Flash teacher's top-128 (+3 forced) at every text position of the gradient window of 192 s2 train examples (s2-sub192-all; image tokens and pre-window history off), kl-v12 scorer settings, 1 B300 test slot (<1 h); sanity rec_lp floor -4.0 (observation text is less predictable than replies: example 3 read -2.19 at top-k mass 0.95, top1 0.67)",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/s2-sub192-all",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 2700,
+  "out": "/runs/validation/sft-score-allkl-v1",
+  "row_graph": true,
+  "dest": "/runs/validation/sft-score-allkl-v1/files",
+  "merge": true,
+  "local_io": true,
+  "local_io_ahead": 4,
+  "sanity_rec_lp_min": -4.0
+ }
+}

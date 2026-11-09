@@ -1,0 +1,17 @@
+{
+ "run": "sft-layers-p50c647-v1",
+ "what": "Greedy layer-drop scoring on p50 ckpt-647: which 8 of its 48 layers cost least, as trained (256 experts, int3served, INT8 dense, kv4), KL(uncut || cut) on the excl5 windows, greedy KL and KL per cost to 8; decides the p50d8 student; 1 B300, under 1 h.",
+ "layers": {
+  "student": "/runs/validation/sft-k256-kd-c268-v1/train/ckpt-647/student",
+  "windows": "/assets/sft-heal/layer-tf-excl5.json",
+  "out": "/runs/validation/sft-layers-p50c647-v1",
+  "depth": 8,
+  "lazy": 6,
+  "cost_full": 2.0,
+  "tokens": 4096,
+  "scored": 2048,
+  "fast": true,
+  "trained_format": true,
+  "qat_grid": "int3served"
+ }
+}

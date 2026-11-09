@@ -1,9 +1,0 @@
-{
-  "repo": "primitive-ai/Nex-N2.5-mini-NVFP4",
-  "revision": "ceaa4ce6d942c3d5456322d183b535a0c89a5fa6",
-  "path": "chat_template.jinja",
-  "sha256": "f1753536417ee87cded4bc5017354eb2123c079d20c634403a3d808b2ba3cc5b",
-  "license": "Apache-2.0 as declared by the checkpoint model card",
-  "source": "https://huggingface.co/primitive-ai/Nex-N2.5-mini-NVFP4/blob/ceaa4ce6d942c3d5456322d183b535a0c89a5fa6/chat_template.jinja",
-  "modified": false
-}

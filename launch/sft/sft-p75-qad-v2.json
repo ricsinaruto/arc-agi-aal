@@ -1,0 +1,121 @@
+{
+ "run": "sft-p75-qad-v2",
+ "what": "trunk/sft KL + QAD main run: the t75 student from D distilled toward BF16 Flash's top-128 (+3 forced structural ids) teacher targets on the scored s2-kl-v2 pool minus the 18 student pairs under v8.5p's bar (1,869 train examples, 57.71M reply tokens, 15 RL-train games), routed experts through the export's int4 g128 grid; one epoch = 231 steps of 250K reply tokens, warm-up 15 then constant lr (no decay), no re-warm on resume; lr 3e-6 (owner, from the KL lr probes 3e-6, 5e-6, 1e-5: lowest step-8 held-out slice KL, stable grad norm). Judged by held-out KL on s2-heldout-v1 (155 examples, every level of the RL held-out 10 games, 5.05M reply tokens): the 56-example one-per-level slice every 24 steps, the full 155 at steps 0, 116 and 231, then a play read of the int4 export.",
+ "train": {
+  "student": "/runs/validation/sft-heal-round-sA-D-1e5/train/student",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "out": "/runs/validation/sft-p75-qad-v2/train",
+  "lr": 3e-06,
+  "warmup": 15,
+  "rewarm": 0,
+  "total_steps": 231,
+  "final_lr_frac": 1.0,
+  "batch_reply_tokens": 250000,
+  "window": 49152,
+  "prefix_chunk": 8192,
+  "loss_chunk": 2048,
+  "mtp_weight": 1.0,
+  "ckpt_steps": 0,
+  "ckpt_seconds": 3600,
+  "keep_ckpts": 2,
+  "eval_steps": 24,
+  "eval_examples": 56,
+  "eval_full_examples": 155,
+  "eval_full_steps": [
+   0,
+   116,
+   231
+  ],
+  "heldout_data": "/runs/sft-data/s2-heldout-v1",
+  "seed": 0,
+  "loss": "kl",
+  "teacher_k": 131,
+  "fake_quant": true,
+  "fast_attention": true,
+  "gdn_fast": true,
+  "gdn_keep": true,
+  "hyper_fast": true,
+  "sel_cache": true,
+  "keep_layers": 1,
+  "paged_states": true,
+  "mem_budget_gib": 256.0,
+  "metrics_seconds": 15.0,
+  "union_attention": true,
+  "qat_fused": true,
+  "util_every": 1.0,
+  "exclude_pairs": [
+   [
+    "b2-mfu2-pthboot-v2",
+    "vc33"
+   ],
+   [
+    "b2-mfu2-pthboot-v3",
+    "re86"
+   ],
+   [
+    "b2-mfu2-pthboot-v3",
+    "vc33"
+   ],
+   [
+    "b2-sft4x-opd0-hl2-v1",
+    "lf52"
+   ],
+   [
+    "b2-sft4x-opd0-hlate-v1",
+    "lf52"
+   ],
+   [
+    "b2-sft4x-opd0-hlate-v1",
+    "sp80"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1a",
+    "cn04"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1a",
+    "lp85"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1a",
+    "vc33"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1b",
+    "wa30"
+   ],
+   [
+    "b2-sft4x-opd1-bg1-v1",
+    "ls20"
+   ],
+   [
+    "b2-sft4x-opd1-bg1-v1",
+    "re86"
+   ],
+   [
+    "b2-sft4x-opd2-bg2-v1",
+    "sk48"
+   ],
+   [
+    "b2-sft4x-opd3-bg3-v1",
+    "ka59"
+   ],
+   [
+    "b2-sft4x-opd3-bg3-v1",
+    "tu93"
+   ],
+   [
+    "b2-sft4x-opdS-bg1-v1",
+    "re86"
+   ],
+   [
+    "b2-sft4x-opdS-bg1-v3",
+    "re86"
+   ],
+   [
+    "b2-sft4x-opdS-bg1-v6",
+    "re86"
+   ]
+  ]
+ }
+}

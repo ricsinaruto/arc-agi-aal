@@ -1,0 +1,36 @@
+{
+ "run": "sft-smoke-v1",
+ "what": "trunk/sft GPU smoke, 1 B300, <=30 min: single-layer checks of the GDN / hyper / attention fast paths vs the model's (fwd + every grad), the export grid on GPU vs CPU; boot 1 (cold compile cache, 2 one-example steps from the longest window, async checkpoint each step); boot 2 resumes it with fake_quant (warm cache, step 3); judged by the bars in scripts/sft/smoke.py (smoke.json); then, if under 22 min, the one-card teacher speed (BF16 Flash if it fits, W8A16 experts) on 3 held-out examples",
+ "train": {
+  "student": "/runs/validation/sft-heal-round-sA-D-1e5/train/student",
+  "data": "/runs/sft-data/s1-v4",
+  "out": "/runs/validation/sft-smoke-v1/train",
+  "lr": 1e-05,
+  "warmup": 1,
+  "rewarm": 1,
+  "total_steps": 2,
+  "final_lr_frac": 0.1,
+  "batch_reply_tokens": 1,
+  "window": 49152,
+  "prefix_chunk": 8192,
+  "loss_chunk": 2048,
+  "mtp_weight": 1.0,
+  "ckpt_steps": 1,
+  "ckpt_seconds": 3600,
+  "keep_ckpts": 1,
+  "eval_steps": 0,
+  "eval_examples": 1,
+  "seed": 0,
+  "gdn_fast": true,
+  "hyper_fast": true,
+  "metrics_seconds": 15.0
+ },
+ "smoke": {
+  "boot2": {
+   "total_steps": 3,
+   "fake_quant": true
+  },
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "teacher_after_s": 1320
+ }
+}

@@ -1,0 +1,53 @@
+{
+ "run": "sft-arc2slice-v52-ev-v1",
+ "what": "trunk/sft eval-only: ARC-2 held-out KL of the ARC-2 submission model on the fixed slice arc2-heldout-v1, 56 examples of 20 tasks, per-row dump for paired SE: v52's weights (k256 mask, INT3 refit experts dequantized, BF16 dense, PLE FP8), variant served = int4 KV with BF16 indexer keys; base read BF16 KV comes free. The INT3 fit set may have seen these tasks. 1 B300.",
+ "train": {
+  "student": "/assets/sft-heal/student-arc2k256-int3",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "out": "/runs/validation/sft-arc2slice-v52-ev-v1/train",
+  "lr": 3e-06,
+  "warmup": 0,
+  "rewarm": 0,
+  "total_steps": 0,
+  "final_lr_frac": 1.0,
+  "batch_reply_tokens": 250000,
+  "window": 49152,
+  "prefix_chunk": 8192,
+  "loss_chunk": 2048,
+  "mtp_weight": 1.0,
+  "ckpt_steps": 0,
+  "ckpt_seconds": 3600,
+  "keep_ckpts": 2,
+  "eval_steps": 0,
+  "eval_examples": 56,
+  "eval_full_examples": 0,
+  "eval_full_steps": [],
+  "heldout_data": "/runs/sft-data/arc2-heldout-v1",
+  "seed": 0,
+  "loss": "kl",
+  "teacher_k": 131,
+  "fake_quant": false,
+  "fast_attention": true,
+  "gdn_fast": true,
+  "gdn_keep": true,
+  "hyper_fast": true,
+  "sel_cache": true,
+  "keep_layers": 1,
+  "paged_states": true,
+  "mem_budget_gib": 256.0,
+  "metrics_seconds": 15.0,
+  "union_attention": true,
+  "qat_fused": false,
+  "util_every": 1.0,
+  "stop_step": 0,
+  "stop_ckpt": false,
+  "grad_clip": 1.0,
+  "eval_dump": true,
+  "eval_variants": [
+   {
+    "name": "served",
+    "kv": "kv4"
+   }
+  ]
+ }
+}

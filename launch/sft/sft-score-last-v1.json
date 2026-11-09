@@ -1,0 +1,23 @@
+{
+ "run": "sft-score-last-v1",
+ "what": "Teacher targets for the last long-run examples: the 2 sessions finished 31 Oct (k123a1, k124a1, 172 ex) plus the 116 examples of 5 sessions built after the scoring list; 288 ex, 30.75M tokens, 1.82M reply, 2 B300, about 30 min. Build + score only; no training on it without explicit approval.",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/nd-long-v1",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 2,
+  "deadline_s": 3600,
+  "out": "/runs/validation/sft-score-last-v1",
+  "row_graph": true,
+  "dest": "/runs/validation/sft-score-last-v1/files",
+  "merge": true,
+  "local_io": true,
+  "local_io_ahead": 4,
+  "priority": "/runs/sft-data/nd-long-v1/priority-last.json"
+ }
+}

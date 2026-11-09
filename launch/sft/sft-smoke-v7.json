@@ -1,0 +1,39 @@
+{
+ "run": "sft-smoke-v7",
+ "what": "trunk/sft boot-time smoke (fix-and-relaunch of sft-smoke-v6), 1 B300, <=30 min: boot 1 and boot 2 with the prefetching loader (all files in flight, ranges, one GPU copy per file), the snapshot buffer page-locked off the loop, parallel checkpoint writes and the MTP causal marker; measures boot seconds per phase, boot 2 compile/autotune cache hits, first-checkpoint stall and write time, step peaks vs 254.3 GiB",
+ "train": {
+  "student": "/runs/validation/sft-heal-round-sA-D-1e5/train/student",
+  "data": "/runs/sft-data/s1-v4",
+  "out": "/runs/validation/sft-smoke-v7/train",
+  "lr": 1e-05,
+  "warmup": 1,
+  "rewarm": 1,
+  "total_steps": 2,
+  "final_lr_frac": 0.1,
+  "batch_reply_tokens": 1,
+  "window": 49152,
+  "prefix_chunk": 8192,
+  "loss_chunk": 2048,
+  "mtp_weight": 1.0,
+  "ckpt_steps": 1,
+  "ckpt_seconds": 3600,
+  "keep_ckpts": 1,
+  "eval_steps": 0,
+  "eval_examples": 1,
+  "seed": 0,
+  "gdn_fast": true,
+  "hyper_fast": true,
+  "metrics_seconds": 15.0
+ },
+ "smoke": {
+  "boot2": {
+   "total_steps": 3,
+   "fake_quant": true
+  },
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "teacher_after_s": 0,
+  "phases": [
+   "boots"
+  ]
+ }
+}

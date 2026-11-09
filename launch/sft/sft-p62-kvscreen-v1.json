@@ -1,0 +1,149 @@
+{
+ "run": "sft-p62-kvscreen-v1",
+ "what": "Lever-table KL screen, eval-only on the unhealed t62 cut (student-p62, all 48 layers, excl5 mask): the 56-example slice with BF16 KV (the trainer's default) and int4 experts (the trained fake-quant grid), then per variant: served int4 KV (RHT, per token-head asymmetric 4-bit, exactly arc_infra.kv4_runtime), 2-bit KV of the same scheme, int3 experts (sym, per-16 fp16 scales), and int3 with KV4 / KV2. Bar for KV2: <= +0.01 slice KL, reported vs both BF16 and KV4. vs p75's unhealed 0.283.",
+ "train": {
+  "student": "/assets/sft-heal/student-p62",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "out": "/runs/validation/sft-p62-kvscreen-v1/train",
+  "lr": 3e-06,
+  "warmup": 15,
+  "rewarm": 0,
+  "total_steps": 0,
+  "final_lr_frac": 1.0,
+  "batch_reply_tokens": 250000,
+  "window": 49152,
+  "prefix_chunk": 8192,
+  "loss_chunk": 2048,
+  "mtp_weight": 1.0,
+  "ckpt_steps": 0,
+  "ckpt_seconds": 3600,
+  "keep_ckpts": 2,
+  "eval_steps": 24,
+  "eval_examples": 56,
+  "eval_full_examples": 155,
+  "eval_full_steps": [],
+  "heldout_data": "/runs/sft-data/s2-heldout-v1",
+  "seed": 0,
+  "loss": "kl",
+  "teacher_k": 131,
+  "fake_quant": true,
+  "fast_attention": true,
+  "gdn_fast": true,
+  "gdn_keep": true,
+  "hyper_fast": true,
+  "sel_cache": true,
+  "keep_layers": 1,
+  "paged_states": true,
+  "mem_budget_gib": 256.0,
+  "metrics_seconds": 15.0,
+  "union_attention": true,
+  "qat_fused": true,
+  "util_every": 1.0,
+  "exclude_pairs": [
+   [
+    "b2-mfu2-pthboot-v2",
+    "vc33"
+   ],
+   [
+    "b2-mfu2-pthboot-v3",
+    "re86"
+   ],
+   [
+    "b2-mfu2-pthboot-v3",
+    "vc33"
+   ],
+   [
+    "b2-sft4x-opd0-hl2-v1",
+    "lf52"
+   ],
+   [
+    "b2-sft4x-opd0-hlate-v1",
+    "lf52"
+   ],
+   [
+    "b2-sft4x-opd0-hlate-v1",
+    "sp80"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1a",
+    "cn04"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1a",
+    "lp85"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1a",
+    "vc33"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1b",
+    "wa30"
+   ],
+   [
+    "b2-sft4x-opd1-bg1-v1",
+    "ls20"
+   ],
+   [
+    "b2-sft4x-opd1-bg1-v1",
+    "re86"
+   ],
+   [
+    "b2-sft4x-opd2-bg2-v1",
+    "sk48"
+   ],
+   [
+    "b2-sft4x-opd3-bg3-v1",
+    "ka59"
+   ],
+   [
+    "b2-sft4x-opd3-bg3-v1",
+    "tu93"
+   ],
+   [
+    "b2-sft4x-opdS-bg1-v1",
+    "re86"
+   ],
+   [
+    "b2-sft4x-opdS-bg1-v3",
+    "re86"
+   ],
+   [
+    "b2-sft4x-opdS-bg1-v6",
+    "re86"
+   ]
+  ],
+  "grad_clip": 1.0,
+  "warm_start": false,
+  "eval_variants": [
+   {
+    "name": "kv4",
+    "kv": "kv4"
+   },
+   {
+    "name": "kv2",
+    "kv": "kv2"
+   },
+   {
+    "name": "int3",
+    "levels": 8,
+    "zero": 4,
+    "group": 16
+   },
+   {
+    "name": "int3_kv4",
+    "kv": "kv4",
+    "levels": 8,
+    "zero": 4,
+    "group": 16
+   },
+   {
+    "name": "int3_kv2",
+    "kv": "kv2",
+    "levels": 8,
+    "zero": 4,
+    "group": 16
+   }
+  ]
+ }
+}

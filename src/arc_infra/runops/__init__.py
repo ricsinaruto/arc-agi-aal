@@ -1,2 +1,1 @@
-"""Shared run operations for training and play jobs (infra arm, 24 Oct): restart guard, host-memory guard, metrics
-exporter, checkpoint I/O and the watcher plan. Standard library only, so every bundle can import it."""
+"""Run operations: the restart guard (restart.py) with its host-memory and JSON helpers."""

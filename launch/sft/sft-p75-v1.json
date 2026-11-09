@@ -1,0 +1,25 @@
+{
+ "run": "sft-p75-v1",
+ "what": "trunk/sft main run: plain SFT (CE on recorded replies, MTP self-distilled) of the t75 student from D on the selected training-15 plays (s1-v4), 1 B300, one epoch; judged by held-out reply loss vs D, then a play read of the exported overlay (score/tok on held-out 10 vs D; MTP mean accepted length >= 2.8)",
+ "train": {
+  "student": "/runs/validation/sft-heal-round-sA-D-1e5/train/student",
+  "data": "/runs/sft-data/s1-v4",
+  "out": "/runs/validation/sft-p75-v1/train",
+  "lr": 1e-05,
+  "warmup": 5,
+  "rewarm": 2,
+  "total_steps": 68,
+  "final_lr_frac": 0.1,
+  "batch_reply_tokens": 250000,
+  "window": 49152,
+  "prefix_chunk": 8192,
+  "loss_chunk": 2048,
+  "mtp_weight": 1.0,
+  "ckpt_steps": 0,
+  "ckpt_seconds": 3600,
+  "keep_ckpts": 2,
+  "eval_steps": 12,
+  "eval_examples": 21,
+  "seed": 0
+ }
+}

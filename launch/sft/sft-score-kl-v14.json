@@ -1,0 +1,25 @@
+{
+ "run": "sft-score-kl-v14",
+ "what": "Score the 320 priority-1 train files of s2-kl-v2 (the budget remainder; score more later), interleaved by game, same config (--local-io, scratch dest + merge). 30.5M context tokens (~30 min at 17K tok/s); scoring capped at 1,350 s so the run fits the 30-min test allowance.",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 1350,
+  "out": "/runs/validation/sft-score-kl-v14",
+  "row_graph": true,
+  "dest": "/runs/validation/sft-score-kl-v14/files",
+  "merge": true,
+  "slow_host_floor": 15000,
+  "slow_host_after": 10,
+  "local_io": true,
+  "local_io_ahead": 4,
+  "priority": "/runs/validation/sft-score-kl-v14/priority.json"
+ }
+}

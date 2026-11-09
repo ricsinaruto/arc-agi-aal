@@ -1,0 +1,18 @@
+{
+ "run": "sft-score-kl-v10",
+ "what": "trunk/sft teacher scoring pass for KL + QAD, ONE B300, the fixed scorer (fd0e31242) with the row block as one CUDA graph (graph-v1: 100 pool files bitwise equal, 84.7% util, 17.1K tok/s; kl-v9 eager: 75.8%), into the s2-kl-v2 pool (skips scored files); stop rule: sustained util <80% or tok/s <13.2K",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 3600,
+  "out": "/runs/validation/sft-score-kl-v10",
+  "row_graph": true
+ }
+}

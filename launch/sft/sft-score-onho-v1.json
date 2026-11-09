@@ -1,0 +1,24 @@
+{
+ "run": "sft-score-onho-v1",
+ "what": "Teacher targets for onpol-ho-c268-v2: ckpt-268's own plays on the 10 held-out games (b2-v9-p75c268-kf-ho10x11-9h-v1, 4 instances per game, replay-checked prefixes), all 215 held-out examples, 19.4M tokens, 6.6M reply. BF16 Flash top-128 + 3 forced ids as s2-heldout-v1's targets. 1 B300, ~20 min + load.",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/onpol-ho-c268-v2",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 3300,
+  "out": "/runs/validation/sft-score-onho-v1",
+  "row_graph": true,
+  "dest": "/runs/validation/sft-score-onho-v1/files",
+  "merge": true,
+  "slow_host_floor": 15000,
+  "slow_host_after": 10,
+  "local_io": true,
+  "local_io_ahead": 4
+ }
+}

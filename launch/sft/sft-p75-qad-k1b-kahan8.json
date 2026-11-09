@@ -1,0 +1,122 @@
+{
+ "run": "sft-p75-qad-k1b-kahan8",
+ "what": "SFT diagnostics K1: do BF16 masters with stochastic rounding limit learning? sft-p75-qad-v2's exact recipe from D (QAD on, same data order, lr 3e-6, 15 warm-up steps) with Kahan-compensated BF16 weights (an int8 compensation state in ulp/254 units paged with the optimizer states; ~FP32-master precision) instead of stochastic rounding; stopped after step 24, no checkpoint. Bar: SR limits learning if K1's relative slice-KL drop at step 24 beats the main's -6.4% (0.2472 -> 0.2315) by more than max(1 pt, 2x the R0 seed gap). Relaunch of K1 (host OOM with a BF16 comp: +65 GiB pinned; int8 comp +33 GiB, predicted host peak ~323 GiB). Host RAM: 360 GiB memory request.",
+ "train": {
+  "student": "/runs/validation/sft-heal-round-sA-D-1e5/train/student",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "out": "/runs/validation/sft-p75-qad-k1b-kahan8/train",
+  "lr": 3e-06,
+  "warmup": 15,
+  "rewarm": 0,
+  "total_steps": 231,
+  "final_lr_frac": 1.0,
+  "batch_reply_tokens": 250000,
+  "window": 49152,
+  "prefix_chunk": 8192,
+  "loss_chunk": 2048,
+  "mtp_weight": 1.0,
+  "ckpt_steps": 0,
+  "ckpt_seconds": 3600,
+  "keep_ckpts": 2,
+  "eval_steps": 24,
+  "eval_examples": 56,
+  "eval_full_examples": 155,
+  "eval_full_steps": [],
+  "heldout_data": "/runs/sft-data/s2-heldout-v1",
+  "seed": 0,
+  "loss": "kl",
+  "teacher_k": 131,
+  "fake_quant": true,
+  "fast_attention": true,
+  "gdn_fast": true,
+  "gdn_keep": true,
+  "hyper_fast": true,
+  "sel_cache": true,
+  "keep_layers": 1,
+  "paged_states": true,
+  "mem_budget_gib": 256.0,
+  "metrics_seconds": 15.0,
+  "union_attention": true,
+  "qat_fused": true,
+  "util_every": 1.0,
+  "exclude_pairs": [
+   [
+    "b2-mfu2-pthboot-v2",
+    "vc33"
+   ],
+   [
+    "b2-mfu2-pthboot-v3",
+    "re86"
+   ],
+   [
+    "b2-mfu2-pthboot-v3",
+    "vc33"
+   ],
+   [
+    "b2-sft4x-opd0-hl2-v1",
+    "lf52"
+   ],
+   [
+    "b2-sft4x-opd0-hlate-v1",
+    "lf52"
+   ],
+   [
+    "b2-sft4x-opd0-hlate-v1",
+    "sp80"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1a",
+    "cn04"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1a",
+    "lp85"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1a",
+    "vc33"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1b",
+    "wa30"
+   ],
+   [
+    "b2-sft4x-opd1-bg1-v1",
+    "ls20"
+   ],
+   [
+    "b2-sft4x-opd1-bg1-v1",
+    "re86"
+   ],
+   [
+    "b2-sft4x-opd2-bg2-v1",
+    "sk48"
+   ],
+   [
+    "b2-sft4x-opd3-bg3-v1",
+    "ka59"
+   ],
+   [
+    "b2-sft4x-opd3-bg3-v1",
+    "tu93"
+   ],
+   [
+    "b2-sft4x-opdS-bg1-v1",
+    "re86"
+   ],
+   [
+    "b2-sft4x-opdS-bg1-v3",
+    "re86"
+   ],
+   [
+    "b2-sft4x-opdS-bg1-v6",
+    "re86"
+   ]
+  ],
+  "stop_step": 24,
+  "stop_ckpt": false,
+  "kahan": true
+ },
+ "ack": "host OOM: exceeded memory request",
+ "host_mem_gib": 360
+}

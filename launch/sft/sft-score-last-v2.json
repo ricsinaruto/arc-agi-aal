@@ -1,0 +1,24 @@
+{
+ "run": "sft-score-last-v2",
+ "what": "Teacher targets for the last long-run examples, relaunch: v1's two shards ran out of card memory with the next image-heavy example staging beside the pass, so this run stages each example inline, only after the last pass. 288 ex, 30.75M tokens, 1.82M reply, 2 B300. Build + score only; no training on it without explicit approval.",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/nd-long-v1",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 2,
+  "deadline_s": 3600,
+  "out": "/runs/validation/sft-score-last-v2",
+  "row_graph": true,
+  "dest": "/runs/validation/sft-score-last-v2/files",
+  "merge": true,
+  "local_io": true,
+  "local_io_ahead": 4,
+  "priority": "/runs/sft-data/nd-long-v1/priority-last.json",
+  "stage_inline": true
+ }
+}

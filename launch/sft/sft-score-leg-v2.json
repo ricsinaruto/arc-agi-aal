@@ -1,0 +1,19 @@
+{
+ "run": "sft-score-leg-v2",
+ "what": "trunk/sft teacher scoring leg 2, 1 B300, <=20 min: 32K x 2K (leg-v1's fastest); example 3 profiled (torch.profiler, phases t:forward / t:rows) to name the ~0.4-0.7 s per-chunk host stall and measure achieved TFLOP/s; then ~5 min steady; bars as leg-v1 (>95% util, >=18.3K tok/s, >=255 GiB, zero retries)",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 420,
+  "out": "/runs/validation/sft-score-leg-v2",
+  "dest": "/runs/validation/sft-score-leg-v2/files",
+  "profile_at": 3
+ }
+}

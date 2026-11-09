@@ -1,0 +1,28 @@
+{
+ "run": "sft-p75-qad-v1",
+ "what": "trunk/sft QAD: the t75 student from D distilled (KL to BF16 Flash's offline top-64 on the same served prompts) with its routed experts forward through the export's int4 g128 grid, 1 B300, one epoch of s1-v4; judged by held-out KL and reply loss of the int4 export vs D's int4 export, then a play read (score/tok held-out 10)",
+ "train": {
+  "student": "/runs/validation/sft-heal-round-sA-D-1e5/train/student",
+  "data": "/runs/sft-data/s2-kl-v1",
+  "out": "/runs/validation/sft-p75-qad-v1/train",
+  "lr": 1e-05,
+  "warmup": 5,
+  "rewarm": 2,
+  "total_steps": 68,
+  "final_lr_frac": 0.1,
+  "batch_reply_tokens": 250000,
+  "window": 49152,
+  "prefix_chunk": 8192,
+  "loss_chunk": 2048,
+  "mtp_weight": 1.0,
+  "ckpt_steps": 0,
+  "ckpt_seconds": 3600,
+  "keep_ckpts": 2,
+  "eval_steps": 12,
+  "eval_examples": 21,
+  "seed": 0,
+  "loss": "kl",
+  "teacher_k": 131,
+  "fake_quant": true
+ }
+}

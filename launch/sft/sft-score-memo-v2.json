@@ -1,0 +1,29 @@
+{
+ "run": "sft-score-memo-v2",
+ "what": "trunk/sft teacher stream-race check, 1 B300, <=12 min: one load, the 7 memo-v1 files smallest first, blocks ref (fresh process first: HF masked path, no memo, staging on the scoring stream; 200 s, the smallest files), now x3 (fix: loader staging waits for the scoring stream + memo reset per call), sync; pass (set before launch): every now file within mean rec_lp |d| <= 3e-3 and per-row top-k id sets identical >= 99% of the ref (dense vs fast kernels: k001 -0.3083 vs -0.3070, 1.3e-3), the 3 now blocks and sync bitwise identical, no sanity stop",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 3600,
+  "out": "/runs/validation/sft-score-memo-v2",
+  "dest": "/runs/validation/sft-score-memo-v2/files",
+  "ab_blocks": "ref,now,now,now,sync",
+  "ab_block_s": 200,
+  "files": [
+   "train/b2-sabl-v85p-l45x5-c100-15m-v1-nebius-20261020__duck-transfer__k039__000.pt",
+   "train/b2-sabl-v85p-x5-m3-c100-15m-v1-nebius-20261021__duck-transfer__k008__000.pt",
+   "train/b2-sabl-v85p-x5-sbi-c100-15m-v1-nebius-20261021__duck-transfer__k031__000.pt",
+   "train/b2-sabl-v85p-hgrp-c100-15m-v1-nebius-20261022__duck-transfer__k032__000.pt",
+   "train/b2-sabl-v85p-x5-c100-300k-v1-nebius-20261020__duck-transfer__k056__004.pt",
+   "heldout/b2-sft4x-ex5ref-v3__duck-transfer__k001__000.pt",
+   "heldout/b2-sft4x-ex5ref-v3__duck-transfer__k020__000.pt"
+  ]
+ }
+}

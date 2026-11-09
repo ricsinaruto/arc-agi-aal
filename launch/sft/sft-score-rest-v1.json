@@ -1,0 +1,24 @@
+{
+ "run": "sft-score-rest-v1",
+ "what": "Teacher targets for s2-rest-v1 (continue ckpt-268 on the remaining curve >= 0.9 v8.5p data; s2-kl-v2 sessions and cur20-labelled levels excluded; build --canonical as s2-kl-v2): 3,010 train examples, 267.0M tokens incl. context, 93.15M reply. BF16 Flash top-128 + 3 forced ids, same config as s2-kl-v2 / cur20 scoring. 2 B300 (one card each), ~2.2 h at 17K tok/s per card + load; deadline 3.5 h.",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/s2-rest-v1",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 2,
+  "deadline_s": 12600,
+  "out": "/runs/validation/sft-score-rest-v1",
+  "row_graph": true,
+  "dest": "/runs/validation/sft-score-rest-v1/files",
+  "merge": true,
+  "slow_host_floor": 15000,
+  "slow_host_after": 10,
+  "local_io": true,
+  "local_io_ahead": 4
+ }
+}

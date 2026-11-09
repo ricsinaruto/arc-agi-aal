@@ -1,0 +1,128 @@
+{
+ "run": "sft-k256n1-flags-time-v1",
+ "what": "trunk/sft k256 prep (1 test B300, < 1 h): step time and memory of the served-grid flags (qat_grid int3served, dense_int8_train, kv_train kv4) on p75 at N=1 with the warm shared compile cache: ckpt-268 + 6 steps on s2-rest-v1, one-example torch.profiler breakdown before step 1. The cold-cache smoke (sft-smoke-k256n1-v1) read 180-261 s/step and stepped keep_layers 1 -> 0 (peak 243.5 GiB) vs 87-105 s flags-off.",
+ "train": {
+  "student": "/assets/sft-heal/student-p75",
+  "data": "/runs/sft-data/s2-rest-v1",
+  "out": "/runs/validation/sft-k256n1-flags-time-v1/train",
+  "init_ckpt": "/runs/validation/sft-p75-cur20-c231-v1/train/ckpt-268",
+  "init_fresh_data": true,
+  "curriculum": false,
+  "lr": 3e-06,
+  "warmup": 0,
+  "rewarm": 0,
+  "total_steps": 274,
+  "final_lr_frac": 1.0,
+  "batch_reply_tokens": 250000,
+  "window": 49152,
+  "prefix_chunk": 8192,
+  "loss_chunk": 2048,
+  "mtp_weight": 1.0,
+  "ckpt_steps": 0,
+  "ckpt_seconds": 0,
+  "keep_ckpts": 2,
+  "eval_steps": 0,
+  "eval_examples": 8,
+  "eval_full_examples": 155,
+  "eval_full_steps": [],
+  "heldout_data": "/runs/sft-data/s2-heldout-v1",
+  "seed": 0,
+  "loss": "kl",
+  "teacher_k": 131,
+  "fake_quant": true,
+  "fast_attention": true,
+  "gdn_fast": true,
+  "gdn_keep": true,
+  "hyper_fast": true,
+  "sel_cache": true,
+  "keep_layers": 0,
+  "paged_states": true,
+  "mem_budget_gib": 256.0,
+  "metrics_seconds": 15.0,
+  "union_attention": true,
+  "qat_fused": true,
+  "util_every": 1.0,
+  "exclude_pairs": [
+   [
+    "b2-mfu2-pthboot-v2",
+    "vc33"
+   ],
+   [
+    "b2-mfu2-pthboot-v3",
+    "re86"
+   ],
+   [
+    "b2-mfu2-pthboot-v3",
+    "vc33"
+   ],
+   [
+    "b2-sft4x-opd0-hl2-v1",
+    "lf52"
+   ],
+   [
+    "b2-sft4x-opd0-hlate-v1",
+    "lf52"
+   ],
+   [
+    "b2-sft4x-opd0-hlate-v1",
+    "sp80"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1a",
+    "cn04"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1a",
+    "lp85"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1a",
+    "vc33"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1b",
+    "wa30"
+   ],
+   [
+    "b2-sft4x-opd1-bg1-v1",
+    "ls20"
+   ],
+   [
+    "b2-sft4x-opd1-bg1-v1",
+    "re86"
+   ],
+   [
+    "b2-sft4x-opd2-bg2-v1",
+    "sk48"
+   ],
+   [
+    "b2-sft4x-opd3-bg3-v1",
+    "ka59"
+   ],
+   [
+    "b2-sft4x-opd3-bg3-v1",
+    "tu93"
+   ],
+   [
+    "b2-sft4x-opdS-bg1-v1",
+    "re86"
+   ],
+   [
+    "b2-sft4x-opdS-bg1-v3",
+    "re86"
+   ],
+   [
+    "b2-sft4x-opdS-bg1-v6",
+    "re86"
+   ]
+  ],
+  "grad_clip": 1.0,
+  "eval_resume": false,
+  "stop_step": 274,
+  "stop_ckpt": false,
+  "qat_grid": "int3served",
+  "dense_int8_train": true,
+  "kv_train": "kv4",
+  "profile": true
+ }
+}

@@ -1,0 +1,24 @@
+{
+ "run": "sft-score-arc2-train-a",
+ "volume": "run",
+ "volume_run": "sft-arc2-train",
+ "what": "Teacher targets for the 100 ARC-2 train tasks from arc2's replayed runs, 2 B300, leg a on the build's list so far, era order, on its own volume (arc-run-sft-arc2-train). Not trained on yet, never mixed into an ARC-3 root; bound stops at the.",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/validation/sft-arc2-train/root",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 2,
+  "deadline_s": 12500,
+  "out": "/runs/validation/sft-arc2-train-a",
+  "row_graph": true,
+  "dest": "/runs/validation/sft-arc2-train-a/files",
+  "merge": true,
+  "local_io": true,
+  "local_io_ahead": 4
+ }
+}

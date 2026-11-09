@@ -1,0 +1,20 @@
+{
+ "run": "sft-score-sw-v1",
+ "what": "trunk/sft scorer switch test, 1 B300, <=15 min: one container, one model load, 4 x 120 s blocks scoring the same first files into separate scratch folders: now (current scorer), lean (per-example drift signals and gc callback off), legacy (lean + gc unfreeze + leg-v5 row masking and indexer code), now again; names the code cause of the A/B gap (current 13.8K vs leg-v5 code 16.3K side by side) without host variance",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 3600,
+  "out": "/runs/validation/sft-score-sw-v1",
+  "dest": "/runs/validation/sft-score-sw-v1/files",
+  "ab_blocks": "now,lean,legacy,now",
+  "ab_block_s": 120
+ }
+}

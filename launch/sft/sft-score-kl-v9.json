@@ -1,0 +1,17 @@
+{
+ "run": "sft-score-kl-v9",
+ "what": "trunk/sft teacher scoring pass for KL + QAD, ONE B300, the fixed scorer (fd0e31242: the loader side-stream staging waits for the scoring stream, causal-mask memo reset per call; memo-v2 repeat-stable, 117 sampled pool files bitwise equal), eager, into the s2-kl-v2 pool (skips scored files); stop rule: sustained util <80% or tok/s <13.2K",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 3600,
+  "out": "/runs/validation/sft-score-kl-v9"
+ }
+}

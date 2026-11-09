@@ -1,0 +1,124 @@
+{
+ "run": "sft-k256-qad-lr-3e6",
+ "what": "k256 lr probe 3e6 (checklist 9; NOT LAUNCHED): the k256r15b student on 2 B300s with the main run's flags (int3served, dense_int8_train, kv4), lr 3e-06, no warm-up, clip 1.0, 8 steps on the main run's data order (s2-kl-v2, seed 0), held-out slice at 0/4/8. Pick rule (as p75's): the highest lr whose step-8 slice is below its step 0 and whose grad norm never exceeds 1.5x its step-1 norm; else 3e-6.",
+ "gpus": 2,
+ "train": {
+  "student": "/assets/sft-heal/student-k256r15b",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "out": "/runs/validation/sft-k256-qad-lr-3e6/train",
+  "lr": 3e-06,
+  "warmup": 0,
+  "rewarm": 0,
+  "total_steps": 231,
+  "final_lr_frac": 1.0,
+  "batch_reply_tokens": 250000,
+  "window": 49152,
+  "prefix_chunk": 8192,
+  "loss_chunk": 2048,
+  "mtp_weight": 1.0,
+  "ckpt_steps": 0,
+  "ckpt_seconds": 3600,
+  "keep_ckpts": 2,
+  "eval_steps": 4,
+  "eval_examples": 56,
+  "eval_full_examples": 155,
+  "eval_full_steps": [],
+  "heldout_data": "/runs/sft-data/s2-heldout-v1",
+  "seed": 0,
+  "loss": "kl",
+  "teacher_k": 131,
+  "fake_quant": true,
+  "fast_attention": true,
+  "gdn_fast": true,
+  "gdn_keep": true,
+  "hyper_fast": true,
+  "sel_cache": true,
+  "keep_layers": 1,
+  "paged_states": true,
+  "mem_budget_gib": 256.0,
+  "metrics_seconds": 15.0,
+  "union_attention": true,
+  "qat_fused": true,
+  "util_every": 1.0,
+  "exclude_pairs": [
+   [
+    "b2-mfu2-pthboot-v2",
+    "vc33"
+   ],
+   [
+    "b2-mfu2-pthboot-v3",
+    "re86"
+   ],
+   [
+    "b2-mfu2-pthboot-v3",
+    "vc33"
+   ],
+   [
+    "b2-sft4x-opd0-hl2-v1",
+    "lf52"
+   ],
+   [
+    "b2-sft4x-opd0-hlate-v1",
+    "lf52"
+   ],
+   [
+    "b2-sft4x-opd0-hlate-v1",
+    "sp80"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1a",
+    "cn04"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1a",
+    "lp85"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1a",
+    "vc33"
+   ],
+   [
+    "b2-sft4x-opd0-pool-v1b",
+    "wa30"
+   ],
+   [
+    "b2-sft4x-opd1-bg1-v1",
+    "ls20"
+   ],
+   [
+    "b2-sft4x-opd1-bg1-v1",
+    "re86"
+   ],
+   [
+    "b2-sft4x-opd2-bg2-v1",
+    "sk48"
+   ],
+   [
+    "b2-sft4x-opd3-bg3-v1",
+    "ka59"
+   ],
+   [
+    "b2-sft4x-opd3-bg3-v1",
+    "tu93"
+   ],
+   [
+    "b2-sft4x-opdS-bg1-v1",
+    "re86"
+   ],
+   [
+    "b2-sft4x-opdS-bg1-v3",
+    "re86"
+   ],
+   [
+    "b2-sft4x-opdS-bg1-v6",
+    "re86"
+   ]
+  ],
+  "grad_clip": 1.0,
+  "stop_step": 8,
+  "stop_ckpt": false,
+  "qat_grid": "int3served",
+  "dense_int8_train": true,
+  "kv_train": "kv4"
+ }
+}

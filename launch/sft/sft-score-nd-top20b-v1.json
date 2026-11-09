@@ -1,0 +1,23 @@
+{
+ "run": "sft-score-nd-top20b-v1",
+ "what": "Teacher targets for the top 20% RHAE/tok selection of plays since the V9C scoring: 365 examples, 5.6M reply tokens, 20 games, excl5 out; 1 B300; judged by every file scored, none empty; ready for a possible p50d7 resume",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/nd-top20b-v1",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 5400,
+  "out": "/runs/validation/sft-score-nd-top20b-v1",
+  "row_graph": true,
+  "dest": "/runs/validation/sft-score-nd-top20b-v1/files",
+  "merge": true,
+  "local_io": true,
+  "local_io_ahead": 4,
+  "stage_inline": true
+ }
+}

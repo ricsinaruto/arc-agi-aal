@@ -1,0 +1,24 @@
+{
+ "run": "sft-score-rlp-v1",
+ "what": "Teacher targets for rl-pass-v1: 2,491 RL tries passing the v8.5p-median bar, train-15 only, 2,902 examples, 173.44M tokens incl. context, 29.49M reply. BF16 Flash top-128 + 3 forced ids, same config as a/b/p1 scoring. 3 B300 (one card each; the fourth runs the p75 continuation), 2800 s of scoring, any remainder in a short second job;.",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/rl-pass-v1",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 3,
+  "deadline_s": 2800,
+  "out": "/runs/validation/sft-score-rlp-v1",
+  "row_graph": true,
+  "dest": "/runs/validation/sft-score-rlp-v1/files",
+  "merge": true,
+  "slow_host_floor": 15000,
+  "slow_host_after": 10,
+  "local_io": true,
+  "local_io_ahead": 4
+ }
+}

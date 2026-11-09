@@ -1,0 +1,24 @@
+{
+ "run": "sft-score-onpol-c268-v1",
+ "what": "Teacher targets for the on-policy pool onpol-c268-v2 (build --canonical, as s2-kl-v2) (p75 ckpt-268's own plays on the 15 train games): BF16 Flash top-128 + 3 forced ids at every labelled reply position, same config as s2-kl-v2 / cur20 scoring. 1 test B300, < 40 min.",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/onpol-c268-v2",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 7200,
+  "out": "/runs/validation/sft-score-onpol-c268-v1",
+  "row_graph": true,
+  "dest": "/runs/validation/sft-score-onpol-c268-v1/files",
+  "merge": true,
+  "slow_host_floor": 15000,
+  "slow_host_after": 10,
+  "local_io": true,
+  "local_io_ahead": 4
+ }
+}

@@ -1,0 +1,24 @@
+{
+ "run": "sft-score-kl-v13",
+ "what": "Finish the s2-kl-v2 teacher pool: the 94 train files left after kl-v12, same config (--local-io, scratch dest + merge, slow-host exit at 15K), ~8 min of scoring.",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 3600,
+  "out": "/runs/validation/sft-score-kl-v13",
+  "row_graph": true,
+  "dest": "/runs/validation/sft-score-kl-v13/files",
+  "merge": true,
+  "slow_host_floor": 15000,
+  "slow_host_after": 10,
+  "local_io": true,
+  "local_io_ahead": 4
+ }
+}

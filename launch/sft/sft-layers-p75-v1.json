@@ -1,0 +1,15 @@
+{
+ "run": "sft-layers-p75-v1",
+ "what": "Greedy depth cut on p75: unhealed 48-layer student-p75, each layer skipped at run time; KL(uncut || cut) on assistant positions of the excl5 recorded-play windows (fit rule), single-layer scores then greedy drop to 8 by KL and by KL per cost (full attention 2x GDN), lazy re-score of the 6 best. Reference sets: d4 (p75d4's 32/39/42/44) and one-shot 8 (ORDER[:8]). Picks the g8 cuts for the matched slice probe.",
+ "layers": {
+  "student": "/assets/sft-heal/student-p75",
+  "windows": "/assets/sft-heal/layer-tf-excl5.json",
+  "out": "/runs/validation/sft-layers-p75-v1",
+  "depth": 8,
+  "lazy": 6,
+  "cost_full": 2.0,
+  "tokens": 4096,
+  "scored": 2048,
+  "sets": {"d4": [32, 39, 42, 44], "oneshot8": [32, 33, 35, 36, 39, 41, 42, 44]}
+ }
+}

@@ -1,0 +1,24 @@
+{
+ "run": "sft-score-kl-v12",
+ "what": "1 h teacher scoring (KL+QAD targets) into s2-kl-v2 with the local-I/O fix (volume reads and writes in child processes): kl-v11 settings (scratch dest + merge, slow-host exit at 15K) plus --local-io. Judged by util >=80% and >=13.2K tok/s sustained.",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 3600,
+  "out": "/runs/validation/sft-score-kl-v12",
+  "row_graph": true,
+  "dest": "/runs/validation/sft-score-kl-v12/files",
+  "merge": true,
+  "slow_host_floor": 15000,
+  "slow_host_after": 10,
+  "local_io": true,
+  "local_io_ahead": 4
+ }
+}

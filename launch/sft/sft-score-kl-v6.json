@@ -1,0 +1,17 @@
+{
+ "run": "sft-score-kl-v6",
+ "what": "trunk/sft teacher scoring pass for KL + QAD, ONE B300, eager (row graph off), no CPU reservation: every 2-card attempt (kl-v3/v4/v5, leg2c) ran the host launch 20-45% below single-card leg-v5 in every example-size bin, single-card legs ~19K tok/s at 92-95% util; BF16 Flash teacher, top-128 plus forced <|im_end|>, </think>, <tool_call> at every reply position, 32K x 2K, skips scored files (shard 0 of 1 = the whole remaining pool); stop rule: sustained util <80% or tok/s <13.2K",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 3600,
+  "out": "/runs/validation/sft-score-kl-v6"
+ }
+}

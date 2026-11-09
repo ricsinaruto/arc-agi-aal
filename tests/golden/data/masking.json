@@ -1,0 +1,168 @@
+{
+ "captures": 8,
+ "chain_examples": {
+  "100000": [
+   {
+    "labelled": 3143,
+    "labels": "3e79de0ff7143f54",
+    "tail": 6163,
+    "targets": 8,
+    "tokens": 6163
+   }
+  ],
+  "3000": [
+   {
+    "labelled": 1869,
+    "labels": "3912708d7b33facc",
+    "tail": 3000,
+    "targets": 4,
+    "tokens": 6163
+   },
+   {
+    "labelled": 1274,
+    "labels": "d94f372002ffaf3a",
+    "tail": 3000,
+    "targets": 4,
+    "tokens": 3397
+   }
+  ]
+ },
+ "rows": [
+  {
+   "checks": {
+    "image_tokens": 400,
+    "images": 1,
+    "prefix_kept": true,
+    "prompt_tokens": 1449,
+    "reply_tokens": 98,
+    "request": 0,
+    "served_prompt_tokens": 6242,
+    "served_reply_tokens": 98
+   },
+   "ids": "6245e9e432fe55b6",
+   "labelled": 98,
+   "labels": "0918c6edf251d8bb",
+   "request": 0,
+   "tokens": 1547
+  },
+  {
+   "checks": {
+    "image_tokens": 400,
+    "images": 1,
+    "prefix_kept": true,
+    "prompt_tokens": 1813,
+    "reply_tokens": 229,
+    "request": 1,
+    "served_prompt_tokens": 9203,
+    "served_reply_tokens": 1572
+   },
+   "ids": "bf17de1f3800c648",
+   "labelled": 229,
+   "labels": "c1cfc52c48d83e3d",
+   "request": 1,
+   "tokens": 2042
+  },
+  {
+   "checks": {
+    "image_tokens": 400,
+    "images": 1,
+    "prefix_kept": true,
+    "prompt_tokens": 2291,
+    "reply_tokens": 411,
+    "request": 2,
+    "served_prompt_tokens": 12117,
+    "served_reply_tokens": 1122
+   },
+   "ids": "38f94f9ba02aab46",
+   "labelled": 411,
+   "labels": "9b2ceaa367433184",
+   "request": 2,
+   "tokens": 2702
+  },
+  {
+   "checks": {
+    "image_tokens": 400,
+    "images": 1,
+    "prefix_kept": true,
+    "prompt_tokens": 2861,
+    "reply_tokens": 536,
+    "request": 3,
+    "served_prompt_tokens": 13503,
+    "served_reply_tokens": 2731
+   },
+   "ids": "129d781f7247eb1b",
+   "labelled": 536,
+   "labels": "2d48bbe5e46b6e19",
+   "request": 3,
+   "tokens": 3397
+  },
+  {
+   "checks": {
+    "image_tokens": 400,
+    "images": 1,
+    "prefix_kept": true,
+    "prompt_tokens": 3640,
+    "reply_tokens": 312,
+    "request": 4,
+    "served_prompt_tokens": 17374,
+    "served_reply_tokens": 312
+   },
+   "ids": "0e77af0585574fd8",
+   "labelled": 312,
+   "labels": "5ae3b04f65bc1a0d",
+   "request": 4,
+   "tokens": 3952
+  },
+  {
+   "checks": {
+    "image_tokens": 400,
+    "images": 1,
+    "prefix_kept": true,
+    "prompt_tokens": 4116,
+    "reply_tokens": 386,
+    "request": 5,
+    "served_prompt_tokens": 18389,
+    "served_reply_tokens": 1469
+   },
+   "ids": "27bd1ee0e5b46d73",
+   "labelled": 386,
+   "labels": "7bfc39a8e490d487",
+   "request": 5,
+   "tokens": 4502
+  },
+  {
+   "checks": {
+    "image_tokens": 400,
+    "images": 1,
+    "prefix_kept": true,
+    "prompt_tokens": 4745,
+    "reply_tokens": 608,
+    "request": 6,
+    "served_prompt_tokens": 21217,
+    "served_reply_tokens": 2601
+   },
+   "ids": "21e0d660ec3e0e7c",
+   "labelled": 608,
+   "labels": "0157493518db460f",
+   "request": 6,
+   "tokens": 5353
+  },
+  {
+   "checks": {
+    "image_tokens": 400,
+    "images": 1,
+    "prefix_kept": true,
+    "prompt_tokens": 5600,
+    "reply_tokens": 563,
+    "request": 7,
+    "served_prompt_tokens": 25076,
+    "served_reply_tokens": 742
+   },
+   "ids": "9fc66e552ff292b7",
+   "labelled": 563,
+   "labels": "07600731a247300d",
+   "request": 7,
+   "tokens": 6163
+  }
+ ]
+}

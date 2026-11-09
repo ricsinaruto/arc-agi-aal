@@ -1,0 +1,190 @@
+{
+ "counts": {
+  "bf16": 3,
+  "experts": 6,
+  "router_rows": 2,
+  "skipped_frozen": 1
+ },
+ "drop_layers": [
+  1
+ ],
+ "inputs_seed": 3,
+ "router_full_seed_order": "after inputs",
+ "tensors": {
+  "model.language_model.layers.0.mlp.experts.1.down_proj.qweight": [
+   "e7164f21f05dd377",
+   [
+    16,
+    128
+   ],
+   "torch.int32"
+  ],
+  "model.language_model.layers.0.mlp.experts.1.down_proj.qzeros": [
+   "54b74fa3b7513170",
+   [
+    1,
+    16
+   ],
+   "torch.int32"
+  ],
+  "model.language_model.layers.0.mlp.experts.1.down_proj.scales": [
+   "b03f8a8b5043197b",
+   [
+    1,
+    128
+   ],
+   "torch.float16"
+  ],
+  "model.language_model.layers.0.mlp.experts.1.gate_proj.qweight": [
+   "712999d1fe64ef90",
+   [
+    16,
+    128
+   ],
+   "torch.int32"
+  ],
+  "model.language_model.layers.0.mlp.experts.1.gate_proj.qzeros": [
+   "54b74fa3b7513170",
+   [
+    1,
+    16
+   ],
+   "torch.int32"
+  ],
+  "model.language_model.layers.0.mlp.experts.1.gate_proj.scales": [
+   "de9741028cf065d1",
+   [
+    1,
+    128
+   ],
+   "torch.float16"
+  ],
+  "model.language_model.layers.0.mlp.experts.1.up_proj.qweight": [
+   "2e444e1112c67dbb",
+   [
+    16,
+    128
+   ],
+   "torch.int32"
+  ],
+  "model.language_model.layers.0.mlp.experts.1.up_proj.qzeros": [
+   "54b74fa3b7513170",
+   [
+    1,
+    16
+   ],
+   "torch.int32"
+  ],
+  "model.language_model.layers.0.mlp.experts.1.up_proj.scales": [
+   "78cbae97fd999cae",
+   [
+    1,
+    128
+   ],
+   "torch.float16"
+  ],
+  "model.language_model.layers.0.mlp.experts.3.down_proj.qweight": [
+   "a2e49fc39e08f309",
+   [
+    16,
+    128
+   ],
+   "torch.int32"
+  ],
+  "model.language_model.layers.0.mlp.experts.3.down_proj.qzeros": [
+   "54b74fa3b7513170",
+   [
+    1,
+    16
+   ],
+   "torch.int32"
+  ],
+  "model.language_model.layers.0.mlp.experts.3.down_proj.scales": [
+   "93dc280043e2fcb6",
+   [
+    1,
+    128
+   ],
+   "torch.float16"
+  ],
+  "model.language_model.layers.0.mlp.experts.3.gate_proj.qweight": [
+   "afcc1bcb84cf04b1",
+   [
+    16,
+    128
+   ],
+   "torch.int32"
+  ],
+  "model.language_model.layers.0.mlp.experts.3.gate_proj.qzeros": [
+   "54b74fa3b7513170",
+   [
+    1,
+    16
+   ],
+   "torch.int32"
+  ],
+  "model.language_model.layers.0.mlp.experts.3.gate_proj.scales": [
+   "43c5efc26294681c",
+   [
+    1,
+    128
+   ],
+   "torch.float16"
+  ],
+  "model.language_model.layers.0.mlp.experts.3.up_proj.qweight": [
+   "482d87a55063e363",
+   [
+    16,
+    128
+   ],
+   "torch.int32"
+  ],
+  "model.language_model.layers.0.mlp.experts.3.up_proj.qzeros": [
+   "54b74fa3b7513170",
+   [
+    1,
+    16
+   ],
+   "torch.int32"
+  ],
+  "model.language_model.layers.0.mlp.experts.3.up_proj.scales": [
+   "b4debb2dacd26a79",
+   [
+    1,
+    128
+   ],
+   "torch.float16"
+  ],
+  "model.language_model.layers.0.mlp.gate.weight": [
+   "ce2c1bfb83e9f42d",
+   [
+    4,
+    128
+   ],
+   "torch.bfloat16"
+  ],
+  "model.language_model.layers.0.self_attn.o_proj.weight": [
+   "e6f2411fa3016936",
+   [
+    128,
+    128
+   ],
+   "torch.bfloat16"
+  ],
+  "model.language_model.layers.2.mlp.shared_expert.down_proj.weight": [
+   "cfa2d2e031074d30",
+   [
+    128,
+    64
+   ],
+   "torch.bfloat16"
+  ],
+  "model.language_model.norm.weight": [
+   "a11034c57e773263",
+   [
+    128
+   ],
+   "torch.bfloat16"
+  ]
+ }
+}

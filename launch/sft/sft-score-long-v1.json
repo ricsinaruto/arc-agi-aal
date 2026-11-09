@@ -1,0 +1,25 @@
+{
+ "run": "sft-score-long-v1",
+ "what": "Teacher targets for the two long runs' new data: all v9b sessions (train-15, held-out 10, generated games) and the 24 h run's held-out sessions, 2 B300, per-shard logs. Build + score only. v2's train-15 sessions score separately with p1c's requests as context only. No relaunch on a shard death.",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/nd-long-v1",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 2,
+  "deadline_s": 9000,
+  "out": "/runs/validation/sft-score-long-v1",
+  "row_graph": true,
+  "dest": "/runs/validation/sft-score-long-v1/files",
+  "merge": true,
+  "slow_host_floor": 15000,
+  "slow_host_after": 10,
+  "local_io": true,
+  "local_io_ahead": 4,
+  "priority": "/runs/sft-data/nd-long-v1/priority-score.json"
+ }
+}

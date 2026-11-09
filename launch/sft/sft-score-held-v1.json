@@ -1,0 +1,22 @@
+{
+ "run": "sft-score-held-v1",
+ "what": "Teacher scoring of the new held-out eval set (s2-heldout-v1: every level of the 10 RL held-out games, <=3 examples per level, 155 examples, 5.05M reply / 12.4M context tokens; the first 56 = the probes eval slice), local_io, 1 B300, scoring capped at 1,500 s. Needed for the KL held-out eval of the lr probes and the main run.",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/s2-heldout-v1",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 1500,
+  "out": "/runs/validation/sft-score-held-v1",
+  "row_graph": true,
+  "slow_host_floor": 15000,
+  "slow_host_after": 10,
+  "local_io": true,
+  "local_io_ahead": 4
+ }
+}

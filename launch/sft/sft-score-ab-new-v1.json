@@ -1,0 +1,18 @@
+{
+ "run": "sft-score-ab-new-v1",
+ "what": "trunk/sft scorer A/B, 1 B300, 5 min of scoring on leg-v5s first files into a scratch folder: current scorer, commit 55ee32bf6; run side by side with the other arm of the A/B: both ~19K = the kl runs pool/files, both ~12-13K = the platform host, old fast and new slow = our code (kl-v6 read 12.9K at 74% util)",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 300,
+  "out": "/runs/validation/sft-score-ab-new-v1",
+  "dest": "/runs/validation/sft-score-ab-new-v1/files"
+ }
+}

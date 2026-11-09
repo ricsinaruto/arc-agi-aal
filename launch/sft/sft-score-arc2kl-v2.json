@@ -1,0 +1,24 @@
+{
+ "run": "sft-score-arc2kl-v2",
+ "what": "Teacher targets for the ARC-2 4xL4 stack KL read (c240 windows from our conversation-harness runs): BF16 Flash top-128 + 3 forced ids at every assistant-reply position of 48 c240 windows (naive1 = l4n1's harness, 48 tasks, 30K prefixes, 968K reply tokens, 1.42M tokens). Same config as s2-kl-v2 scoring. Test B300, ~15 min.",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/arc2kl-v2",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 1800,
+  "out": "/runs/validation/sft-score-arc2kl-v2",
+  "row_graph": true,
+  "dest": "/runs/validation/sft-score-arc2kl-v2/files",
+  "merge": true,
+  "slow_host_floor": 15000,
+  "slow_host_after": 10,
+  "local_io": true,
+  "local_io_ahead": 4
+ }
+}

@@ -1,0 +1,18 @@
+{
+ "run": "sft-score-leg-v5",
+ "what": "trunk/sft teacher scoring leg 5, 1 B300, <=20 min: the row block (log-softmax, gather, argmax, forced ids, top-k) replayed as one CUDA graph (bit-checked against eager at first use) and row indices moved once per chunk (leg-v4: 17.6K tok/s, 85.6% util; the launching thread held 4.8 s of a ~6 s example); 10 min of scoring; bars: >=18.3K tok/s end to end, >95% util, >=255 GiB",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 600,
+  "out": "/runs/validation/sft-score-leg-v5",
+  "dest": "/runs/validation/sft-score-leg-v5/files"
+ }
+}

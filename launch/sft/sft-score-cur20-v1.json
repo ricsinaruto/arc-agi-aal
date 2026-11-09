@@ -1,0 +1,24 @@
+{
+ "run": "sft-score-cur20-v1",
+ "what": "Teacher targets for the top-20% curriculum dataset cur20-v3 (coordinator option b: top ceil(20%) per (game, level) by rhae/tok among segments built whole): BF16 Flash top-128 + 3 forced ids at every labelled reply position of its 862 train examples (52.3M tokens incl. context, 9.8M reply), in curriculum order (priority.json), same config as s2-kl-v2 scoring (--local-io, row graphs, scratch dest + merge). 1 B300 (main slot), ~52 min at 17K tok/s.",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/cur20-v3",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 7200,
+  "out": "/runs/validation/sft-score-cur20-v1",
+  "row_graph": true,
+  "dest": "/runs/validation/sft-score-cur20-v1/files",
+  "merge": true,
+  "slow_host_floor": 15000,
+  "slow_host_after": 10,
+  "local_io": true,
+  "local_io_ahead": 4
+ }
+}

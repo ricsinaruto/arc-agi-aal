@@ -1,57 +1,14 @@
 [project]
-name = "arc-agi3-qwen"
-version = "0.2.0"
-description = "ARC-AGI-3 experiments: the Duck arena on Qwen3.8-Flash served by a pinned vLLM fork on one GPU"
+name = "arc-sft"
+version = "0.1.0"
+description = "Prune-then-heal SFT of the pruned Flash student (trunk/sft)"
 requires-python = ">=3.12,<3.13"
-dependencies = [
-  "aiohttp>=3.12,<4",
-  "arc-agi==0.9.9",
-  "httpx>=0.28,<0.29",
-  "imageio>=2.37,<3",
-  "matplotlib>=3.10,<4",
-  "numpy>=2.2,<3",
-  "pillow>=11,<13",
-  "pydantic>=2,<3",
-  "pyyaml>=6,<7",
-  "requests>=2.32,<3",
-  "scipy>=1.15,<2",
-]
+dependencies = []
 
 [project.optional-dependencies]
-kaggle = ["kaggle==2.2.4"]
 modal = ["modal==1.5.5"]
-dev = ["pytest>=8,<10", "pytest-asyncio>=0.25,<2", "ruff>=0.11,<1"]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = [
-  "src/arc_infra",
-  "src/inference",
-  "src/taaf",
-  "src/duck_transfer",
-  "src/duck_controls",
-  "src/sglang_bench",
-  "src/arena",
-  "src/posttrain",
-]
+dev = ["pytest>=8,<10"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-asyncio_mode = "auto"
-markers = ["multirank: gloo multi-rank CPU test (runops.multirank)"]
-
-[tool.ruff]
-target-version = "py312"
-line-length = 100
-extend-exclude = [
-  "src/inference",
-  "src/taaf",
-  "src/arc_infra/serving_setup.py",
-  "*.ipynb",
-]
-
-[tool.ruff.lint]
-select = ["E4", "E7", "E9", "F", "I", "UP"]
+markers = ["multirank: gloo multi-process tests (arc_infra.runops.multirank)"]

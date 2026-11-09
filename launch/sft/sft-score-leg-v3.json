@@ -1,0 +1,18 @@
+{
+ "run": "sft-score-leg-v3",
+ "what": "trunk/sft teacher scoring leg 3, 1 B300, <=15 min: 32K x 2K with the output copy, sanity check, save and volume commit moved off the launching thread (leg-v2: topk 96% busy at 18.6K tok/s, but 15.3K end to end from per-example boundary stalls and 3-5 s synchronous commits); ~5 min steady; bars: >=18.3K tok/s end to end, >95% util, >=255 GiB, zero retries -> relaunch both scoring cards",
+ "score": {
+  "teacher": "/assets/expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540",
+  "data": "/runs/sft-data/s2-kl-v2",
+  "k": 128,
+  "forced": [
+   "<|im_end|>",
+   "</think>",
+   "<tool_call>"
+  ],
+  "cards": 1,
+  "deadline_s": 330,
+  "out": "/runs/validation/sft-score-leg-v3",
+  "dest": "/runs/validation/sft-score-leg-v3/files"
+ }
+}
