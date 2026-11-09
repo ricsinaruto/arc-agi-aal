@@ -35,6 +35,8 @@ Serving tweaks (28 September; docs/validation-20260927/serving-tweaks.md), each 
   (``serving_draft_vocab.json``: every byte and special token plus the most generated tokens of the
   specialization corpus) and writes them into a full-width row that is -inf elsewhere (``mtp.py``
   ``compute_logits``). Draft-only: rejection sampling keeps the output exact, only acceptance can move.
+- ``pin_overlap`` (with ``ple_uva``; MFU-2 22 Oct boot cut): the PLE host table's page-locking runs in a thread
+  beside the weight load; the table is joined and placed as the CUDA view after its shards are copied in.
 - ``ple_uva``: the PLE n-gram table (47.7 GiB FP8) in page-locked, device-mapped host memory, read by the
   GPU worker's own PLE path through UVA inside the graph, instead of the CPU offload process and its round
   trip (``ple_layer.py``, patched after the pinned recipe's own PLE patch; ``VLLM_PLE_CPU_OFFLOAD=0``).
@@ -78,8 +80,9 @@ PLE_MARKER = 'serving-kernels-ple-patch.json'
 PHASE4_OPTIONS = ('mamba_ssm_cache_dtype', 'moe_backend', 'draft_experts', 'hc_fusion', 'topk_sampler')
 TWEAK_OPTIONS = ('draft_vocab', 'ple_uva', 'embed_host')
 OPTIONS = (PHASE4_OPTIONS + ('kv_cache_8bit', 'kv_cache_4bit', 'kv8_prefill') + TWEAK_OPTIONS + ('expert_int3',)
-           + ('indexer_fp8',))
-OPTIONAL = ('kv_cache_8bit', 'kv_cache_4bit', 'kv8_prefill') + TWEAK_OPTIONS + ('expert_int3', 'indexer_fp8')
+           + ('indexer_fp8', 'pin_overlap'))
+OPTIONAL = ('kv_cache_8bit', 'kv_cache_4bit', 'kv8_prefill') + TWEAK_OPTIONS + ('expert_int3', 'indexer_fp8',
+                                                                                'pin_overlap')
 # moe_backend "marlin" (expert quantization, 28 September): vLLM's Marlin NvFp4 MoE, weight-only W4A16 on the same
 # NvFp4 weights (BF16 activations); no pinned file changes (the draft layer keeps its own b12x backend).
 CHOICES = {'mamba_ssm_cache_dtype': ('bfloat16',), 'moe_backend': ('flashinfer_b12x', 'marlin', 'humming'),
@@ -106,7 +109,7 @@ def kv4_block_tokens(mode, spec_tokens=0):
         return KV4_BLOCK_TOKENS[mode]
     page = 10240 * (3 + int(spec_tokens)) * 2 + 48 * 128 * 128 * 2
     return 64 * -(-page // (64 * KV4_BYTES_PER_TOKEN[mode]))
-FLAGS = ('hc_fusion', 'topk_sampler', 'ple_uva', 'embed_host', 'indexer_fp8')
+FLAGS = ('hc_fusion', 'topk_sampler', 'ple_uva', 'embed_host', 'indexer_fp8', 'pin_overlap')
 # The pinned serving environment's PLE switch (serving_setup.runtime_environment sets "1"); ple_uva serves the PLE
 # on the GPU worker instead of the CPU offload process.
 PLE_OFFLOAD_ENV = 'VLLM_PLE_CPU_OFFLOAD'
@@ -390,6 +393,8 @@ def validate(spec):
         raise ValueError('serving_kernels.kv_cache_8bit and kv_cache_4bit are exclusive')
     if result['expert_int3'] and result['moe_backend'] != 'humming':
         raise ValueError('serving_kernels.expert_int3 needs moe_backend "humming" (the uint3 repack is Humming\'s)')
+    if result['pin_overlap'] and not result['ple_uva']:
+        raise ValueError('serving_kernels.pin_overlap needs ple_uva (it defers the PLE host table\'s page-locking)')
     if result['kv8_prefill'] and result['kv_cache_8bit'] != 'int8':
         raise ValueError('serving_kernels.kv8_prefill needs kv_cache_8bit "int8" (the dequant kernel reads int8 codes)')
     return {key: result[key] for key in OPTIONS

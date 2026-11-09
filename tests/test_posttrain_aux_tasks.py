@@ -204,6 +204,14 @@ def test_sandbox_enforces_timeout_imports_and_builtins():
     assert aux.run_step_program("x = 1\n", CASES)["error"].startswith("KeyError")
 
 
+def test_sandbox_hash_seed_fixes_set_order():
+    # a step that writes a set's iteration order into the board: identical across sandbox processes (PYTHONHASHSEED=0)
+    code = ("def step(board, action):\n    order = ''.join({'W', 'N', 'E', 'S', 'Q', 'Z', 'aa', 'bb'})\n"
+            "    return [order + board[0][len(order):]] + board[1:]\n")
+    runs = [aux.run_step_program(code, CASES)["results"][0].split("\n")[0][:12] for _ in range(3)]
+    assert len(set(runs)) == 1, runs
+
+
 def test_builder_refuses_holdout_games(tmp_path):
     from importlib import util
     from pathlib import Path

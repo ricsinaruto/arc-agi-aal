@@ -578,15 +578,20 @@ class GateSlot:
     parking from eligible waiting without changing either admission policy.
     """
 
-    def __init__(self, gate, game, cap, window):
+    def __init__(self, gate, game, cap, window, reserve=None):
         self.gate, self.game, self.cap, self.window = gate, game, int(cap), int(window)
+        # completion tokens reserved per request (level_bench.gate_completion_reserve, e.g. the observed p95) instead
+        # of the full cap; a longer completion still runs (vLLM preempts if its KV runs out). None: the cap.
+        self.reserve_completion = self.cap if reserve is None else min(self.cap, int(reserve))
         self.next_estimate = 0
         self.reservation = None
         self._stack = []
         self._timing_stack = []
+        self._turn_stack = []  # per enter: the pool that counted this request in flight (None: not counted)
         # A variant's aside request (cross-game notes written at a park) may go out while the
         # game is parked: it still takes a gate reservation but skips the active wait.
         self.allow_parked = False
+        self.turn_pool = None  # level_bench: a time-share pool with a turn gate (SharedSlots.turn) waits here first
 
     def reserve(self, prompt_estimate):
         self.next_estimate = max(0, int(prompt_estimate))
@@ -595,8 +600,8 @@ class GateSlot:
         if self.gate.budget is not None:
             # Never hide an oversized summary/request behind the agent's target window.
             # The physical layout enforces the actual native server limit separately.
-            return self.next_estimate + self.cap
-        return min(self.window, self.next_estimate + self.cap)
+            return self.next_estimate + self.reserve_completion
+        return min(self.window, self.next_estimate + self.reserve_completion)
 
     async def __aenter__(self):
         started = self.gate.now()
@@ -612,6 +617,8 @@ class GateSlot:
         self.game.admission_attempts.append(attempt)
         self._record("request_wait_started", attempt)
         try:
+            if self.turn_pool is not None:
+                await self.turn_pool.turn(self)
             while True:
                 # A lane game (fixed-2x-index-lane) is parked but may send background requests.
                 if not self.allow_parked and not self.game.lane:
@@ -634,6 +641,8 @@ class GateSlot:
                        admitted_wall_seconds=round(self.game.clock.global_clock.elapsed(), 3),
                        admitted_phase=getattr(self.game.observer, "phase", None))
         self._stack.append(reservation)
+        pool = self.turn_pool  # counted on this pool and ended there, even if the try moves pools while in flight
+        self._turn_stack.append(pool if pool is not None and hasattr(pool, "begin") and pool.begin(self) else None)
         self._timing_stack.append((attempt, self.gate.now(),
                                    self.game.clock.active_seconds(), self.game.clock.parked_seconds()))
         self._record("request_admitted", attempt)
@@ -660,6 +669,9 @@ class GateSlot:
         return 1 if self._stack[-1].lane else 0
 
     async def __aexit__(self, *exc):
+        pool = self._turn_stack.pop() if self._turn_stack else None
+        if pool is not None:
+            pool.end(self)  # the turn gate's place in flight
         reservation = self._stack.pop()
         attempt, started, active, parked = self._timing_stack.pop()
         self.gate.release(reservation)

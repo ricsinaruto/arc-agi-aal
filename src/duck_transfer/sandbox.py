@@ -11,9 +11,11 @@ model is told that its state was reset.
 """
 
 import collections
+import hashlib
 import json
 import os
 import queue
+import re
 import signal
 import subprocess
 import sys
@@ -28,6 +30,7 @@ LOOP = '''
         stdout = io.StringIO()
         runtime_globals["result"] = None
         _refresh_state(request.get("state") or {})
+        __import__("random").seed(request.get("rng_seed"))
         try:
             compiled = compile(str(request.get("code", "")), "<python_tool>", "exec")
             with contextlib.redirect_stdout(stdout):
@@ -340,6 +343,7 @@ LOOP_FIXES = '''
             stdout = io.StringIO()
             runtime_globals["result"] = None
             _refresh_state(request.get("state") or {})
+            __import__("random").seed(request.get("rng_seed"))
             try:
                 code = str(request.get("code", ""))
                 compiled = compile(code, "<python_tool>", "exec")
@@ -610,6 +614,11 @@ def _kill(process):
             pass
 
 
+# tool code whose output depends on wall-clock time (a restored try cannot replay it)
+CLOCK_CODE = re.compile(r"\b(?:time\.(?:time|time_ns|perf_counter|perf_counter_ns|monotonic|monotonic_ns|process_time)"
+                        r"|perf_counter|monotonic|process_time|datetime\.(?:now|utcnow|today)|date\.today)\s*\(")
+
+
 class StatefulSandbox:
     """Drop-in for ``run_sandboxed_python`` that keeps one child alive per game."""
 
@@ -644,8 +653,26 @@ class StatefulSandbox:
         self.inventory_answers_animation = False
         # arena hx_harness toolbox (``arena.hx_harness.with_toolbox``): the child's last registry / observer report.
         self.hx_state = None
+        # arena sim_check (``arena.sim_check.with_simcheck``): the child's last model-check report.
+        self.sc_state = None
         # Diagnostics only; native model LRU caches retain their exact behavior.
         self.cache_telemetry_seconds = 60
+
+    def _call_seed(self, code, initial_state):
+        """The call's ``random`` seed: a function of this game's call count, its history length and the code, so a
+        restored try replays every tool call to the recorded output (R leg 25 Oct: 14 of 30 bad restored starts were
+        tool code drawing from the unseeded ``random``). Code that reads the clock cannot replay: logged
+        ``duck_python_clock`` (arena.restore.UNSAFE). The first call logs ``duck_python_rng`` (a seeded recording)."""
+        try:
+            size = len((initial_state or {}).get("history") or [])
+        except TypeError:
+            size = 0
+        if self.calls == 1:
+            self._event("duck_python_rng", seeded=1)
+        if CLOCK_CODE.search(code or ""):
+            self._event("duck_python_clock", call=self.calls)
+        digest = hashlib.sha256(f"{self.calls}\0{size}\0{code}".encode()).digest()
+        return int.from_bytes(digest[:8], "big")
 
     def configure_fixes(self, bootstrap, *, interrupt, grace=3.0):
         """Switch to a fixes bootstrap (``stateful_bootstrap(..., fixes=...)``) before the first call."""
@@ -668,7 +695,9 @@ class StatefulSandbox:
     def _spawn(self):
         self.tempdir = tempfile.TemporaryDirectory(prefix="duck_python_")
         process = subprocess.Popen(
-            [sys.executable, "-I", "-S", "-c", self.bootstrap],
+            # -s -P -S, not -I: -I implies -E, which ignores PYTHONHASHSEED below (22 Oct: v6m10 R9 restores printed
+            # {'W', 'N'} vs a recorded {'N', 'W'}; the hash seed was random per sandbox). The env is built explicitly.
+            [sys.executable, "-s", "-P", "-S", "-c", self.bootstrap],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -679,6 +708,9 @@ class StatefulSandbox:
                 "PYTHONUNBUFFERED": "1",
                 "PYTHONIOENCODING": "utf-8",
                 "PYTHONDONTWRITEBYTECODE": "1",
+                # set/dict print order is the same in every process, so a restored try replays tool output exactly
+                # (pf hvpf-v1: a printed {'W', 'N'} flipped order and broke one harvested start's replay)
+                "PYTHONHASHSEED": "0",
                 "HOME": "/tmp",
                 "TMPDIR": "/tmp",
                 "PATH": os.environ.get("PATH", ""),
@@ -738,6 +770,7 @@ class StatefulSandbox:
                 return {"error": "Sandbox closed", "stdout": "", "action_results": []}
             self.calls += 1
             results = []
+            seed = self._call_seed(code, initial_state)
             try:
                 if self.process is None:
                     self._spawn()
@@ -750,10 +783,11 @@ class StatefulSandbox:
                             "color_chars": self.color_chars,
                             "cpu_seconds": int(self.cpu_seconds),
                             "cache_telemetry_seconds": self.cache_telemetry_seconds,
+                            "rng_seed": seed,
                         }
                     )
                 else:
-                    self._send({"type": "code", "code": code, "state": self._delta(initial_state)})
+                    self._send({"type": "code", "code": code, "state": self._delta(initial_state), "rng_seed": seed})
             except OSError:
                 self._discard("start_failed")
                 return {"error": "Sandbox process could not start.", "stdout": "", "action_results": []}
@@ -818,14 +852,6 @@ class StatefulSandbox:
                     raw = reply.get("action_result") or {}
                     if isinstance(raw, dict):
                         results.append(dict(raw))
-                    if (self.interrupt_on_timeout and interrupted_at is None and time.monotonic() >= deadline
-                            and self.process is not None and self.process.poll() is None):
-                        # The timeout passed inside this action: signal before the reply, so the interrupt lands while
-                        # the child's ``action`` is disarmed and raises right after it (not after a racing next action).
-                        interrupted_at = time.monotonic()
-                        deadline = interrupted_at + self.interrupt_grace
-                        self._interrupt()
-                        self._event("duck_python_interrupt", timeout=timeout_seconds)
                     self._send(
                         {
                             "type": "action_result",
@@ -851,6 +877,12 @@ class StatefulSandbox:
                         # arena dfr_harness: stale-state / terminal refusals raised in the child (nothing executed).
                         self.dfr_guards.extend(guards)
                         self._event("duck_python_dfr_guards", guards=guards)
+                    simcheck = message.get("simcheck")
+                    if isinstance(simcheck, dict):
+                        # arena sim_check: the model-check report of this call (events, ledger counts, fit, claims).
+                        self.sc_state = simcheck
+                        if simcheck.get("events"):
+                            self._event("duck_python_simcheck", events=simcheck["events"])
                     hx = message.get("hx")
                     if isinstance(hx, dict):
                         # arena hx_harness: registered tools / observers and the last observer outputs.

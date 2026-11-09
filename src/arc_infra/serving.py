@@ -68,8 +68,9 @@ def load_recipe(
     # 33..48 (hero-v2 follow-ups, 29 September): up to 46 oversubscribed int4 focus streams + spare sequences; the
     # study then raises the decode CUDA-graph capture size to cover them (server.max_cudagraph_capture_size).
     # 65..96 (30 September): campaign arm blocks2-plans-prune50-int3, 76 streams + 4 spare sequences, graphs to 80.
-    if type(generation_slots) is not int or not (generation_slots in (8, 12, 16) or 25 <= generation_slots <= 96):
-        raise ValueError("Flash server capacity comparisons support 8, 12, 16 or 25..96 slots")
+    # 97..160 (17 October): the RL serving card on a B300 (mg5g: 152 sequences, KV 132 GiB, graphs to 152).
+    if type(generation_slots) is not int or not (generation_slots in (8, 12, 16) or 25 <= generation_slots <= 160):
+        raise ValueError("Flash server capacity comparisons support 8, 12, 16 or 25..160 slots")
     if kv_cache_dtype not in ("auto", "fp8"):
         raise ValueError("Cache dtype must be auto or fp8")
     if type(max_num_batched_tokens) is not int or max_num_batched_tokens not in (4096, 8192):

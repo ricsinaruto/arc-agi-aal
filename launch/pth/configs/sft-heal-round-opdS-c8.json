@@ -1,0 +1,79 @@
+{
+  "run": "sft-heal-round-opdS-c8",
+  "arm": "sft",
+  "platform": "modal",
+  "gpu": "B300",
+  "gpu_count": 4,
+  "max_seconds": 25200,
+  "authorization": "approved run",
+  "what": "OPD restart c8 from D at step 0 with both EOS masks on (trainer HEAL_THINK_EOS_MASK, serving ARC_THINK_EOS_MASK): 3 trainer B300 + 1 FP8 teacher B300 learn from the student's live play on one Nebius RTX (b2-sft4x-opdS-g1-v33) plus version-0 backlogs, lr 3.5e-6, fwd 0.5 + rev 1.0, 64K window, checkpoints every 6. Why: every earlier OPD checkpoint degraded play (in-think EOS); the masks should keep play healthy while held-out KD improves. Judged per 10-min play window vs the masked D anchor: stop on tool < 0.85, loop > 3% or cap-in-think > 3% twice, or held-out KD +5% over steps 1-3 on 3 steps.",
+  "anchor": {
+    "run": "b2-sft4x-d0-h10-v3a",
+    "note": "masked D read (sft-prune dist/sft4x-d0-h10-v4, h10x10), runs first or beside the play"
+  },
+  "roster": {
+    "name": "15 training games (play bundle sft4x-opdS-g1-v27)",
+    "ids": [
+      "tn36",
+      "cn04",
+      "wa30",
+      "lp85",
+      "tu93",
+      "vc33",
+      "ar25",
+      "ka59",
+      "sc25",
+      "sk48",
+      "cd82",
+      "ft09",
+      "ls20",
+      "re86",
+      "sb26"
+    ],
+    "size": 15
+  },
+  "data": [
+    "arc-prolong-runs:validation/sft-heal-round-sA-D-1e5/train/student",
+    "arc-prolong-runs:validation/sft-heal-round-sA-D-1e5/train/routing.pt",
+    "arc-prolong-runs:validation/sft-heal-round-sA-D-1e5-r3/train",
+    "arc-prolong-runs:validation/sft-heal-round-tA-r1/teacher",
+    "arc-prolong-runs:validation/sft-heal-round-tA-dh10/teacher",
+    "arc-prolong-runs:validation/sft-heal-round-tA-v1/teacher-H",
+    "arc-prolong-runs:heal-data/stageA-v1",
+    "arc-prolong-runs:heal-data/start-reads/opdS-D-r3-heldout2-beh.pt",
+    "arc-prolong-assets:sft-heal/student-p75d4",
+    "arc-prolong-assets:expert-bf16/de4b8e4d43b917e7706784d8bb445c9af86a3540"
+  ],
+  "name": "opdS-c8",
+  "dstart": true,
+  "ck": null,
+  "res_run": null,
+  "hbundle": "dist/sft-heal-round-v97",
+  "pb": "sft4x-opdS-g1-v27",
+  "plays": [
+    "b2-sft4x-opdS-g1-v33",
+    "b2-sft4x-opdS-g1-v8",
+    "b2-sft4x-opdS-g1-v9",
+    "b2-sft4x-opdS-g1-v10",
+    "b2-sft4x-opdS-g1-v14"
+  ],
+  "ready": null,
+  "hlr": 3.5e-06,
+  "hfwd": null,
+  "max_age": 12,
+  "vkl": 0.052,
+  "hwin": null,
+  "stream_chunk": null,
+  "xe": [
+    "HEAL_FORCE_IDS=248046+248069+248058",
+    "HEAL_THINK_EOS_MASK=248046+248069"
+  ],
+  "xt": [
+    "HEAL_FORCE_IDS=248046+248069+248058",
+    "HEAL_EVICT_CLOSING_FIRST=1"
+  ],
+  "new_flags": null,
+  "pftag": null,
+  "reuse_pf": true,
+  "ack": "c7r stopped on play degradation: in-think <|im_end|> distilled from the teacher, which endorses it on student contexts (EOS step A, median log p -2.49); restart from D with both think-EOS masks"
+}

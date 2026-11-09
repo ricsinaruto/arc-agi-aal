@@ -331,7 +331,7 @@ def test_runs_a_and_b_oversubscribe_the_int4_fit_within_the_captured_graphs():
     assert b["focus_oversubscription"]["full_windows_fit_projected"] == 22 and "max_cudagraph_capture_size" not in b["server"]
     assert a["harness_fixes"]["fixes"] and b["backlog_key"] == "progress-fruitless"
     source = (ROOT / "src/arc_infra/serving.py").read_text()
-    assert "25 <= generation_slots <= 96" in source
+    assert "25 <= generation_slots <= 160" in source
 
 
 @pytest.mark.parametrize("test,components,window", [("hero-v2-int4-streams", RUN_A, 65536),
@@ -368,5 +368,5 @@ def test_renderer_workers_and_mm_processor_cache_reach_the_server(monkeypatch, t
     assert r.server_command() == ["serve", "model", "--renderer-num-workers", "4", "--mm-processor-cache-gb", "1.0"]
     assert result["mm_processor_cache_gb"] == 1.0
     with pytest.raises(ValueError):
-        configure(NS(), tmp_path, mm_processor_cache_gb=8)
+        configure(NS(), tmp_path, mm_processor_cache_gb=33)  # the limit is 0..32 GiB
     assert "study['server'].get('mm_processor_cache_gb')" in (ROOT / "src/arena/serving.py").read_text()

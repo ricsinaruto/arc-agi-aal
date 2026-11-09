@@ -56,6 +56,7 @@ async def test_probe_requires_exact_count_no_preemptions_and_real_offload(monkey
     monkeypatch.setattr(cache_probe, 'GpuMonitor', Monitor)
     monkeypatch.setattr(cache_probe, 'wait_idle', idle)
     study = {'kv_margin': 0.9, 'generation_slots': 25, 'cache_experiment': {'cpu_cache_gib': cpu_gib}}
+    monkeypatch.setenv('ARC_VALIDATION_OUTPUT', str(tmp_path / 'vol'))
     if failure:
         with pytest.raises(RuntimeError):
             await cache_probe.run(tmp_path, study, 'http://local/v1')
@@ -68,6 +69,8 @@ async def test_probe_requires_exact_count_no_preemptions_and_real_offload(monkey
         assert resets == ['true']
     else:
         assert not resets
+        kept = list((tmp_path / 'vol' / 'boot').glob('cache-probe-fail-*.json'))  # evidence outlives the container
+        assert len(kept) == 1 and json.loads(kept[0].read_text())['requests']
     if failure == 'empty':
         assert result['requests'] and not result['requests'][0]['validated']
         assert result['requests'][0]['response']['choices'][0]['message']['reasoning'] == 'A colored image.'

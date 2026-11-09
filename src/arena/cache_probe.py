@@ -4,6 +4,7 @@ import asyncio
 import base64
 import io
 import json
+import os
 import time
 from pathlib import Path
 
@@ -53,7 +54,8 @@ async def run(server_dir, study, base_url):
     await monitor.sample()
     sampling = asyncio.create_task(monitor.run())
     try:
-        # Idle connections retire before the server's 5 s keep-alive closes them (a reused one fails the probe).
+        # Idle connections retire before the server's 5 s keep-alive closes them (a reused one fails the probe;
+        # main 0e8cba38; rl preflights p2c/p2d-pf2 died on it, 19 Oct).
         limits = httpx.Limits(keepalive_expiry=KEEPALIVE_EXPIRY)
         async with asyncio.timeout(270), httpx.AsyncClient(timeout=240, trust_env=False, limits=limits) as client:
             async def request(index, words):
@@ -137,6 +139,15 @@ async def run(server_dir, study, base_url):
         await asyncio.gather(sampling, return_exceptions=True)
         record.update(seconds=time.monotonic() - started, gate=gate.snapshot(), engine=monitor.summary())
         (folder / 'result.json').write_text(json.dumps(record, indent=2))
+        out = os.environ.get('ARC_VALIDATION_OUTPUT')
+        if record.get('state') == 'error' and out:  # the server dir is container-local (v6n2 25 Oct: evidence lost)
+            try:
+                keep = Path(out) / 'boot' / f'cache-probe-fail-{int(time.time())}.json'
+                keep.parent.mkdir(parents=True, exist_ok=True)
+                keep.write_text(json.dumps(record, indent=2))
+                print('cache probe failure evidence:', keep, flush=True)
+            except OSError as error:
+                print('cache probe failure evidence not kept:', error, flush=True)
 
 
 def main():

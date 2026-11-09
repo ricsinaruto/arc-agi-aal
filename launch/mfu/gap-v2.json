@@ -1,0 +1,52 @@
+{
+ "fixes": {
+  "prefix_snapshots": true,
+  "prefetch": 2,
+  "encode_procs": 16,
+  "window_cache": 96,
+  "union_attention": true,
+  "gdn_fast": true,
+  "chunked_head": true,
+  "fast_dequant": true,
+  "fused_experts": true,
+  "sel_cache": true,
+  "hyper_fast": true,
+  "prefix_nograd": true,
+  "ngram_pinned": true,
+  "probe_pinned": true,
+  "feed_stream": true,
+  "vision_ahead": true,
+  "k3_hold": 16,
+  "fast_topk": true,
+  "fast_topk_wide": "filter",
+  "hyper_xb": true,
+  "gdn_keep": true
+ },
+ "window": 32768,
+ "warm_attempts": 2,
+ "whole": true,
+ "checkpoint": "/runs/validation/rl1-loop-ovf3/state/r04",
+ "carry_check": true,
+ "arms": [
+  {
+   "name": "r01",
+   "ref": "keep",
+   "keep_as": "r01",
+   "checkpoint": "/runs/validation/rl1-loop-ovf3/state/r01"
+  },
+  {
+   "name": "r02",
+   "ref": "keep",
+   "keep_as": "r02",
+   "checkpoint": "/runs/validation/rl1-loop-ovf3/state/r02"
+  },
+  {
+   "name": "r03",
+   "ref": "keep",
+   "keep_as": "r03",
+   "checkpoint": "/runs/validation/rl1-loop-ovf3/state/r03"
+  }
+ ],
+ "ref_rows": true,
+ "gap_dump": "/runs/validation/rl1-prof-m1gp2/gap_dump.pt"
+}

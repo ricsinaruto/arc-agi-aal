@@ -124,6 +124,37 @@ async def test_only_read_only_tokenizer_transport_errors_are_retried(failures):
             assert len(calls) == 2 and client.generation_retries == 1
 
 
+@pytest.mark.parametrize("failures", [3, 4])
+async def test_generation_backoff_replays_up_to_its_length(failures, monkeypatch):
+    calls, pauses = [], []
+
+    def handler(request):
+        calls.append(request)
+        if len(calls) <= failures:
+            raise httpx.RemoteProtocolError("closed", request=request)
+        return httpx.Response(200, json={"usage": {}, "choices": [{"finish_reason": "stop"}]})
+
+    async def sleep(seconds):
+        pauses.append(seconds)
+
+    monkeypatch.setattr("arc_infra.fleet.asyncio.sleep", sleep)
+    async with httpx.AsyncClient(base_url="http://model/", transport=httpx.MockTransport(handler)) as shared:
+        client = SessionHTTP(shared, 0, "game", [])
+        client.backoff = (1.0, 2.0, 4.0)
+        if failures == 3:
+            response = await client.post("chat/completions", json={"messages": []}, timeout=30.0)
+            assert response.status_code == 200 and len(calls) == 4 and pauses == [1.0, 2.0, 4.0]
+            assert client.requests[-1]["transport_retries"] == 3 and client.generation_retries == 3
+        else:
+            with pytest.raises(httpx.RemoteProtocolError):
+                await client.post("chat/completions", json={"messages": []}, timeout=30.0)
+            assert len(calls) == 4 and pauses == [1.0, 2.0, 4.0]
+        calls.clear(), pauses.clear()
+        with pytest.raises(httpx.RemoteProtocolError):  # no time left for the next pause: the error stands
+            await client.post("chat/completions", json={"messages": []}, timeout=1.5)
+        assert pauses == [1.0]
+
+
 def test_summary_includes_all_110_and_base_game_weighting():
     entries = roster([f"game{i:02}" for i in range(25)])
     results = [

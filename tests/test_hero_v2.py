@@ -132,7 +132,7 @@ def test_raised_sequences_reach_the_server_and_the_generation_slots(monkeypatch)
     from arc_infra import serving
 
     source = (ROOT / "src/arc_infra/serving.py").read_text()
-    assert "25 <= generation_slots <= 96" in source and serving.SERVER_ENV["TAAF_VLLM_MAX_CUDAGRAPH_CAPTURE_SIZE"] == "32"
+    assert "25 <= generation_slots <= 160" in source and serving.SERVER_ENV["TAAF_VLLM_MAX_CUDAGRAPH_CAPTURE_SIZE"] == "32"
 
 
 def test_component_values_are_validated():
@@ -601,3 +601,19 @@ def test_wide_tiles_follow_the_router_expert_count(prune, kept):
     study = hero_v2.compose(hero(), {**READY, "expert_prune": prune, "gptq_arc": False,
                                     "wide_tiles": True, "stall_dump": None})
     assert study["server"]["dense_kernels"]["mid_wide_shapes"] == [[kept, 2560]]
+
+
+def test_engine_snapshot_reads_the_image_cache_rate_and_the_front_end_queue():
+    def row(t, hits, queries, queue, count):
+        return {"elapsed_seconds": t, "metrics": {**sample(t, t * 100)["metrics"], "vllm:mm_cache_hits_total": hits,
+                                                  "vllm:mm_cache_queries_total": queries,
+                                                  "vllm:request_queue_time_seconds_sum": queue,
+                                                  "vllm:request_queue_time_seconds_count": count}}
+
+    snap = lp.engine_snapshot([row(0, 0, 0, 0.0, 0), row(60, 900, 1000, 10.0, 100), row(120, 1040, 2000, 110.0, 200)])
+    assert snap["image_cache_hit_rate_recent"] == 0.14 and snap["image_cache_hit_rate_mean"] == 0.52
+    assert snap["engine_queue_seconds_recent"] == 1.0 and "prefix_cache_hit_rate_recent" not in snap
+    check = lp.serving_check({"reserved": 1900, "inflight": 46, "waiting": 2}, snap)
+    assert check["front_end_queue"] == 46 - 20 - 1 and check["image_cache_hit_rate_recent"] == 0.14
+    assert lp.serving_check(None, snap) is None and lp.serving_check({"inflight": 3}, None) is None
+    assert "image_cache_hit_rate_recent" not in lp.engine_snapshot([sample(0, 0), sample(60, 10)])

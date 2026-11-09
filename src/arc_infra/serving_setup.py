@@ -172,7 +172,26 @@ MTP_INDEX_SHARE_FOR_ITERATION_ENV = (
 MTP_DYNAMIC_BATCH_SCHEDULE_ENV = "TAAF_VLLM_MTP_DYNAMIC_BATCH_SCHEDULE"
 DEFAULT_OMP_THREADS = 4
 DEFAULT_MTP_TOKENS = 3
-MAX_EXPLICIT_KV_CACHE_MEMORY_BYTES = 96 * 1024**3
+MAX_EXPLICIT_KV_CACHE_MEMORY_BYTES = 192 * 1024**3  # B300 RL serving card (mg5f, 17 Oct): ~132 GiB
+# GPUs this fork serves on (B200 harness comparison, 5 October 2026; B300 for RL step 1, 13 October): the CUDA
+# arch list follows the device (SM103 runs the SM100 build).
+SUPPORTED_GPUS = {"rtx pro 6000": "12.0", "b200": "10.0", "b300": "10.0"}
+
+
+def cuda_arch():
+    """TORCH_CUDA_ARCH_LIST for the one visible GPU: 12.0 (RTX PRO 6000, SM120) or 10.0 (B200, SM100)."""
+    global _CUDA_ARCH
+    if _CUDA_ARCH is None:
+        name = subprocess.run(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"], capture_output=True,
+                              text=True, check=True, timeout=30).stdout.strip().lower()
+        arch = [a for k, a in SUPPORTED_GPUS.items() if k in name]
+        if len(arch) != 1:
+            raise RuntimeError(f"Expected one RTX PRO 6000 or B200, found: {name!r}")
+        _CUDA_ARCH = arch[0]
+    return _CUDA_ARCH
+
+
+_CUDA_ARCH = None
 MIN_EXPLICIT_KV_CACHE_MEMORY_BYTES = 64 * 1024**2
 VLLM_TUNING_FIELDS = {
     "schema_version",
@@ -462,7 +481,7 @@ def resolve_vllm_tuning(
             MAX_CUDAGRAPH_CAPTURE_SIZE_ENV,
             default=0,
             minimum=0,
-            maximum=256,
+            maximum=1024,  # MFU-2 tput6 capture range (the document validator's bound, 33148efa1)
         )
     )
 
@@ -529,7 +548,7 @@ def validate_vllm_tuning_document(value: Any) -> list[str]:
 
     integer_bounds = {
         "kv_cache_memory_bytes": (0, MAX_EXPLICIT_KV_CACHE_MEMORY_BYTES),
-        "max_cudagraph_capture_size": (0, 256),
+        "max_cudagraph_capture_size": (0, 1024),
         "max_num_batched_tokens": (1, 1_048_576),
         "max_num_batched_tokens_requested": (1, 1_048_576),
         "max_num_seqs": (1, 256),
@@ -1208,7 +1227,7 @@ def validate_jit_toolchain(
     compile_command = [
         str(nvcc),
         "-std=c++17",
-        "-arch=sm_120",
+        f"-arch=sm_{cuda_arch().replace('.', '')}",
         "-Xcompiler",
         "-fPIC",
         "-ccbin",
@@ -1313,6 +1332,39 @@ print(json.dumps({"cuda_runtime_version": function()}))
         }
     finally:
         shutil.rmtree(probe_root, ignore_errors=True)
+
+
+def pyc_cache_env(env, environ=None):
+    """ARC_PYC_CACHE=1: the server's processes write and read bytecode under CACHE_ROOT/pyc (the pinned runtime ships
+    no .pyc: each of the API, engine-core and worker processes compiled ~7.5K modules from source, 27-31 s of import
+    each vs 15 s with bytecode; Modal CPU probe, MFU-2 24 Oct). The boot cache carries CACHE_ROOT, so a restored boot
+    reads all three. Bytecode is invalidated by source mtime/size, so patched files recompile."""
+    if (os.environ if environ is None else environ).get("ARC_PYC_CACHE") != "1":
+        return env
+    env.pop("PYTHONDONTWRITEBYTECODE", None)
+    env["PYTHONPYCACHEPREFIX"] = str(CACHE_ROOT / "pyc")
+    return env
+
+
+def check_cache_env(env, environ=None):
+    """ARC_PLE_CHECK_SKIP=1: the PLE UVA load-time self-check (serving_kernels_runtime.cached_check) runs once per
+    identity; its pass marker lives under CACHE_ROOT/arc-checks, which the boot cache carries to the next boot."""
+    if (os.environ if environ is None else environ).get("ARC_PLE_CHECK_SKIP") != "1":
+        return env
+    env["ARC_SK_CHECK_CACHE"] = str(CACHE_ROOT / "arc-checks")
+    return env
+
+
+def aot_root_env(env, environ=None):
+    """ARC_BOOT_CACHE_CARRY=1: vLLM's cache root (AOT graphs) per server flag fingerprint (boot_cache.env_fingerprint),
+    so a carried or restored graph traced under other ARC_* flags never loads."""
+    environ = os.environ if environ is None else environ
+    if environ.get("ARC_BOOT_CACHE_CARRY") != "1":
+        return env
+    from arc_infra.boot_cache import vllm_cache_root
+
+    env["VLLM_CACHE_ROOT"] = str(vllm_cache_root(CACHE_ROOT, environ))
+    return env
 
 
 def runtime_environment(
@@ -1436,12 +1488,15 @@ def runtime_environment(
             "TRANSFORMERS_OFFLINE": "1",
             "PYTHONDONTWRITEBYTECODE": "1",
             "PYTHONHASHSEED": "0",
-            "TORCH_CUDA_ARCH_LIST": "12.0",
+            "TORCH_CUDA_ARCH_LIST": cuda_arch(),
             "TOKENIZERS_PARALLELISM": "false",
             "OMP_NUM_THREADS": str(resolved_tuning["omp_num_threads"]),
             "MKL_NUM_THREADS": str(resolved_tuning["omp_num_threads"]),
         }
     )
+    pyc_cache_env(env)
+    check_cache_env(env)
+    aot_root_env(env)
     if not deep_preload_validation:
         if sys.implementation.name != "cpython" or sys.version_info[:2] != (3, 12):
             raise RuntimeError(
@@ -1471,7 +1526,7 @@ def runtime_environment(
             "allocator_effective": "expandable_segments:False",
             "allocator_alias_removed": True,
             "cuda_compatibility": "0",
-            "torch_cuda_arch_list": "12.0",
+            "torch_cuda_arch_list": cuda_arch(),
             "python": sys.version,
             "glibc": glibc_raw,
             "site_packages": str(site),
@@ -1584,7 +1639,7 @@ print(json.dumps({
         raise RuntimeError(f"Conflicting allocator alias reached torch import: {import_info}")
     if import_info.get("cuda_compatibility") != "0":
         raise RuntimeError(f"CUDA compatibility mode was not disabled before import: {import_info}")
-    if import_info.get("torch_cuda_arch_list") != "12.0":
+    if import_info.get("torch_cuda_arch_list") != cuda_arch():
         raise RuntimeError(f"Wrong CUDA architecture list reached torch import: {import_info}")
     if import_info.get("vllm") != VLLM_VERSION:
         raise RuntimeError(f"Wrong vLLM version: {import_info}")
@@ -1638,7 +1693,7 @@ print(json.dumps({
         "allocator_effective": "expandable_segments:False",
         "allocator_alias_removed": True,
         "cuda_compatibility": "0",
-        "torch_cuda_arch_list": "12.0",
+        "torch_cuda_arch_list": cuda_arch(),
         "site_packages": str(site),
         "cutlass_pth": str(cutlass_pth),
         "cutlass_pth_sha256": sha256_file(cutlass_pth),
@@ -1842,8 +1897,8 @@ def gpu_inventory() -> dict[str, Any]:
         timeout=30,
     )
     rows = [line.strip() for line in query.stdout.splitlines() if line.strip()]
-    if len(rows) != 1 or "rtx pro 6000" not in rows[0].lower():
-        raise RuntimeError(f"Expected one RTX PRO 6000, found: {rows}")
+    if len(rows) != 1 or not any(k in rows[0].lower() for k in SUPPORTED_GPUS):
+        raise RuntimeError(f"Expected one RTX PRO 6000 or B200, found: {rows}")
     meminfo = _meminfo()
     available = int(meminfo.get("MemAvailable", 0))
     if available < MIN_HOST_AVAILABLE_BYTES:
@@ -2446,8 +2501,6 @@ def start_server(
             root_record is not None
             and root_record["pgid"] == process.pid
             and root_record["sid"] == process.pid
-            and root_record["argv_sha256"] == hashlib.sha256(  # setsid runs before exec: wait for the exec'd argv
-                json.dumps(command, separators=(",", ":"), ensure_ascii=False).encode("utf-8")).hexdigest()
         ):
             break
         time.sleep(0.05)
@@ -2463,7 +2516,7 @@ def start_server(
         process.terminate()
         raise RuntimeError(
             "The live vLLM root argv did not match the exact launched command: "
-            f"{root_record['argv_sha256']} != {argv_sha256}; live cmdline {root_record['cmdline'][:400]!r}"
+            f"{root_record['argv_sha256']} != {argv_sha256}"
         )
     started_epoch = time.time()
     root_worker = {
@@ -2920,6 +2973,26 @@ def capture_process_and_gpu(identity: dict[str, Any]) -> dict[str, Any]:
     return value
 
 
+# Flags whose patched files stay stock in a process without the flag (read per process at import or call time, outside
+# torch.compile's traced code), so server 1 can carry server 2's edits: SecondServer copies server 1's runtime tree and
+# applies nothing itself (v6n's server-2-only ARC_SLEEP_KEEP_KV and v6k's BM16 never reached the files). Traced-code
+# flags (ARC_MOE_LORA_BM16) are not here: server 2 loads server 1's AOT graph, so they must be set on both servers.
+SERVER2_PATCH_FLAGS = ("ARC_SEGMENT_TOKEN_CACHE", "ARC_SLEEP_KEEP_KV")
+
+
+def patch_flag(name, environ=None):
+    """The flag is "1" in this server's env, or (SERVER2_PATCH_FLAGS only) in ARC_SERVER2_ENV (scripts/arena/bootstrap)."""
+    environ = os.environ if environ is None else environ
+    if environ.get(name) == "1":
+        return True
+    if name not in SERVER2_PATCH_FLAGS:
+        return False
+    try:
+        return json.loads(environ.get("ARC_SERVER2_ENV") or "{}").get(name) == "1"
+    except (ValueError, AttributeError):
+        return False
+
+
 def persist_analyzer_environment(env: dict[str, str]) -> dict[str, str]:
     setup_env = read_json(SETUP_ENV_PATH) if SETUP_ENV_PATH.exists() else {}
     if not isinstance(setup_env, dict):
@@ -2937,7 +3010,7 @@ def persist_analyzer_environment(env: dict[str, str]) -> dict[str, str]:
         "VLLM_NO_USAGE_STATS": "1",
         "VLLM_ENABLE_CUDA_COMPATIBILITY": "0",
         "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:False",
-        "TORCH_CUDA_ARCH_LIST": "12.0",
+        "TORCH_CUDA_ARCH_LIST": cuda_arch(),
         "VLLM_RADIXARK_QWEN38_NVFP4_PLE_FP8": "1",
         "VLLM_RADIXARK_QWEN38_NVFP4_CONFIG_SHA256": MODEL_CONFIG_SHA256,
     }
@@ -2969,6 +3042,18 @@ def persist_analyzer_environment(env: dict[str, str]) -> dict[str, str]:
     return {**runtime_keys, **analyzer}
 
 
+def patch_check_exit(checked, runtime_check, working_dir=None, emit=print):
+    """ARC_SERVING_PATCH_CHECK=1: the boot patches ran on this exact runtime tree; a skipped one (None) is fatal.
+    Prints ARC_PATCH_CHECK OK|FAIL and exits 0 / 3 before any GPU work."""
+    folder = Path(working_dir or WORKING_DIR)
+    row = {"patches": {k: v is not None and v is not False for k, v in checked.items()},
+           "markers": sorted(p.name for p in folder.glob("*.json") if "patch" in p.name or "skip" in p.name),
+           "runtime": {k: runtime_check.get(k) for k in ("mode", "cache_key") if isinstance(runtime_check, dict)}}
+    ok = all(row["patches"].values())
+    emit(f"ARC_PATCH_CHECK {'OK' if ok else 'FAIL'} " + json.dumps(row, default=str), flush=True)
+    raise SystemExit(0 if ok else 3)
+
+
 def main() -> None:
     setup_started = time.monotonic()
     setup_started_epoch = time.time()
@@ -2983,7 +3068,14 @@ def main() -> None:
         flush=True,
     )
     source_identity()
-    inventory = gpu_inventory()
+    patch_check = os.environ.get("ARC_SERVING_PATCH_CHECK") == "1"  # CPU gate: every boot patch, then exit
+    if patch_check:
+        try:
+            inventory = gpu_inventory()
+        except Exception as error:  # noqa: BLE001 - no GPU in the gate's container
+            inventory = {"skipped": repr(error)[:120]}
+    else:
+        inventory = gpu_inventory()
     runtime_dir = resolve_runtime_dir()
     model_dir = resolve_model_dir()
     print(f"PINNED_VLLM_RUNTIME_PATH {runtime_dir}", flush=True)
@@ -2995,11 +3087,51 @@ def main() -> None:
         scan_extracted_caches=not fast_start,
     )
     ple_patch = patch_ple_layer()
+    checked = {"ple": bool(ple_patch)}
+    # determinism fixes (stable_align): the edits read ARC_STABLE_ALIGN / ARC_STABLE_QSA / ARC_QSA_TIES at import in each server
+    # process, so ARC_STABLE_PATCH=1 edits the shared tree with both off and a second server can turn them on alone
+    stable_patch = os.environ.get("ARC_STABLE_PATCH") == "1"
+    if stable_patch or os.environ.get("ARC_STABLE_ALIGN") == "1":
+        from arc_infra.stable_align import apply as apply_stable_align
+        checked["stable_align"] = apply_stable_align(RUNTIME_ROOT / "usr/local/lib/python3.12/dist-packages", WORKING_DIR)
+    if stable_patch or os.environ.get("ARC_STABLE_QSA") == "1" or os.environ.get("ARC_QSA_TIES") == "index":
+        from arc_infra.stable_align import apply_qsa
+        checked["stable_qsa"] = apply_qsa(RUNTIME_ROOT / "usr/local/lib/python3.12/dist-packages")
+    if os.environ.get("ARC_LORA_GRAPH_ONE") == "1":  # LoRA cudagraph case only (lora_graph_patch; RTX capture 82 -> 36 s)
+        from arc_infra.lora_graph_patch import apply as apply_lora_graph
+        checked["lora_graph"] = apply_lora_graph(RUNTIME_ROOT / "usr/local/lib/python3.12/dist-packages", WORKING_DIR)
+    if os.environ.get("ARC_MARLIN_BATCH") == "1":  # NVFP4 MoE Marlin scale prep over all experts (marlin_batch_patch)
+        from arc_infra.marlin_batch_patch import apply as apply_marlin_batch  # after expert_mask (extract wrapper)
+        checked["marlin_batch"] = apply_marlin_batch(RUNTIME_ROOT / "usr/local/lib/python3.12/dist-packages",
+                                                     WORKING_DIR)
+    if os.environ.get("ARC_LORA_SEGMENT") == "1":  # per-adapter cuBLAS LoRA on large eager steps (lora_segment_patch)
+        from arc_infra.lora_segment_patch import apply as apply_lora_segment
+        checked["lora_segment"] = apply_lora_segment(RUNTIME_ROOT / "usr/local/lib/python3.12/dist-packages",
+                                                     WORKING_DIR)
+    if os.environ.get("ARC_MOE_LORA_BM16") == "1":  # MoE-LoRA at 16-row blocks (moe_lora_bm16_patch)
+        from arc_infra.moe_lora_bm16_patch import apply as apply_moe_lora_bm16  # after expert_mask (same file)
+        checked["moe_lora_bm16"] = apply_moe_lora_bm16(RUNTIME_ROOT / "usr/local/lib/python3.12/dist-packages", WORKING_DIR)
+    if patch_flag("ARC_SEGMENT_TOKEN_CACHE"):  # API tokenizer: cached pieces between special tokens
+        from arc_infra.segment_token_cache_patch import apply as apply_segment_tokens  # (segment_token_cache_patch)
+        checked["segment_token_cache"] = apply_segment_tokens(RUNTIME_ROOT / "usr/local/lib/python3.12/dist-packages",
+                                                              WORKING_DIR)
+    if patch_flag("ARC_SLEEP_KEEP_KV"):  # level-1 sleep keeps KV on host + prefix cache (sleep_keep_kv_patch)
+        from arc_infra.sleep_keep_kv_patch import apply as apply_sleep_keep_kv
+        checked["sleep_keep_kv"] = apply_sleep_keep_kv(RUNTIME_ROOT / "usr/local/lib/python3.12/dist-packages", WORKING_DIR)
+    if os.environ.get("ARC_PINNED_LOAD") == "1":  # weights read into pinned chunks, not mmap views (pinned_load_patch)
+        from arc_infra.pinned_load_patch import apply as apply_pinned_load
+        checked["pinned_load"] = apply_pinned_load(RUNTIME_ROOT / "usr/local/lib/python3.12/dist-packages",
+                                                   WORKING_DIR)
+    if os.environ.get("ARC_MM_WARMUP_SKIP") == "1":  # no start-up MM processor warmup (mm_warmup_patch, B300 63 s)
+        from arc_infra.mm_warmup_patch import apply as apply_mm_warmup
+        checked["mm_warmup"] = apply_mm_warmup(RUNTIME_ROOT / "usr/local/lib/python3.12/dist-packages", WORKING_DIR)
     if os.environ.get("ARC_VLLM_ONLINE_MXFP8") == "1":
         from arc_infra.mxfp8_patch import apply as apply_online_mxfp8
-        apply_online_mxfp8(
+        checked["mxfp8"] = apply_online_mxfp8(
             RUNTIME_ROOT / "usr/local/lib/python3.12/dist-packages", WORKING_DIR,
         )
+    if patch_check:
+        patch_check_exit(checked, runtime_check)
     env, environment_check = runtime_environment(
         deep_preload_validation=not fast_start,
         tuning=tuning,
@@ -3017,8 +3149,17 @@ def main() -> None:
         ipc_check = diagnose_pidfd_ipc(env)
         cli_check = validate_cli_contract(env)
     model_check = verify_model(model_dir, full_file_hashes=not fast_start)
+    from arc_infra.boot_cache import key as boot_cache_key
+    from arc_infra.boot_cache import restore_from_environment, save_from_environment
+
+    cache_key = None
+    if os.environ.get("ARC_BOOT_CACHE_IN") or os.environ.get("ARC_BOOT_CACHE_SAVE") == "1":
+        cache_key = boot_cache_key(server_command(model_dir, tuning=tuning), WORKING_DIR)
+    # ARC_BOOT_CACHE_IN: the compile caches of an earlier boot with the same argv and overlays
+    restore_from_environment((CACHE_ROOT, COMPILE_CACHE_ROOT), cache_key)
     server_identity = start_server(model_dir, env, tuning=tuning)
     readiness = wait_for_server(server_identity, setup_deadline)
+    save_from_environment((CACHE_ROOT, COMPILE_CACHE_ROOT), WORKING_DIR, cache_key)  # ARC_BOOT_CACHE_SAVE=1
     server_identity = update_ready_identity(server_identity)
     if fast_start:
         preflight = {

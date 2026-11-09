@@ -91,8 +91,7 @@ def main():
     ap.add_argument("--label")
     ap.add_argument("-n", type=int, default=8)
     ap.add_argument("pytest_args", nargs="*")
-    a, extra = ap.parse_known_args()  # pytest flags (-rA, -k ...) pass through
-    a.pytest_args += extra
+    a = ap.parse_args()
     label = a.label or (a.ref or pathlib.Path(a.tree or ".").resolve().name).replace("/", "-")
     data = bundle(a.tree, a.ref)
     print(f"bundle {len(data) / 1e6:.1f} MB; running pytest on Modal CPU ({label})", flush=True)
@@ -100,7 +99,7 @@ def main():
         try:
             from arc_infra.runops import records
 
-            records.register_cpu_app(app.app_id, name="arc-tests")  # CI and suite runs: a registered CPU app
+            records.register_cpu_app(app.app_id)
         except Exception as e:  # the ledger is best effort here; the CPU job itself is cents
             print(f"(cpu-app registration skipped: {e!r})")
         r = pytest_run.remote(data, (["-n", str(a.n), "--dist", "loadfile"] if a.n else []) + a.pytest_args)

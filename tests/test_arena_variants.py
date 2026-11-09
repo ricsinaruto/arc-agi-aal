@@ -536,3 +536,16 @@ def test_scheduling_variants_retain_cache_fix_and_have_exact_reference_diff(name
     for extra in ({'candidate_profile': 'ui-mate-9b'}, {'backend': 'sglang'}):
         with pytest.raises(ValueError, match='Flash vLLM'):
             apply_variant({**CONTROL, **extra}, name)
+
+
+def test_capture_sizes_up_to_1024():
+    """MFU-2 tput6 (23 Oct): explicit capture lists to 1024 pass; 1025 and an unsorted list do not."""
+    import pytest
+    from arena.serving import validate_graph_capture_sizes as v
+
+    sizes = [1, 2, 4, 8, 16, 152, 168, 184, 200, 224, 256, 288, 320, 384, 448, 512, 576, 640, 768, 896, 1024]
+    assert v(sizes, 1024) == sizes
+    with pytest.raises(ValueError):
+        v(sizes + [1025], 1025)
+    with pytest.raises(ValueError):
+        v([1, 512, 256], 256)

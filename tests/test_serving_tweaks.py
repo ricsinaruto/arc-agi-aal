@@ -60,7 +60,7 @@ def test_phase4_settings_stay_byte_identical_and_tweaks_are_opt_in():
                                                                             "draft_experts")},
                                                       "hc_fusion": False, "topk_sampler": True}
     tweaks = patch.validate(patch.TWEAKS)
-    assert tweaks == patch.TWEAKS and list(tweaks) == [k for k in patch.OPTIONS if k not in ("kv_cache_8bit", "kv_cache_4bit", "kv8_prefill", "expert_int3", "indexer_fp8", "draft_moe_backend")]
+    assert tweaks == patch.TWEAKS and list(tweaks) == [k for k in patch.OPTIONS if k not in ("kv_cache_8bit", "kv_cache_4bit", "kv8_prefill", "expert_int3", "indexer_fp8", "draft_moe_backend", "pin_overlap")]
     assert patch.TWEAKS == {**patch.PHASE4, "draft_vocab": "arena16k", "ple_uva": True, "embed_host": True}
     assert patch.validate({"ple_uva": True}) == {**{k: None for k in patch.CHOICES if k not in patch.OPTIONAL},
                                                  "hc_fusion": False, "topk_sampler": False, "ple_uva": True}

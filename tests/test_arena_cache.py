@@ -1,5 +1,6 @@
 import asyncio
 import json
+from pathlib import Path
 from types import SimpleNamespace as NS
 
 import pytest
@@ -132,7 +133,27 @@ def test_offload_command_preserves_native_flags(monkeypatch, tmp_path):
     assert command[:3] == ['serve', '--max-num-seqs', '25']
     config = json.loads(command[command.index('--kv-transfer-config') + 1])
     assert config['kv_connector_extra_config']['cpu_bytes_to_use'] == 16 * 1024**3
+    assert config['kv_connector'] == 'ArcOffloadingConnector' and config['kv_connector_module_path'] == 'vllm.arc_offload'
     assert '--no-disable-hybrid-kv-cache-manager' in command
+    runtime = tmp_path / 'usr/local/lib/python3.12/dist-packages/vllm/arc_offload.py'
+    assert runtime.read_bytes() == (Path(serving.__file__).parents[1] / 'arc_infra/arc_offload_runtime.py').read_bytes()
+
+
+def test_offload_size_override_and_ceiling(monkeypatch, tmp_path):
+    """RL hero (24 Oct): ARENA_CPU_CACHE_GIB sets the host cache per trial, up to 192 GiB."""
+    recipe = NS(verify_and_extract_runtime=lambda: {}, server_command=lambda: ['serve'], RUNTIME_ROOT=tmp_path)
+    from arena import serving
+    monkeypatch.setattr(serving, 'apply', lambda *args, **kw: None)
+    monkeypatch.setenv('ARENA_CPU_CACHE_GIB', '128')
+    configure(recipe, tmp_path, cpu_gib=0)
+    recipe.verify_and_extract_runtime()
+    command = recipe.server_command()
+    config = json.loads(command[command.index('--kv-transfer-config') + 1])
+    assert config['kv_connector_extra_config']['cpu_bytes_to_use'] == 128 * 1024**3
+    monkeypatch.setenv('ARENA_CPU_CACHE_GIB', '256')
+    with pytest.raises(ValueError, match='0..192'):
+        configure(NS(verify_and_extract_runtime=lambda: {}, server_command=lambda: ['serve'], RUNTIME_ROOT=tmp_path),
+                  tmp_path, cpu_gib=0)
 
 
 def test_graph_override_reaches_pinned_recipe_tuning_without_other_changes(monkeypatch, tmp_path):
@@ -161,7 +182,7 @@ def test_graph_override_reaches_pinned_recipe_tuning_without_other_changes(monke
     assert argv[argv.index('--max-cudagraph-capture-size') + 1] == '128'
 
 
-@pytest.mark.parametrize('value', [True, 0, 257, '128', 128.5])
+@pytest.mark.parametrize('value', [True, 0, 1025, '128', 128.5])
 def test_invalid_graph_override_fails_before_runtime_mutation(tmp_path, value):
     with pytest.raises(ValueError, match='graph capture'):
         configure(NS(), tmp_path, graph_capture_size=value)

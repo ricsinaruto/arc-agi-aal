@@ -130,3 +130,59 @@ def tool_reply(code, *, call_id="call", content="World model: probe.", usage=Non
             "usage": usage or {"completion_tokens": 50, "prompt_tokens": 2000},
         },
     )
+
+
+# Trunk 24 Oct: RL's and PTH's trainer copies share module names. A PTH-origin test module imports PTH's
+# copies (scripts/posttrain/pth) at collection; keep them out of sys.modules for every other module and
+# swap them in only while that module's tests run.
+import sys as _sys
+
+import pytest as _pytest
+
+_FORKED = ("rl1_trainer", "flash_qlora_job", "rl1_sparse")
+_PTH_DIR = str(ROOT / "scripts" / "posttrain" / "pth")
+
+
+def _pth_origin(path):
+    try:
+        return "PTH's trainer copies (scripts/posttrain/pth) shadow" in Path(str(path)).read_text()
+    except OSError:
+        return False
+
+
+@_pytest.hookimpl(hookwrapper=True)
+def pytest_make_collect_report(collector):
+    if not (isinstance(collector, _pytest.Module) and _pth_origin(collector.path)):
+        yield
+        return
+    saved = {m: _sys.modules.pop(m) for m in _FORKED if m in _sys.modules}
+    path = list(_sys.path)
+    try:
+        yield
+    finally:
+        module = getattr(collector, "_obj", None)
+        pth = {m: _sys.modules.pop(m) for m in _FORKED if m in _sys.modules}
+        if module is not None:
+            module.__pth_forked__ = pth
+        _sys.modules.update(saved)
+        _sys.path[:] = path
+
+
+@_pytest.fixture(autouse=True)
+def _pth_forked_modules(request):
+    pth = getattr(request.module, "__pth_forked__", None)
+    if not pth:
+        yield
+        return
+    saved = {m: _sys.modules.get(m) for m in _FORKED}
+    _sys.modules.update(pth)
+    _sys.path.insert(0, _PTH_DIR)
+    try:
+        yield
+    finally:
+        _sys.path.remove(_PTH_DIR)
+        for m, mod in saved.items():
+            if mod is None:
+                _sys.modules.pop(m, None)
+            else:
+                _sys.modules[m] = mod

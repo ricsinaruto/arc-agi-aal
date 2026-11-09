@@ -18,6 +18,10 @@ from .arcade import make_arcade, source_provenance
 from .model import ModelClient
 
 
+# the latest finished generation request in this process (RL stall watchdog: replies still arriving = not stalled)
+ACTIVITY = {"last_reply": 0.0, "replies": 0}
+
+
 def roster(game_ids, total=110):
     games = sorted(set(game_ids))
     if len(games) != 25 or total not in (25, 110):
@@ -52,6 +56,9 @@ class SessionHTTP:
         self.base_url = shared.base_url
         self.tokenizer_retries = 0
         self.generation_retries = 0
+        # pauses before each replay of a generation request after a transport failure; (1.0,): one replay (default).
+        # RL benches (19 Oct): (1, 2, 4), after 12 of 60 base-reference recordings ended on ReadError.
+        self.backoff = (1.0,)
 
     async def _post(self, url, **kwargs):
         response = await self.shared.post(url, **kwargs)
@@ -83,17 +90,26 @@ class SessionHTTP:
             try:
                 try:
                     response = await self._post(url, **kwargs)
-                except (httpx.ReadError, httpx.ConnectError, httpx.RemoteProtocolError) as exc:
-                    # One replay (24 September): a transport failure on a generation request
+                except (httpx.ReadError, httpx.ConnectError, httpx.RemoteProtocolError) as first:
+                    # Replays (24 September): a transport failure on a generation request
                     # used to end the game for the whole trial (lp85 at 5 s, effort-low v1).
                     # A duplicate generation costs GPU time at worst; it issues no action.
-                    remaining = kwargs["timeout"] - (time.monotonic() - record["started_monotonic"])
-                    if remaining <= 1.0:
-                        raise
-                    record["transport_retry"] = type(exc).__name__
-                    self.generation_retries += 1
-                    await asyncio.sleep(1.0)
-                    response = await self._post(url, **{**kwargs, "timeout": remaining - 1.0})
+                    exc, response = first, None
+                    for pause in self.backoff:
+                        remaining = kwargs["timeout"] - (time.monotonic() - record["started_monotonic"])
+                        if remaining <= pause:
+                            raise exc
+                        record["transport_retry"] = type(exc).__name__
+                        record["transport_retries"] = record.get("transport_retries", 0) + 1
+                        self.generation_retries += 1
+                        await asyncio.sleep(pause)
+                        try:
+                            response = await self._post(url, **{**kwargs, "timeout": remaining - pause})
+                            break
+                        except (httpx.ReadError, httpx.ConnectError, httpx.RemoteProtocolError) as again:
+                            exc = again
+                    if response is None:
+                        raise exc
                 record["status"] = response.status_code
                 if not response.is_success:
                     record["response_error"] = response.text[:4000]
@@ -107,6 +123,7 @@ class SessionHTTP:
                 raise
             finally:
                 record["seconds"] = time.monotonic() - record["started_monotonic"]
+                ACTIVITY["last_reply"], ACTIVITY["replies"] = time.time(), ACTIVITY["replies"] + 1
         if str(url).rstrip("/").endswith("/tokenize"):
             # Read-only requests are safe to replay after transport failure. Never
             # replay an ambiguous generation: it may still be using the GPU.

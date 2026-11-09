@@ -49,10 +49,28 @@ DEFAULTS = {
                                 # 3: economy plus a lean-reasoning line after it
     "memo_once": 0,             # 1: show the notes line only when it changed, after a drain/compaction or on a new level
                                 # (0: every user turn, which repeats ~250-500 tokens per turn into the history)
+    "reflect_skip_death": 0,    # 1 (prompt audit item 6): no STEP BACK on a death turn and no deaths trigger (the
+                                # death turn has its own text)
+    "memo_style": 0,            # 1 (hx7 trim bed, arm F): one playbook text of 5,000 characters in place of the note
+                                # slots; it is what survives a trim (``trim.summary: playbook``), not shown per turn
+                                # 2 (v8.2): the playbook replaces note() and the notes block: no length limit, shown
+                                # in full after every context cut and at a level start, a receipt line per write
+    "memo_limits": 0,           # 1 (item 8): the system line states the 12 x 400 limits and note() prints a cut or
+                                # a dropped key
     "economy_spend": 0,         # 1: the per-turn line also reports the requests, generated tokens and active seconds
                                 # spent since the previous turn (in-run feedback on deliberation cost)
+    "keep_rules": 0,            # (10 October, with memo_style 2) 1: at each clear the model writes what completed the
+                                # level with won(text); it is kept beside the playbook, which cannot change it.
+                                # 2: also keep_rule(text, test): a mechanic kept once its test holds on the recorded
+                                # transitions, re-checked on every later one and marked when one breaks it
+    "playbook_log": 0,          # 1: the playbook is logged at each level start, first action and 100K tokens on a level
+    "no_think": 0,              # 1: the run serves with thinking off. The reply text is the
+                                # only place to reason: a system line and a per-turn line ask for a short
+                                # belief-and-plan text before each call, and the texts that speak of hidden
+                                # reasoning or deliberation are reworded (playbook framing, STEP BACK)
 }
-ZERO_OK = ("economy_spend", "memo_once")
+ZERO_OK = ("economy_spend", "memo_once", "reflect_skip_death", "memo_limits", "memo_style", "keep_rules", "playbook_log",
+           "no_think")
 BORDER = 4  # the interior rule of dfr_harness gameplay_changed (timer bars sit in the outer ring)
 
 
@@ -136,6 +154,151 @@ MEMO_SYSTEM = (
     "- Notes that outlive the context: `note(key, text)` stores a short entry (mechanics, goal, controls, what "
     "failed and why, what worked); every user turn shows your notes, also after the conversation history is cut "
     "and on later levels. Keep them current: they are your long-term memory of this game.\n"
+)
+# After Retrodict's playbook.md (externals/Retrodict/src/arc3/prompts.py:32-56).
+PLAYBOOK_CHARS = 5000
+PLAYBOOK_SYSTEM = (
+    "- Your playbook: to keep requests short the conversation is cut from time to time: everything except the "
+    "newest few messages is dropped, and your reasoning in the dropped part is gone. What survives is the python "
+    "session and your playbook. `playbook(text)` replaces it (at most 5,000 characters); `playbook()` returns it. "
+    "Write it as a briefing for yourself after the cut, in two parts. Working model: the controls, the mechanics "
+    "and the objective as you now understand them, each point marked `checked` (you saw it in `transitions`) or "
+    "`assumed`; do not build a long plan on assumed points, and when the evidence contradicts a point or a plan "
+    "built on it turns out impossible, that point is what is wrong: re-derive it instead of adding a mechanic to "
+    "rescue it. Working memory: the level, where things are, your plan and next step, and one `ruled out: ...` "
+    "line per idea this level's evidence has falsified. Rewrite it whenever you settle or drop something; at the "
+    "end of a level fold what you learned into the working model and clear the working memory. Keep it a "
+    "briefing, not a journal.\n"
+)
+# v8.2: the memory framing, and the playbook without note() and without a length limit.
+PLAYBOOK_OPEN_SYSTEM = (
+    "- Memory: to keep requests short the oldest part of the conversation is dropped from time to time, and your "
+    "reasoning in the dropped part is gone. Three things survive every cut: your playbook (your conclusions), "
+    "`history` and `transitions` (every action and board of this game) and your python session (the variables and "
+    "functions you defined). Before you spend an action to test something, check whether `history` already answers "
+    "it.\n"
+    "- Your playbook: `playbook(text)` replaces it and `playbook()` returns it. It has no length limit, but it is "
+    "shown to you in full after every cut and at the start of each level, so write it as a briefing for yourself, "
+    "not a journal. Two parts. Working model: the controls, the mechanics and the objective as you now understand "
+    "them, each point marked `checked` (you saw it in `transitions`) or `assumed`; do not build a long plan on "
+    "assumed points, and when the evidence contradicts a point or a plan built on it turns out impossible, that "
+    "point is what is wrong: re-derive it instead of adding a mechanic to rescue it. Working memory: the level, "
+    "where things are, your plan and next step, and one `ruled out: ...` line per idea this level's evidence has "
+    "falsified. Rewrite it whenever you settle or drop something; at the end of a level fold what you learned into "
+    "the working model and clear the working memory.\n"
+)
+KEEP_SYSTEM = (
+    "- Kept lines: when you clear a level, the first thing you do on the next one is call `won(text)`: one or two "
+    "sentences on what the winning action brought about on the board and why that completed the level, in words "
+    "that also fit every level you won before (compare the boards before and after each winning step in "
+    "`transitions`; if the sentence does not fit one of those wins, it is not right yet). It is stored once per "
+    "level, `playbook(text)` cannot change it, and it is shown with your playbook after every cut. When your "
+    "playbook and a kept line disagree, the kept line was written from the evidence of a win: re-check the "
+    "playbook.\n"
+)
+KEEP_RULES_SYSTEM = (
+    "- `keep_rule(text, test)` keeps a mechanic the same way once the evidence supports it. `test(t)` takes one "
+    "entry of `transitions` (`t.action`, `t.before_frame`, `t.after_frame`) and returns True where the rule held, "
+    "False where it was broken and None where it says nothing about that step. The rule is kept only if it held "
+    "on every recorded step it applies to (at least 5); it is checked again on every later step, and a kept rule "
+    "that a later step breaks is marked BROKEN. Keep the rules your plans rest on (what each action does, what "
+    "blocks a move, what cannot move); a simulator that predicts the next board is the strongest test. A rule you "
+    "have not kept is a guess: do not build a long plan on it.\n"
+)
+KEEP_LEVEL = ("Level cleared. First call `won(text)`: what the winning action brought about on the board and why that "
+              "completed the level, in words that also fit every level you won before (compare the boards around "
+              "each winning step in `transitions`). Then rewrite your playbook: fold what this level taught you into "
+              "the working model and clear the working memory.")
+KEEP_DUE = "You have not kept what completed level {level} yet: call `won(text)` before you go on."
+KEEP_BROKEN = ("Kept rule {name!r} no longer holds: step {step} broke it. Whatever in your playbook or plan rests on "
+               "it is in doubt; re-derive it from `transitions`.")
+KEPT_HEAD = "Kept lines (written at a win or after a test; `playbook(text)` cannot change them):"
+
+
+def kept_block(state):
+    """The kept lines as shown beside the playbook; '' without any."""
+    kept = (state or {}).get("kept") or []
+    lines = []
+    for entry in kept:
+        if entry.get("kind") == "win":
+            lines.append(f"- Level {entry.get('level')} was completed by: {entry.get('text')}")
+        elif entry.get("broken") is not None:
+            lines.append(f"- BROKEN at step {entry.get('broken')} (re-derive it): {entry.get('text')}")
+        else:
+            lines.append(f"- Rule (held on {entry.get('held')} steps): {entry.get('text')}")
+    return KEPT_HEAD + "\n" + "\n".join(lines) if lines else ""
+
+
+def _with_kept(text, state):
+    kept = kept_block(state)
+    return text + "\n\n" + kept if kept else text
+
+
+# no_think: thinking is off, so the visible reply is the model's only reasoning.
+NO_THINK_SYSTEM = (
+    "- You are running without a hidden reasoning phase: the text of your reply is the only place where you can "
+    "reason, and only what you write is kept. Before every `python` call write two to four short lines of plain "
+    "text: what the last result showed, what you now believe about the rule or the goal, and what this call tests "
+    "or does with the result you expect. Then make exactly one `python` call. Never send a bare call.\n"
+)
+NO_THINK_TURN = ("Reply format: two to four short lines first (what the last result showed, what you now believe, "
+                 "what this call does and the result you expect), then one `python` call.")
+NO_THINK_REWORDS = (
+    ("and your reasoning in the dropped part is gone.", "and what you wrote in the dropped part is gone."),
+)
+STEP_BACK_DELIBERATION = " and more deliberation will not fix it"
+
+
+def no_think_text(text):
+    """A system text with the phrases about hidden reasoning reworded (``no_think``)."""
+    for old, new in NO_THINK_REWORDS:
+        if text.count(old) != 1:
+            raise ValueError(f"hx_harness: pinned text for no_think changed: {old!r}")
+        text = text.replace(old, new, 1)
+    return text
+
+
+PLAYBOOK_SHOWN = "Your playbook, as you last wrote it:\n\n"
+PLAYBOOK_OPEN_DUE = ("The oldest part of the conversation will be dropped soon and you have not written your "
+                     "playbook since the last cut. If it is out of date, rewrite it now with `playbook(text)`.")
+
+
+def playbook_block(state):
+    """Style 2: the playbook as a cut note and a level start show it."""
+    text = str((state or {}).get("playbook") or "").strip()
+    return _with_kept(PLAYBOOK_SHOWN + text if text else PLAYBOOK_EMPTY, state)
+
+
+PLAYBOOK_HANDOFF = (
+    "[Context cut] The conversation before the messages below was dropped to keep requests short. Your python "
+    "session is unchanged. Your playbook, as you last wrote it:\n\n"
+)
+PLAYBOOK_EMPTY = "(You have not written a playbook yet. Write one with `playbook(text)`.)"
+PLAYBOOK_NOTES = "(No playbook yet; these are your note() entries.)\n"
+PLAYBOOK_LEVEL = ("Level cleared. Before acting on the new level, rewrite your playbook: fold what this level taught "
+                  "you into the working model and clear the working memory.")
+PLAYBOOK_DUE = ("The conversation will be cut soon; only your playbook and the newest messages survive. If the "
+                "playbook is out of date, rewrite it now with `playbook(text)`.")
+
+
+def playbook_text(state):
+    """What a trim carries: the playbook, else the note entries, else a line saying there is none."""
+    state = state or {}
+    text = str(state.get("playbook") or "").strip()
+    if text:
+        return _with_kept(text, state)
+    notes = state.get("notes") or {}
+    if notes:
+        return PLAYBOOK_NOTES + "\n".join(f"- {key}: {value}" for key, value in notes.items())
+    return _with_kept(PLAYBOOK_EMPTY, state)
+
+
+MEMO_LIMITS_SYSTEM = (
+    "- Notes that outlive the context: `note(key, text)` stores an entry (mechanics, goal, controls, what failed and "
+    "why, what worked); at most 12 entries of 400 characters: a longer text is cut and a 13th key drops the oldest "
+    "entry (`note(key)` deletes one, the same key replaces it). Your notes are shown when they change, after the "
+    "conversation history is cut and on later levels. Keep them current: they are your long-term memory of this "
+    "game.\n"
 )
 KIT_SYSTEM = (
     "- Built-in board helpers (use them instead of writing your own parsers): `crop(r0, r1, c0, c1, frame=None)` "
@@ -270,12 +433,22 @@ def system_prompt(text, block):
             if text.count(CALLS_OLD) != 1:
                 raise ValueError("hx_harness: pinned system prompt lines (do not ration tool calls) changed")
             text = text.replace(CALLS_OLD, CALLS_NEW, 1)
+    if block["no_think"]:
+        anchor = ECONOMY_NEW if block["economy"] else ECONOMY_OLD
+        if text.count(anchor) != 1:
+            raise ValueError("hx_harness: pinned system prompt line (in-game actions) changed")
+        text = text.replace(anchor, anchor + NO_THINK_SYSTEM, 1)
     section = ""
     if block["toolbox"]:
         section += TOOLBOX_SYSTEM
+    playbook_open = no_think_text(PLAYBOOK_OPEN_SYSTEM) if block["no_think"] else PLAYBOOK_OPEN_SYSTEM
     extra = ((PROBE_SYSTEM if block["probe"] else "") + (KIT_SYSTEM if block["kit"] else "")
              + (LATTICE_SYSTEM if block["lattice"] else "") + (AUTOPILOT_SYSTEM if block["autopilot"] else "")
-             + (WORLDMODEL_SYSTEM if block["worldmodel"] else "") + (MEMO_SYSTEM if block["memo"] else "")
+             + (WORLDMODEL_SYSTEM if block["worldmodel"] else "") + ((playbook_open if block["memo_style"] == 2 else PLAYBOOK_SYSTEM if block["memo_style"]
+                 else MEMO_LIMITS_SYSTEM if block["memo_limits"] else MEMO_SYSTEM)
+                if block["memo"] else "")
+             + ((KEEP_SYSTEM + (KEEP_RULES_SYSTEM if block["keep_rules"] == 2 else ""))
+                if block["memo"] and block["memo_style"] == 2 and block["keep_rules"] else "")
              + (PERCEIVE_SYSTEM if block["perceive"] else ""))
     if extra:
         if not section:
@@ -289,6 +462,7 @@ def system_prompt(text, block):
 
 CHILD_BLOCK = r'''
     _HX = {"tools": {}, "observers": {}, "out": {}, "out_step": None, "errors": 0, "loops": 0, "loop_actions": 0,
+           "playbook": "", "playbook_step": None, "playbook_writes": 0, "kept": [], "kept_fns": {},
            "sim": None, "sim_report": None, "sim_seen": 0, "notes": {}}
     _HX_OBS_CHARS = __HX_OBS_CHARS__
     _HX_FLAGS = __HX_FLAGS__
@@ -765,10 +939,115 @@ CHILD_BLOCK = r'''
         if text is None:
             _HX["notes"].pop(key, None)
         else:
-            _HX["notes"][key] = " ".join(str(text).split())[:400]
+            text = " ".join(str(text).split())
+            if len(text) > 400 and _HX_FLAGS.get("memo_limits"):
+                print("[note] %r was cut from %d to 400 characters" % (key, len(text)))
+            _HX["notes"][key] = text[:400]
             while len(_HX["notes"]) > 12:
-                _HX["notes"].pop(next(iter(_HX["notes"])))
+                dropped = next(iter(_HX["notes"]))
+                _HX["notes"].pop(dropped)
+                if _HX_FLAGS.get("memo_limits"):
+                    print("[note] 12 entries at most: the oldest, %r, was dropped" % dropped)
         return dict(_HX["notes"])
+
+    def playbook(text=None):
+        """Your playbook: playbook(text) replaces it, playbook() returns it. It is what survives when the
+        conversation is cut."""
+        if text is not None:
+            text = str(text).strip()
+            if _HX_FLAGS.get("playbook_open"):
+                print("[playbook] saved, %d characters" % len(text))
+            elif len(text) > 5000:
+                print("[playbook] cut from %d to 5,000 characters; write a shorter one" % len(text))
+                text = text[:5000]
+            _HX["playbook"] = text
+            _HX["playbook_writes"] += 1
+            _HX["playbook_step"] = getattr(runtime_globals.get("current_frame"), "step", None)
+        return _HX["playbook"]
+
+    def won(text=None):
+        """won(text): keep, once, what completed the level you just cleared; won() lists the kept wins."""
+        if text is None:
+            return [dict(k) for k in _HX["kept"] if k["kind"] == "win"]
+        frame = runtime_globals.get("current_frame")
+        level = int(getattr(frame, "level", 0) or 0) - 1
+        if level < 1:
+            print("[kept] no level cleared yet")
+            return None
+        if any(k["kind"] == "win" and k["level"] == level for k in _HX["kept"]):
+            print("[kept] level %d is already kept and stays as written" % level)
+            return None
+        text = " ".join(str(text).split())
+        if len(text) > 700:
+            print("[kept] cut from %d to 700 characters" % len(text))
+            text = text[:700]
+        _HX["kept"].append({"kind": "win", "level": level, "text": text, "step": getattr(frame, "step", None)})
+        print("[kept] level %d: saved" % level)
+        return level
+
+    def _hx_rule_run(fn, ts):
+        held, broke = 0, None
+        for t in ts:
+            r = fn(t)
+            if r is None:
+                continue
+            if r:
+                held += 1
+            elif broke is None:
+                broke = getattr(t.after_frame, "step", None)
+        return held, broke
+
+    def keep_rule(text, test, name=None):
+        """keep_rule(text, test): keep a mechanic whose test(t) holds on every recorded transition it applies to."""
+        if not callable(test):
+            raise TypeError("keep_rule(text, test): test is a function of one transition")
+        rules = [k for k in _HX["kept"] if k["kind"] == "rule"]
+        key = str(name or getattr(test, "__name__", "") or "").strip()[:40]
+        if not key or key == "<lambda>":
+            key = "rule_%d" % (len(rules) + 1)
+        if len([k for k in rules if k["broken"] is None]) >= 12 and not any(k["name"] == key for k in rules):
+            print("[kept] 12 kept rules at most; a kept rule leaves only when a later step breaks it")
+            return None
+        every = list(runtime_globals.get("transitions") or [])
+        try:
+            held, broke = _hx_rule_run(test, [t for t in every if str(t.action) != "RESET"])
+        except Exception as exc:
+            print("[kept] not kept: the test raised %s: %s" % (type(exc).__name__, str(exc)[:160]))
+            return None
+        if broke is not None:
+            print("[kept] not kept: the test fails at step %s (it held on %d other steps)" % (broke, held))
+            return None
+        if held < 5:
+            print("[kept] not kept: the test applies to %d recorded steps; it needs 5" % held)
+            return None
+        entry = {"kind": "rule", "name": key, "text": " ".join(str(text).split())[:300], "held": held, "broken": None,
+                 "step": getattr(runtime_globals.get("current_frame"), "step", None), "seen": len(every)}
+        _HX["kept"] = [k for k in _HX["kept"] if not (k["kind"] == "rule" and k["name"] == key)] + [entry]
+        _HX["kept_fns"][key] = test
+        print("[kept] rule %r: held on all %d steps it applies to; it is checked again on every later step" % (key, held))
+        return key
+
+    def _hx_recheck():
+        """Kept rules against the transitions recorded since their last check (at most about a second per call)."""
+        import time as _time
+        every = list(runtime_globals.get("transitions") or [])
+        started = _time.time()
+        for entry in _HX["kept"]:
+            if entry["kind"] != "rule" or entry["broken"] is not None or entry["seen"] >= len(every):
+                continue
+            if _time.time() - started > 1.0:
+                break
+            fn = _HX["kept_fns"].get(entry["name"])
+            new = [t for t in every[entry["seen"]:] if str(t.action) != "RESET"]
+            entry["seen"] = len(every)
+            if fn is None:
+                continue
+            try:
+                held, broke = _hx_rule_run(fn, new)
+            except Exception:
+                held, broke = 0, getattr(runtime_globals.get("current_frame"), "step", None)
+            entry["held"] += held
+            entry["broken"] = broke
 
     _hx_refresh_inner = _refresh_state
 
@@ -788,8 +1067,14 @@ CHILD_BLOCK = r'''
             runtime_globals.update(autopilot=autopilot, explore=explore)
         if _HX_FLAGS["worldmodel"]:
             runtime_globals.update(check_sim=check_sim, register_sim=register_sim, plan=plan)
-        if _HX_FLAGS["memo"]:
+        if _HX_FLAGS["memo"] and not _HX_FLAGS.get("playbook_open"):
             runtime_globals["note"] = note
+        if _HX_FLAGS.get("memo_style"):
+            runtime_globals["playbook"] = playbook
+        if _HX_FLAGS.get("keep"):
+            runtime_globals["won"] = won
+        if _HX_FLAGS.get("keep") == 2:
+            runtime_globals["keep_rule"] = keep_rule
 
     def _hx_take():
         if _HX["sim"] is not None:
@@ -797,11 +1082,18 @@ CHILD_BLOCK = r'''
                 _HX["sim_report"] = check_sim(_HX["sim"])
             except Exception as exc:  # a broken sim must never break the call
                 _HX["sim_report"] = {"error": "%s: %s" % (type(exc).__name__, str(exc)[:120])}
+        if _HX_FLAGS.get("keep") == 2:
+            try:
+                _hx_recheck()
+            except Exception:  # a kept rule's test must never break the call
+                pass
         return {"tools": {k: dict(v) for k, v in _HX["tools"].items()},
                 "observers": {k: {"note": v["note"]} for k, v in _HX["observers"].items()},
                 "out": dict(_HX["out"]), "out_step": _HX["out_step"], "errors": _HX["errors"],
                 "loops": _HX["loops"], "loop_actions": _HX["loop_actions"], "sim": _HX["sim_report"],
-                "notes": dict(_HX["notes"])}
+                "playbook": _HX["playbook"], "playbook_step": _HX["playbook_step"],
+                "playbook_writes": _HX["playbook_writes"], "notes": dict(_HX["notes"]),
+                "kept": [{k: v for k, v in e.items() if k != "seen"} for e in _HX["kept"]]}
 
 '''
 ANCHOR = "    request = initial\n    while True:\n"
@@ -817,7 +1109,10 @@ def with_toolbox(bootstrap, block):
         raise ValueError("hx_harness: the toolbox code is already installed")
     if bootstrap.count(ANCHOR) != 1:
         raise ValueError("hx_harness: pinned Duck sandbox loop changed")
-    flags = {key: bool(block[key]) for key in ("toolbox", "probe", "kit", "lattice", "autopilot", "worldmodel", "memo")}
+    flags = {key: bool(block[key]) for key in ("toolbox", "probe", "kit", "lattice", "autopilot", "worldmodel", "memo",
+                                               "memo_limits", "memo_style")}
+    flags["playbook_open"] = block["memo_style"] == 2
+    flags["keep"] = block.get("keep_rules", 0) if block["memo"] and block["memo_style"] == 2 else 0
     child = CHILD_BLOCK.replace("__HX_OBS_CHARS__", str(int(block["observer_chars"]))).replace(
         "__HX_FLAGS__", repr(flags))
     text = bootstrap.replace(ANCHOR, child.lstrip("\n") + ANCHOR, 1)
@@ -827,7 +1122,10 @@ def with_toolbox(bootstrap, block):
     if text.count(RUNTIME_NAMES) == 1:  # the fixes loop's inventory skips runtime names
         text = text.replace(RUNTIME_NAMES, RUNTIME_NAMES + ", " + HX_RUNTIME_NAMES
                             + ', "probe", "crop", "objects", "at", "changes", "lattice", "autopilot", "explore", '
-                            '"check_sim", "register_sim", "plan", "note"', 1)
+                            '"check_sim", "register_sim", "plan", "note", "playbook"'
+                            # won / keep_rule only exist with keep_rules: else a model's own `won` stays in the inventory
+                            # as on v8.5p (harness parity)
+                            + (', "won"' if flags["keep"] else "") + (', "keep_rule"' if flags["keep"] == 2 else ""), 1)
     return text
 
 
@@ -896,6 +1194,7 @@ class Reflector:
         self.deaths_noticed = 0
         self.revisit_noticed = 0
         self.streak_noticed = 0
+        self.died_now = False  # a death among the entries of the latest update (reflect_skip_death)
 
     def update(self, history, results, levels, requests, tokens):
         """Consume the new history entries; ``levels`` = levels cleared now."""
@@ -907,6 +1206,7 @@ class Reflector:
                 self.boards[_hash(history[-1].frame.grid)] += 1
                 self.seen = len(history)
         previous = history[self.seen - 1].frame.grid if 0 < self.seen <= len(history) else None
+        deaths_before = self.deaths
         for index in range(self.seen, len(history)):
             entry = history[index]
             grid = entry.frame.grid
@@ -927,6 +1227,7 @@ class Reflector:
                 self.no_change = 0 if changed else self.no_change + 1
             self.boards[_hash(grid)] += 1
             previous = grid
+        self.died_now = self.deaths > deaths_before
         self.seen = len(history)
         self.requests = requests - self.requests0
         self.tokens = tokens - self.tokens0
@@ -942,7 +1243,10 @@ class Reflector:
         b = self.block
         if self.last_notice is not None and self.requests - self.last_notice < b["reflect_min_gap"]:
             return None
-        if self.deaths >= b["reflect_deaths"] and self.deaths > self.deaths_noticed:
+        if b["reflect_skip_death"]:
+            if self.died_now:
+                return None
+        elif self.deaths >= b["reflect_deaths"] and self.deaths > self.deaths_noticed:
             return "deaths"
         if self.no_change >= b["reflect_no_change"] and self.no_change >= self.streak_noticed + b["reflect_no_change"]:
             return "no_change"
@@ -984,7 +1288,8 @@ class Reflector:
                 f"STEP BACK (harness check: {why}). Level {level_number}: {self.requests} requests, "
                 f"{self.tokens:,} generated tokens, {self.actions} actions ({self.changed} changed the interior), "
                 f"{self.deaths} deaths, {len(self.boards)} distinct boards; effects: {table}. The current approach is "
-                "not working and more deliberation will not fix it. In this reply: name the belief you are least sure "
+                f"not working{'' if self.block['no_think'] else STEP_BACK_DELIBERATION}. In this reply: name the belief you "
+                "are least sure "
                 "of and the cheapest experiment that would refute it; if your tools or your view of the board are the "
                 "bottleneck, ask how you can modify your own code or your interface to the environment: write the "
                 "helper or observer you lack and register it (`register_tool(fn)`, `register_observer(fn)`); then run "

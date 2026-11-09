@@ -476,7 +476,7 @@ def test_timeout_interrupts_the_statement_and_keeps_python_state(fixed_sandbox):
     after = run_in(sandbox, "print(helper(41), kept, partial)")
     assert after["stdout"] == "42 [1, 2] set before the loop\n" and after["error"] == ""
     assert sandbox.process.pid == pid and sandbox.restarts == 0 and sandbox.interrupts == 1
-    assert [kind for kind, _ in sandbox.events if kind != "duck_python_heap"] == [
+    assert [kind for kind, _ in sandbox.events if kind not in ("duck_python_heap", "duck_python_rng")] == [
         "duck_python_interrupt", "duck_python_interrupted"]
 
 
@@ -654,7 +654,7 @@ def test_opt_in_fixes_are_named_only_and_true_keeps_the_recorded_block():
     assert json.dumps(hf.settings(True)) == json.dumps(RECORDED_BLOCK)
     assert not set(hf.OPTIONAL_FIXES) & set(hf.settings(True)["fixes"])
     full = hf.settings([*hf.FIXES, *hf.OPTIONAL_FIXES])
-    assert full["fixes"] == [*hf.FIXES, "summary_headroom", "inventory_imports", "text_count"]
+    assert full["fixes"] == [*hf.FIXES, *hf.OPTIONAL_FIXES]
     assert set(full) == set(RECORDED_BLOCK)  # no new thresholds
     assert hf.settings(["summary_headroom"])["fixes"] == ["summary_headroom"]
     with pytest.raises(ValueError):
@@ -832,3 +832,169 @@ def test_inventory_imports_lists_modules_first_and_names_the_inspect_import():
                                imports=True)
     assert hf.NO_IMPORTS_NOTE in bare
     assert hf.render_inventory(None, [], max_tokens=1536, chars_per_token=3.5, imports=True) == hf.FRESH_SESSION
+
+
+# --- prompt audit fixes (9 October; docs/harness-arm.md 5.7) ---------------------------------------------------------
+
+AUDIT = ("solvable_line", "death_turn_v2", "findings_keep", "tool_call_followup", "stuck_streak")
+
+
+def test_audit_fixes_are_opt_in_one_by_one():
+    assert set(AUDIT) <= set(hf.OPTIONAL_FIXES) and not set(AUDIT) & set(hf.settings(True)["fixes"])
+    for name in AUDIT:
+        assert hf.settings([name])["fixes"] == [name]
+
+
+async def test_solvable_line_is_one_system_line(tmp_path):
+    agent, *_ = fixed_agent(tmp_path, None, ["prompt_text", "solvable_line"], gated=False)
+    prompt = agent.analyzer(asyncio.get_running_loop())._system_prompt
+    assert prompt.count(hf.SOLVABLE_LINE) == 1 and hf.SOLVABLE_ANCHOR + hf.SOLVABLE_LINE in prompt
+    control, *_ = fixed_agent(tmp_path / "control", None, ["prompt_text"], gated=False)
+    plain = control.analyzer(asyncio.get_running_loop())._system_prompt
+    assert "can be completed with the actions offered" not in plain
+    assert prompt.replace(hf.SOLVABLE_LINE, "") == plain  # nothing else moves
+    agent.executor.shutdown()
+    control.executor.shutdown()
+
+
+async def test_findings_keep_leaves_the_models_recent_findings_alone(tmp_path):
+    death = {"game_over": True, "end_action_num": 7, "executed_actions": ["UP"], "level_transition": False}
+    for fixes, own, expected in ((["prompt_text"], "the door opens on SPACE", None),
+                                 (["prompt_text", "findings_keep"], "the door opens on SPACE", "the door opens on SPACE"),
+                                 (["prompt_text", "findings_keep"], "GAME_OVER at step 3 after actions [UP]; old", ""),
+                                 (["prompt_text", "findings_keep"], "", "")):
+        agent, *_ = fixed_agent(tmp_path / f"{len(fixes)}{len(own)}", None, fixes, gated=False)
+        analyzer = agent.analyzer(asyncio.get_running_loop())
+        analyzer._summarized_knowledge.update(world_model="tiles", recent_findings=own, current_plan="go up")
+        analyzer._last_step_summary = dict(death)
+        analyzer._update_summarized_knowledge_from_step_summary()
+        knowledge = analyzer._summarized_knowledge
+        assert knowledge["world_model"] == "tiles" and knowledge["current_plan"] == ""
+        if expected is None:
+            assert knowledge["recent_findings"].startswith("GAME_OVER at step 7") and "avoid that sequence" in knowledge["recent_findings"]
+        else:
+            assert knowledge["recent_findings"] == expected
+        agent.executor.shutdown()
+
+
+def test_death_text_names_a_step_budget_and_stays_one_line_after_the_first():
+    first = hf.death_text([{"actions": 40, "edge": 36, "sequence": "a"}], step=41, fatal="DOWN", level=2)
+    assert first.startswith("GAME_OVER at step 41 after DOWN: the attempt on level 2 ended")
+    assert "lasted 40 actions; cells in the border ring changed on 36 of them." in first
+    assert "step-budget bar" in first and "how many actions one attempt allows" in first and "\n" not in first
+    for old in ("BAR RULE", "Do NOT", "FAILED", "falsified", "avoid that sequence"):
+        assert old not in first
+    quiet = hf.death_text([{"actions": 3, "edge": 3, "sequence": "a"}], step=4, fatal="UP", level=1)
+    assert "lasted 3 actions. Identify the cause" in quiet
+    two = [{"actions": 40, "edge": 36, "sequence": "a"}, {"actions": 41, "edge": 30, "sequence": "b"}]
+    later = hf.death_text(two, step=90, fatal="LEFT", level=2)
+    assert later.startswith("GAME_OVER at step 90 after LEFT: death 2 on level 2")
+    assert "Attempts lasted 40, 41 actions: the same length with different actions, so this is a step budget of about 41" in later
+    assert "not a fatal action" in later and len(later) < 400
+    same = hf.death_text([two[0], {"actions": 40, "edge": 36, "sequence": "a"}], step=90, fatal="LEFT", level=2)
+    assert "the same actions ended the same way" in same and "step budget" not in same
+    other = hf.death_text([two[0], {"actions": 7, "edge": 0, "sequence": "c"}], step=90, fatal="LEFT", level=2)
+    assert "Attempts lasted 40, 7 actions; identify the cause" in other
+    many = hf.death_text([{"actions": n, "edge": 0, "sequence": str(n)} for n in (5, 9, 14, 20, 30)], step=1, fatal="UP", level=3)
+    assert "death 5 on level 3" in many and "lasted 9, 14, 20, 30 actions" in many
+
+
+def test_attempts_and_deaths_are_counted_per_level():
+    import numpy as np
+    from types import SimpleNamespace
+
+    from arc_infra.plans import Action
+
+    def obs(board, levels=0, state="NOT_FINISHED"):
+        return SimpleNamespace(board=board, levels=levels, state=state)
+
+    base = np.zeros((16, 16), dtype=np.uint8)
+    bar = base.copy()
+    bar[0, :3] = 5      # a border cell changes
+    inner = bar.copy()
+    inner[8, 8] = 2     # an interior cell changes
+    owner = SimpleNamespace(attempt=None, death_log=())
+    note = lambda action, before: ArenaTransferDuckAgent.note_attempt(owner, action, before)  # noqa: E731
+    owner.previous, owner.obs = obs(base), obs(bar)
+    note(Action("ACTION1"), 0)
+    owner.previous, owner.obs = obs(bar), obs(inner)
+    note(Action("ACTION6", 3, 4), 0)
+    assert owner.attempt == {"actions": 2, "edge": 1, "labels": ["ACTION1", "ACTION6@3,4"]}
+    owner.previous, owner.obs = obs(inner), obs(inner, state="GAME_OVER")
+    note(Action("ACTION2"), 0)
+    assert [(d["actions"], d["edge"]) for d in owner.death_log] == [(3, 1)]
+    owner.previous, owner.obs = obs(inner, state="GAME_OVER"), obs(base)
+    note(Action("RESET"), 0)
+    assert owner.attempt["actions"] == 0 and len(owner.death_log) == 1
+    owner.previous, owner.obs = obs(base), obs(bar, levels=1)
+    note(Action("ACTION1"), 0)  # the clearing action: a new level starts clean
+    assert owner.attempt["actions"] == 0 and owner.death_log == []
+
+
+def death_turn(fixes, deaths):
+    from types import SimpleNamespace
+
+    from arena import dfr_harness as dfr
+    from arena.duck import ArenaDuckMixin
+
+    owner = SimpleNamespace(
+        _analyzer=None, dfr=dfr.settings(True), auto_reset={"step": 41, "actions": ["UP", "DOWN"], "reset_step": 42},
+        dfr_gameover_shown=None, dfr_last_action=None, dfr_opener_step=None, dfr_transients=[], dfr_stats={"gameover_turns": 0},
+        dfr_noop_stops=[], dfr_guard_stops=lambda: [], dfr_gameover_images=None, fix=lambda name: name in fixes,
+        fix_stats={}, death_log=deaths, obs=SimpleNamespace(levels=1), loop_gameover_trace=lambda: [],
+        dfr_gameover_visuals=lambda: [])
+    text = "Executed actions: UP, DOWN.\nGAME_OVER at step 41 after actions [UP, DOWN]; the level was reset.\nCurrent state: step 42, level 2."
+    return ArenaDuckMixin.dfr_rewrite(owner, text, None), owner
+
+
+def test_death_turn_v2_replaces_the_stacked_texts():
+    from arena import dfr_harness as dfr
+
+    old, _ = death_turn((), [{"actions": 40, "edge": 36, "sequence": "a"}])
+    assert dfr.GAME_OVER_DIAGNOSIS in old and "Do NOT re-submit" in old and "The game over occurred immediately after action 'DOWN'" in old
+    new, owner = death_turn(("death_turn_v2",), [{"actions": 40, "edge": 36, "sequence": "a"}])
+    lines = new.split("\n")
+    assert len(lines) == 3 and lines[1].startswith("GAME_OVER at step 41 after DOWN: the attempt on level 2 ended")
+    assert "BAR RULE" not in new and "Do NOT re-submit" not in new and owner.fix_stats == {"death_texts": 1}
+    assert owner.dfr_stats["gameover_turns"] == 1 and len(new) < len(old) / 2
+    again, _ = death_turn(("death_turn_v2",), [{"actions": 40, "edge": 36, "sequence": "a"},
+                                               {"actions": 40, "edge": 36, "sequence": "b"}])
+    assert again.split("\n")[1].startswith("GAME_OVER at step 41 after DOWN: death 2 on level 2") and len(again) < 500
+
+
+async def test_tool_call_followup_keeps_the_demand_for_a_call_only(tmp_path):
+    public = hf.PUBLIC_FOLLOWUP_PREFIX + "Then investigate ... then call `action(actions)` inside Python."
+    for fixes in (["prompt_text"], ["prompt_text", "tool_call_followup"]):
+        agent, *_ = fixed_agent(tmp_path / str(len(fixes)), None, fixes, gated=False)
+        messages = [{"role": "system", "content": "s"}, {"role": "user", "content": public}]
+        out = agent.before_trim(messages)
+        if len(fixes) == 1:
+            assert out[-1]["content"] == public
+        else:
+            assert out[-1]["content"] == hf.TOOL_CALL_FOLLOWUP and "action(" not in out[-1]["content"]
+            assert "not acted" not in out[-1]["content"] and "tool call" in out[-1]["content"]
+            assert messages[-1]["content"] == public  # the caller's list is not mutated
+        agent.executor.shutdown()
+
+
+def test_stuck_streak_drops_the_turn_counter_trigger():
+    from arc_infra.config import Config
+
+    now = FakeTime()
+    wall = GlobalClock(9000, now=now)
+    clock = ActiveClock(wall, now=now)
+    wall.release()
+    clock.release()
+    cfg = Config.load(ROOT / "configs/duck_controls.yaml")
+    plain = hf.ActiveStuckTracker(cfg, active_seconds=clock.active_seconds, completion_tokens=clock.completion_tokens,
+                                  rule=hf.settings(True))
+    fixed = hf.ActiveStuckTracker(cfg, active_seconds=clock.active_seconds, completion_tokens=clock.completion_tokens,
+                                  rule=hf.settings([*hf.FIXES, "stuck_streak"]))
+    for tracker in (plain, fixed):
+        tracker.reset_level()
+        for _ in range(16):
+            tracker.note_turn()
+    assert plain.due() == "turns" and fixed.due() is None
+    for _ in range(5):
+        fixed.note_action(False)
+    assert fixed.due() == "streak"

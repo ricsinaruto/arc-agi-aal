@@ -154,3 +154,18 @@ async def test_pre_barrier_wait_is_not_mislabeled_gameplay_queue_time():
     record = game.admission_attempts[0]
     assert record["wait_seconds"] == record["unclassified_wait_seconds"] == 12
     assert record["eligible_wait_seconds"] == record["parked_wait_seconds"] == 0
+
+
+def test_completion_reserve_replaces_cap_in_reservation():
+    """level_bench.gate_completion_reserve (RL hread A/B arm b): the gate reserves prompt + reserve, not prompt + cap."""
+    from arena import level_bench
+
+    _, game, gate, slot, _ = setup()
+    slot.reserve(300)
+    assert slot.tokens() == 400  # prompt + cap 100
+    small = GateSlot(gate, game, cap=100, window=500, reserve=30)
+    small.reserve(300)
+    assert small.tokens() == 330 and GateSlot(gate, game, cap=100, window=500, reserve=900).reserve_completion == 100
+    assert level_bench.settings({"gate_completion_reserve": 6000})["gate_completion_reserve"] == 6000
+    with pytest.raises(ValueError):
+        level_bench.settings({"gate_completion_reserve": 0})

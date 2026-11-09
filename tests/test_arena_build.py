@@ -141,7 +141,7 @@ def test_known_unsupported_cache_builds_fail_before_creating_output(tmp_path):
     spec = importlib.util.spec_from_file_location('builder', ROOT / 'scripts/build_arena.py')
     builder = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(builder)
-    for variant in ('cpu', 'fp8'):
+    for variant in ('fp8',):  # 'cpu' (host KV offload) is supported since 80a87c787 (b2-rl-kvreplay-v3)
         output = tmp_path / variant
         with pytest.raises(NotImplementedError, match='backend'):
             builder.build('unsupported', output=output, cache_variant=variant, dependencies=True)
@@ -289,7 +289,7 @@ def test_serving_ab_bench_alternates_control_and_candidates_in_one_container(tmp
     with pytest.raises(ValueError, match="--serving-ab needs --throughput-bench"):
         builder.build("ab-bad", paired_30m=True, output=tmp_path / "bad", arena_variant="cache-reclaim", serving_ab=True)
     source = (ROOT / "scripts/arena/bootstrap.py").read_text()
-    assert "if server_env(trial) != current_env:" in source and '"event": "server_restart"' in source
+    assert "if server_env(trial) != current_env" in source and '"event": "server_restart"' in source
     assert 'probe.rename(probe.with_name(f"cache-probe-' in source
 
 

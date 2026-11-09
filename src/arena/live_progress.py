@@ -21,6 +21,11 @@ ENGINE = {"generated_tokens": "vllm:generation_tokens_total", "running": "vllm:n
           "waiting": "vllm:num_requests_waiting", "kv_cache_fraction": "vllm:kv_cache_usage_perc",
           "preemptions": "vllm:num_preemptions_total"}
 RATE_WINDOW_SECONDS = 60
+# Serving check (10 October, the no-think fault of 9 October: 3 running requests at the median, an image-cache hit
+# rate of 14%, requests held in the API front end): counter pairs read as a rate over the window and the run.
+RATIOS = {"image_cache_hit_rate": ("vllm:mm_cache_hits_total", "vllm:mm_cache_queries_total"),
+          "prefix_cache_hit_rate": ("vllm:prefix_cache_hits_total", "vllm:prefix_cache_queries_total"),
+          "engine_queue_seconds": ("vllm:request_queue_time_seconds_sum", "vllm:request_queue_time_seconds_count")}
 
 
 def settings(spec):
@@ -68,6 +73,12 @@ def engine_snapshot(samples, window=RATE_WINDOW_SECONDS):
         span = last["elapsed_seconds"] - base["elapsed_seconds"]
         if span > 0 and key in metrics and key in base["metrics"]:
             result[label] = round((metrics[key] - base["metrics"][key]) / span, 1)
+    for label, (top, bottom) in RATIOS.items():
+        for suffix, base in (("_recent", recent), ("_mean", first)):
+            if all(k in metrics and k in base["metrics"] for k in (top, bottom)):
+                below = metrics[bottom] - base["metrics"][bottom]
+                if below > 0:
+                    result[label + suffix] = round((metrics[top] - base["metrics"][top]) / below, 3)
     if ENGINE["preemptions"] in first["metrics"] and ENGINE["preemptions"] in metrics:
         result["preemptions"] = metrics[ENGINE["preemptions"]] - first["metrics"][ENGINE["preemptions"]]
     return result
@@ -163,6 +174,18 @@ class LiveProgress:
         return {**now, "peak": dict(self.host_peak)}
 
 
+def serving_check(gate, engine):
+    """Requests the arena has sent against requests the engine holds: the difference waits in the API front end
+    (tokenization, image processing). None without both counts."""
+    if not gate or not engine or engine.get("running") is None or gate.get("inflight") is None:
+        return None
+    held = (engine.get("running") or 0) + (engine.get("waiting") or 0)
+    return {"sent": gate["inflight"], "engine_running": engine.get("running"), "engine_waiting": engine.get("waiting"),
+            "front_end_queue": max(0, int(gate["inflight"] - held)),
+            "image_cache_hit_rate_recent": engine.get("image_cache_hit_rate_recent"),
+            "engine_queue_seconds_recent": engine.get("engine_queue_seconds_recent")}
+
+
 def summary_line(progress):
     """One compact dict for a printed line (the bootstrap and the watcher)."""
     live = progress.get("live") or {}
@@ -176,6 +199,8 @@ def summary_line(progress):
             "tok_s_recent": engine.get("tokens_per_second_recent"), "tok_s_mean": engine.get("tokens_per_second_mean"),
             "running": engine.get("running"), "waiting": engine.get("waiting"),
             "kv": engine.get("kv_cache_fraction"), "preemptions": engine.get("preemptions"),
+            "front_end_queue": (live.get("serving") or {}).get("front_end_queue"),
+            "image_hit": engine.get("image_cache_hit_rate_recent"),
             "host_peak": (live.get("host") or {}).get("peak"),
             "loop_rule": progress.get("loop_rule"),
             "top_levels": dict(list((live.get("levels_by_game") or {}).items())[:6])}

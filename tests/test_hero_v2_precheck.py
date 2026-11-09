@@ -211,7 +211,7 @@ async def test_sweep_and_partial_check_against_a_fake_engine(tmp_path, monkeypat
     for point in sweep["points"]:
         assert point["valid"] and not point["ended_early"] and point["steps"] > 0
         assert math.isclose(point["generated_per_step"], point["streams"], rel_tol=0.05)
-        assert math.isclose(point["step_ms"], 4.0, rel_tol=0.25)
+        assert 3.0 <= point["step_ms"] <= 10.0  # fake engine 4 ms/step; wall-clock bound, CI load adds (6.6 ms at 21e8914d2)
     assert sweep["points"][2]["inject"]["sent"] >= 1
     assert engine.cancelled == 2 + 4 + 3 and engine.running == 0  # every forced request was aborted
     assert sweep["decode_fit"]["points"] == 2

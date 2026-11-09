@@ -75,7 +75,9 @@ class PlumbingMixin:
 
     def _run_python_tool(self, state_path, arguments):
         owner = self._owner
-        self._python_timeout = max(0.01, min(30, owner.remaining()))
+        replaying = getattr(owner, "replaying", None)
+        limit = 600 if replaying is not None and replaying() else 30  # a replayed prefix: host load must not cut it
+        self._python_timeout = max(0.01, min(limit, owner.remaining()))
         owner.sandbox.cpu_seconds = int(owner.remaining()) + 60
         execute = MethodType(
             with_globals(

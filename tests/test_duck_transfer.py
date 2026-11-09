@@ -475,7 +475,7 @@ def test_timeout_resets_python_state_and_close_reaps_the_child():
     assert sandbox.process.pid == pid
     timed_out = run("while True:\n    pass", timeout=1)
     assert RESET_AFTER_TIMEOUT in timed_out["error"] and sandbox.restarts == 1
-    assert [(kind, data) for kind, data in events if kind != "duck_python_heap"] == [
+    assert [(kind, data) for kind, data in events if kind not in ("duck_python_heap", "duck_python_rng")] == [
         ("duck_python_reset", {"reason": "timeout", "restarts": 1})]
     assert sandbox.process is None
     third = run("print(x)")
@@ -1159,3 +1159,79 @@ async def test_cancellation_waits_for_final_state_and_finished_event(tmp_path, m
     finally:
         release.set()
         await asyncio.gather(task, return_exceptions=True)
+
+
+def test_sandbox_hash_seed_is_fixed_so_set_print_order_replays():
+    """v6m10 R9: -I (implies -E) ignored PYTHONHASHSEED, so a printed set's order differed between sandboxes."""
+    from duck_transfer.history import preserve_transition_results
+    from duck_transfer.loader import load
+    from duck_transfer.sandbox import StatefulSandbox, stateful_bootstrap
+
+    module = load()
+    original = module.run_sandboxed_python.__globals__
+    grid = [[0] * 64 for _ in range(64)]
+    frame = {"grid": grid, "step": 0, "level": 1, "ascii": "", "shape": [64, 64]}
+    state = {"current_frame": frame, "history": [], "valid_actions": ["UP"], "last_action_result": {}}
+    outs = []
+    for _ in range(3):
+        sandbox = StatefulSandbox(stateful_bootstrap(preserve_transition_results(original["_SANDBOX_BOOTSTRAP"])),
+                                  color_chars=original["ARC_COLOR_CHARS"])
+        out = sandbox.run(code="print(hash('N'), {'N', 'W'}, {'a', 'b', 'c', 'd'})", timeout_seconds=10,
+                          initial_state=state, action_handler=None)
+        sandbox.close() if hasattr(sandbox, "close") else None
+        outs.append(out["stdout"])
+    assert outs[0] == outs[1] == outs[2], outs
+    assert outs[0].split()[0] == str(-6883747592455401683)  # hash('N') at PYTHONHASHSEED=0
+
+
+@pytest.mark.parametrize("fixes", [None, ("modules",)])
+def test_sandbox_random_replays_per_call_and_clock_code_is_flagged(fixes):
+    """R leg 25 Oct: 14 of 30 bad restored starts replayed tool code drawing from the unseeded ``random`` (g00145 a009:
+    a random MOUSE hill-climb clicked elsewhere on replay). Each call is seeded from the call count, history length
+    and code: a fresh sandbox replaying the same calls prints the same draws; repeated calls still differ."""
+    from duck_transfer.history import preserve_transition_results
+    from duck_transfer.loader import load
+    from duck_transfer.sandbox import StatefulSandbox, stateful_bootstrap
+
+    module = load()
+    original = module.run_sandboxed_python.__globals__
+    frame = {"grid": [[0] * 64 for _ in range(64)], "step": 0, "level": 1, "ascii": "", "shape": [64, 64]}
+    state = {"current_frame": frame, "history": [], "valid_actions": ["UP"], "last_action_result": {}}
+    codes = ["import random\nprint(random.random(), random.choice('abcdefgh'))"] * 2 + \
+            ["import random\nrandom.shuffle(xs := list(range(9)))\nprint(xs)", "import time\nprint(time.time() > 0)"]
+    runs, events = [], []
+    for _ in range(2):
+        seen = []
+        sandbox = StatefulSandbox(stateful_bootstrap(preserve_transition_results(original["_SANDBOX_BOOTSTRAP"]),
+                                                     fixes=fixes),
+                                  color_chars=original["ARC_COLOR_CHARS"],
+                                  on_event=lambda kind, **data: seen.append(kind))
+        runs.append([sandbox.run(code=c, timeout_seconds=10, initial_state=state, action_handler=None)["stdout"]
+                     for c in codes])
+        sandbox.close()
+        events.append(seen)
+    assert runs[0] == runs[1], runs
+    assert runs[0][0] != runs[0][1]  # the same code twice: a new draw
+    assert events[0].count("duck_python_rng") == 1 and events[0].count("duck_python_clock") == 1
+
+
+def test_restore_unsafe_from_clock_and_unseeded_random(tmp_path):
+    """A clock read never replays; ``random`` replays only in a seeded recording (duck_python_rng)."""
+    from arena import restore
+
+    def write(log, replies):
+        (tmp_path / "log.jsonl").write_text("".join(json.dumps(e, separators=(",", ":")) + "\n" for e in log))
+        rows = [{"n": i, "step": step, "reply": {"tool_calls": [{"function": {"name": "python",
+                                                                            "arguments": json.dumps({"code": code})}}]}}
+                for i, (step, code) in enumerate(replies)]
+        (tmp_path / "rollout.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+
+    replies = [(0, "print(1)"), (4, "import random\nprint(random.random())"), (9, "import time\nt0 = time.time()")]
+    write([], replies)
+    assert restore.unsafe_from(tmp_path)[0] == 4  # unseeded recording: the first random draw
+    write([], replies[:1] + replies[2:])
+    assert restore.unsafe_from(tmp_path)[0] == 9  # and its first clock read
+    write([{"kind": "duck_python_rng", "step": 0}, {"kind": "duck_python_clock", "step": 9}], replies)
+    assert restore.unsafe_from(tmp_path)[0] == 9  # seeded: random replays, the clock does not
+    write([{"kind": "duck_python_rng", "step": 0}], replies[:2])
+    assert restore.unsafe_from(tmp_path)[0] is None

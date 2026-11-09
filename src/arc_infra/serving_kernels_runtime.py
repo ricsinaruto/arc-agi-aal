@@ -659,6 +659,85 @@ def host_table(shape, dtype, device, name):
     return raw.view(dtype).view(shape), view.view(dtype).view(shape)
 
 
+def host_table_deferred(shape, dtype, device, name):
+    """``host_table`` with the page-locking (cuMemHostRegister: ~21 s for the 47.7 GiB PLE table, mostly faulting
+    the pages in) in a thread beside the weight load (``pin_overlap``): returns the CPU alias at once and
+    ``finish()``, which joins the registration and returns the CUDA view of the same bytes (called once the table is
+    needed on the GPU: after its shards are copied in). A refused registration falls back to the driver's mapped
+    allocation with the alias's bytes copied in."""
+    import threading
+    import time
+
+    from cuda.bindings import driver
+
+    numel = 1
+    for size in shape:
+        numel *= int(size)
+    nbytes = numel * torch.empty((), dtype=dtype).element_size()
+    torch.zeros(1, device=device)
+    region = mmap.mmap(-1, nbytes, flags=mmap.MAP_PRIVATE | mmap.MAP_ANONYMOUS)
+    if hasattr(mmap, "MADV_HUGEPAGE"):
+        try:
+            region.madvise(mmap.MADV_HUGEPAGE)
+        except OSError:
+            pass
+    raw = torch.frombuffer(region, dtype=torch.uint8, count=nbytes)
+    state = {"error": None, "seconds": None}
+
+    def register():
+        started = time.perf_counter()
+        try:
+            torch.cuda.set_device(device)
+            torch.zeros(1, device=device)  # the primary context is current on this thread
+            _cuda_check(driver.cuMemHostRegister(raw.data_ptr(), nbytes, HOST_REGISTER_FLAGS),
+                        f"cuMemHostRegister({name})")
+        except Exception as error:  # noqa: BLE001 - finish() falls back
+            state["error"] = str(error)
+        state["seconds"] = time.perf_counter() - started
+
+    began = time.perf_counter()
+    thread = threading.Thread(target=register, name=f"arc-pin-{name}", daemon=True)
+    thread.start()
+    done = {}
+
+    def finish():
+        if "view" in done:
+            return done["view"]
+        waited = time.perf_counter()
+        thread.join()
+        waited = time.perf_counter() - waited
+        source, owner, method = raw, (region, raw), "cuMemHostRegister"
+        if state["error"] is not None:
+            log("HOST_TABLE", {"name": name, "register_refused": state["error"]})
+            import ctypes
+
+            _, pointer = _cuda_check(driver.cuMemHostAlloc(nbytes, HOST_REGISTER_FLAGS), f"cuMemHostAlloc({name})")
+            buffer = (ctypes.c_uint8 * nbytes).from_address(int(pointer))
+            source = torch.frombuffer(buffer, dtype=torch.uint8, count=nbytes)
+            source.copy_(raw)
+            owner, method = (buffer, region, raw), "cuMemHostAlloc"
+        _, pointer = _cuda_check(driver.cuMemHostGetDevicePointer(source.data_ptr(), 0),
+                                 f"cuMemHostGetDevicePointer({name})")
+        try:
+            view = torch.as_tensor(_DeviceBuffer(int(pointer), nbytes, (owner, source)), device=device)
+        except Exception as error:
+            log("HOST_TABLE", {"name": name, "array_interface_refused": str(error)})
+            view = torch.ops._C.get_cuda_view_from_cpu_tensor(source)
+        if view.device.type != "cuda" or view.numel() != nbytes or view.data_ptr() != int(pointer):
+            raise RuntimeError(f"ARC host table {name}: the CUDA view is not the mapped region ({view.device})")
+        entry = {"name": name, "bytes": nbytes, "method": method, "pin_seconds": state["seconds"],
+                 "overlapped": True, "join_wait_seconds": round(waited, 3),
+                 "ready_after_seconds": round(time.perf_counter() - began, 1),
+                 "uva_equal_pointer": int(pointer) == source.data_ptr()}
+        _STATE["host_tables"].append({**entry, "owner": owner, "raw": source, "view": view})
+        log("HOST_TABLE", entry)
+        done["view"] = view.view(dtype).view(shape)
+        done["cpu"] = source.view(dtype).view(shape)
+        return done["view"]
+
+    return raw.view(dtype).view(shape), finish, done
+
+
 def _worker_device():
     return torch.device("cuda", torch.cuda.current_device())
 
@@ -835,6 +914,48 @@ def _ple_check(ple, cpu_table, gpu_table):
     log("CHECK", {"ple_uva": result})
 
 
+def _check_identity(extra):
+    """sha256 (16 hex) of this helper, its settings, the torch/CUDA build, the device and ``extra``."""
+    import hashlib
+
+    h = hashlib.sha256(Path(__file__).read_bytes())
+    h.update(json.dumps(load_config(), sort_keys=True).encode())
+    device = torch.cuda.get_device_name() if torch.cuda.is_available() else "cpu"
+    h.update(json.dumps([torch.__version__, torch.version.cuda, device, extra], default=str).encode())
+    return h.hexdigest()[:16]
+
+
+def cached_check(name, extra, fn, environ=None):
+    """ARC_SK_CHECK_CACHE=<dir> (boot cut, MFU-2 24 Oct): a load-time self-check that passed for the same identity
+    (helper, settings, torch/CUDA, device, ``extra``) on an earlier boot, whose marker came back with the boot cache,
+    is skipped; otherwise it runs (it raises on a failure) and the marker is written. Logs the seconds either way."""
+    import time
+
+    root = (os.environ if environ is None else environ).get("ARC_SK_CHECK_CACHE")
+    began = time.perf_counter()
+    marker = None
+    if root:
+        marker = Path(root) / f"{name}-{_check_identity(extra)}.ok"
+        if marker.is_file():
+            log("CHECK_SKIPPED", {name: {"marker": marker.name}})
+            return False
+    fn()
+    if marker is not None:
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text(json.dumps({"name": name, "extra": extra}, default=str) + "\n")
+    log("CHECK_SECONDS", {name: round(time.perf_counter() - began, 3)})
+    return True
+
+
+def _ple_identity(ple, table):
+    module = sys.modules.get(type(ple).__module__)
+    source = getattr(module, "__file__", None)
+    import hashlib
+
+    return {"ple_source": hashlib.sha256(Path(source).read_bytes()).hexdigest() if source else None,
+            "table": [list(table.shape), str(table.dtype)]}
+
+
 def ple_uva_device(default):
     """Patched PLE constructor: build the n-gram embedding on the CPU (then ``ple_uva_place``)."""
     if not load_config().get("ple_uva"):
@@ -856,26 +977,49 @@ def ple_uva_place(ple):
     weight = ple.ngram_embedding.weight
     if weight.device.type != "cpu":
         raise RuntimeError(f"ARC PLE via UVA expects the table built on the CPU, got {weight.device}")
-    cpu_table, gpu_table = host_table(tuple(weight.shape), weight.dtype, device, "ple")
-    _move_small_tensors(ple, weight, device)
-    weight.data = gpu_table
-    load_weights = ple.load_weights
+    if load_config().get("pin_overlap"):  # the table's page-locking beside the weight load (MFU-2, 22 Oct)
+        cpu_table, finish, tables = host_table_deferred(tuple(weight.shape), weight.dtype, device, "ple")
+        _move_small_tensors(ple, weight, device)
+        weight.data = cpu_table  # the CUDA view once finish() joined the registration (after the shards)
+        load_weights = ple.load_weights
 
-    def load_through_cpu_alias(weights):
-        weight.data = cpu_table
-        try:
-            return load_weights(weights)
-        finally:
-            weight.data = gpu_table
+        def load_through_cpu_alias(weights):
+            weight.data = cpu_table
+            try:
+                return load_weights(weights)
+            finally:
+                weight.data = finish()
 
-    ple.load_weights = load_through_cpu_alias
+        def placed_check():
+            weight.data = finish()  # also when no shard reached load_weights
+            cached_check("ple_uva", _ple_identity(ple, tables["cpu"]),
+                         partial(_ple_check, ple, tables["cpu"], tables["view"]))
+
+        ple.load_weights = load_through_cpu_alias
+        check = placed_check
+    else:
+        cpu_table, gpu_table = host_table(tuple(weight.shape), weight.dtype, device, "ple")
+        _move_small_tensors(ple, weight, device)
+        weight.data = gpu_table
+        load_weights = ple.load_weights
+
+        def load_through_cpu_alias(weights):
+            weight.data = cpu_table
+            try:
+                return load_weights(weights)
+            finally:
+                weight.data = gpu_table
+
+        ple.load_weights = load_through_cpu_alias
+        check = partial(cached_check, "ple_uva", _ple_identity(ple, cpu_table),
+                        partial(_ple_check, ple, cpu_table, gpu_table))
     _register_uva_op()
     ple.ngram_embedding.quant_method.embedding = uva_embedding
     _register_ple_op()
     key = f"ple{len(_STATE['ple_layers'])}"
     _STATE["ple_layers"][key] = ple
     ple.forward_impl = partial(_ple_forward, key)
-    _after_load(ple.ngram_embedding, partial(_ple_check, ple, cpu_table, gpu_table))
+    _after_load(ple.ngram_embedding, check)
     log("PLE", {"table_shape": list(weight.shape), "dtype": str(weight.dtype), "device": str(device)})
 
 

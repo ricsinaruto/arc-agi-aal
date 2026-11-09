@@ -271,7 +271,7 @@ def test_modal_test_for_the_gated_arena():
 def test_bootstrap_skips_trials_whose_gate_did_not_pass():
     text = (ROOT / "scripts/arena/bootstrap.py").read_text()
     guard = text.index('if trial.get("requires") and results.get(trial["requires"]) != "complete":')
-    assert guard < text.index("if server_env(trial) != current_env:")
+    assert guard < text.index("if server_env(trial) != current_env")
 
 
 # ----------------------------------------------------------------------------- gate metrics
