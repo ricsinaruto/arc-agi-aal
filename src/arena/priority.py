@@ -28,6 +28,11 @@ Behaviour (their gate, at our stream count):
     C = w x 0.5^((actions / action_scale)^2) + (1 - w) x 0.5^((tokens / token_scale)^2)   (w = action_weight)
     priority = max(1, int((A + B) x C x 100))   (``floor`` false: the float (A + B) x C x 100)
   ``tail_lookup`` "capped" is their capped tail min(tail_cap, tail_base + L - 1) instead.
+- Level cap (``level_cap_tokens``, off by default): at an eviction where the game's tokens on its level have reached
+  the cap, the game is capped: it ranks below every uncapped waiting game, so the slot goes to the best of those (the
+  usual handover). Capped games are admitted only when no uncapped game waits (a slot that would otherwise idle),
+  fewest tokens on the level first, each for ``level_cap_grant_tokens`` more; at the end of a grant the slot rotates to
+  a waiting capped game with fewer tokens, else the game keeps it. A clear lifts the cap.
 - Tail fade: over the last ``tail_fade_fraction`` of the run's wall (the real wall: the competition gateway shortens
   ``GlobalClock.seconds`` to its deadline), B is scaled by the remaining wall / that window, down to 0 at the end, so
   late slots go to games whose current level is worth finishing rather than to deep tails there is no time to reach.
@@ -64,6 +69,12 @@ DEFAULTS = {
     # Their integer floor (max(1, int(value))). False keeps the float: levels past ~300K
     # tokens no longer tie at 1 and rotate first-in-first-out; the least-spent level goes first.
     "floor": True,
+    # Per-level token cap: a game whose gameplay tokens on its current level reach the cap
+    # is handed over at its next context eviction and ranks below every uncapped waiting game until it clears the
+    # level; capped games take slots that would otherwise idle, fewest tokens on the level first, in grants of
+    # ``level_cap_grant_tokens`` (generic constants; no per-game information).
+    "level_cap_tokens": 0,
+    "level_cap_grant_tokens": 100000,
 }
 TAIL_LOOKUPS = ("remaining", "capped")
 # Admission-log reasons (admission.jsonl ``reason``): admit = why the game got a slot (its first window, else what
@@ -168,6 +179,9 @@ def settings(raw=None):
         raise ValueError("priority.action_weight must be in [0, 1]")
     if merged["tail_base"] < 0 or merged["tail_cap"] < 0:
         raise ValueError("priority.tail_base and tail_cap must be non-negative")
+    for key, least in (("level_cap_tokens", 0), ("level_cap_grant_tokens", 1)):
+        if type(merged[key]) is not int or merged[key] < least:
+            raise ValueError(f"priority.{key} must be an integer of at least {least}")
     return merged
 
 

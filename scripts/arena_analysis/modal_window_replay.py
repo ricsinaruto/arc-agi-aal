@@ -135,8 +135,7 @@ def reserve(run_id, containers, note, max_bound):
         bound = containers * (TIMEOUT + 60) * _per_second(data) * 1.15
         if bound > max_bound:
             raise RuntimeError(f"bound ${bound:.2f} exceeds this launch's limit ${max_bound:.2f}")
-        from arc_infra.runops.records import row_cost
-        committed = data["infrastructure_reserve_usd"] + sum(row_cost(x)[0] for x in data["runs"])
+        committed = data["infrastructure_reserve_usd"] + sum(x["charged_bound_usd"] for x in data["runs"])
         if committed + bound > data["cap_usd"]:
             raise RuntimeError(f"Spend cap: ${committed:.2f} + ${bound:.2f} required")
         if any(x["run_id"] == run_id for x in data["runs"]):

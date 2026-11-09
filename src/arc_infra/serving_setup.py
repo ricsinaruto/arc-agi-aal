@@ -47,10 +47,12 @@ MODEL_CONFIG_SHA256 = "e765305daba0951974308f4d32c075b52a6a45974730d273f2216718a
 MODEL_QUANT_CONFIG_SHA256 = "7e69ef4b94302ae5b6f453b913621f698d5631a1d023d8b3e9e3b829721b98e8"
 MODEL_FILE_COUNT = 419
 MODEL_TOTAL_BYTES = 135_253_622_894
-MODEL_KAGGLE_PATH = Path(
+# ARC_MODEL_DIR: the checkpoint's folder when it is not the public model's mount (the private copy's parts,
+# linked into one folder by the notebook).
+MODEL_KAGGLE_PATH = Path(os.environ.get("ARC_MODEL_DIR") or (
     "/kaggle/input/models/keithtyser/qwen3-8-flash-next-nvfp4/"
     "pytorch/radixark-modelopt-fp4/1"
-)
+))
 
 VLLM_IMAGE = "vllm/vllm-openai:qwen38-flash-next"
 VLLM_INDEX_DIGEST = "sha256:fc120ece0a388cc0aa1caad4a9f1cd92113484ab7ec2fd0efadd62585be05bf8"
@@ -2446,8 +2448,6 @@ def start_server(
             root_record is not None
             and root_record["pgid"] == process.pid
             and root_record["sid"] == process.pid
-            and root_record["argv_sha256"] == hashlib.sha256(  # setsid runs before exec: wait for the exec'd argv
-                json.dumps(command, separators=(",", ":"), ensure_ascii=False).encode("utf-8")).hexdigest()
         ):
             break
         time.sleep(0.05)
@@ -2463,7 +2463,7 @@ def start_server(
         process.terminate()
         raise RuntimeError(
             "The live vLLM root argv did not match the exact launched command: "
-            f"{root_record['argv_sha256']} != {argv_sha256}; live cmdline {root_record['cmdline'][:400]!r}"
+            f"{root_record['argv_sha256']} != {argv_sha256}"
         )
     started_epoch = time.time()
     root_worker = {

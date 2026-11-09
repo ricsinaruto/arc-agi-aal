@@ -1,0 +1,56 @@
+{
+  "repo": "Hcompany/Holo4-35B-A3B-NVFP4",
+  "revision": "5631eb8e4743adb7c057373e5d4194ac57f2b614",
+  "dataset": "richardcsaky/arc-holo4-35b-a3b-nvfp4",
+  "license": "apache-2.0",
+  "files": {
+    "LICENSE": {
+      "bytes": 11343,
+      "sha256": "50cbab8a892c5f2993b8c7351a99182507472def3b1374558308605d99b86b32"
+    },
+    "README.md": {
+      "bytes": 6133,
+      "sha256": "5767f138c163b865fc7b73f16e398fb5e8567049dda75291a416691ebec1ebe1"
+    },
+    "chat_template.jinja": {
+      "bytes": 7764,
+      "sha256": "e84f32a23fdda27689f868aa4a1a5621f41133e51a48d7f3efcbea2839574259"
+    },
+    "config.json": {
+      "bytes": 21953,
+      "sha256": "c7ead79fd7c6518a36a5a41c4ac6fd090dfd424a245cdd832ef699d874d1bf56"
+    },
+    "generation_config.json": {
+      "bytes": 214,
+      "sha256": "56147698c439ec2da22f5820fcf76fa14788b6c0ebdd2b2e073c6cddfdd1ea30"
+    },
+    "model-00001-of-00002.safetensors": {
+      "bytes": 20012184616,
+      "sha256": "aec68d54cda923229f37faa5b246e11926e24eab76e7d2e7acd5ef5bcfa921f7"
+    },
+    "model-00002-of-00002.safetensors": {
+      "bytes": 2450384296,
+      "sha256": "2f7debc92c4bca4132211462b942d6a648ff0a6bf9cc679bd373b983dfebc8ad"
+    },
+    "model.safetensors.index.json": {
+      "bytes": 10683600,
+      "sha256": "068b3a8881620c8ecf085474730da22f4a11ddc4747f75d8243a22279ab27824"
+    },
+    "processor_config.json": {
+      "bytes": 1191,
+      "sha256": "d89ef49ce9cd37fbf510158e13c1ef063d9286411c1ec9049932dbe0487143b1"
+    },
+    "recipe.yaml": {
+      "bytes": 2216,
+      "sha256": "fc8085460b8f825959104307700ec3aec63f08250662380b16fc4577d16ebcf1"
+    },
+    "tokenizer.json": {
+      "bytes": 19989325,
+      "sha256": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523"
+    },
+    "tokenizer_config.json": {
+      "bytes": 1165,
+      "sha256": "792fa3f0cb88b111e54ef3134c873531008c4df471d108da17903426e308aa7b"
+    }
+  }
+}

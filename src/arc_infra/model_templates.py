@@ -9,9 +9,16 @@ QWEN35_122B_MODEL = "nvidia/Qwen3.5-122B-A10B-NVFP4"
 ORNITH_35B_MODEL = "ornith-ai/Ornith-1.5-35B-A3B-NVFP4"
 # Qwen3.8-27B fine-tune with the Qwen3.8 template byte for byte: the default (Flash / Qwen3.8) request controls.
 HOLO4_27B_MODEL = "Hcompany/Holo4-27B-NVFP4"
+# Qwen3.6-35B-A3B fine-tune: Qwen3.6's template (thinking on/off, preserve_thinking off unless sent).
+HOLO4_35B_MODEL = "Hcompany/Holo4-35B-A3B-NVFP4"
 NEMOTRON_SUPER_MODEL = "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4"
 NEMOTRON_LIGHTNING_MODEL = "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-NVFP4"
 NEMOTRON_MODELS = (NEMOTRON_SUPER_MODEL, NEMOTRON_LIGHTNING_MODEL)
+# Nemotron 3.5 vision-language candidates (stock vLLM; screen): images allowed, thinking on/off.
+NEMOTRON35_SUPER_VL_MODEL = "nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4"
+NEMOTRON35_BOLT_MODEL = "nvidia/NVIDIA-Nemotron-3.5-Bolt-74B-A9B-24GB"
+NEMOTRON35_BOLT_BF16_MODEL = "nvidia/NVIDIA-Nemotron-3.5-Bolt-74B-A9B-BF16"  # served at online FP8
+NEMOTRON35_VL_MODELS = (NEMOTRON35_SUPER_VL_MODEL, NEMOTRON35_BOLT_MODEL, NEMOTRON35_BOLT_BF16_MODEL)
 # llama.cpp model screens (27 September, arena.llamacpp_profiles). GLM-5.3-Flash's template always
 # opens a think block; its dial is reasoning_effort low / high / max (any other value renders max).
 # dots3-note-preview's template takes enable_thinking. Both run text-only: the glm5next PR has no
@@ -50,7 +57,7 @@ def allowed_efforts(model):
     if model == GLM53_FLASH_MODEL:
         return ("max", "high", "low")
     if model in (*UI_MATE_MODELS, MINICPM_MODEL, QWEN36_MODEL, QWEN35_122B_MODEL, ORNITH_35B_MODEL,
-                 *NEMOTRON_MODELS, DOTS3_MODEL):
+                 HOLO4_35B_MODEL, *NEMOTRON_MODELS, *NEMOTRON35_VL_MODELS, DOTS3_MODEL):
         return ("native",)
     return ("high", "none") if model == NEX_MODEL else ("xhigh", "medium", "low")
 
@@ -61,8 +68,8 @@ def template_kwargs(model, kwargs):
         if kwargs.get("enable_thinking") is False:
             return {"reasoning_effort": "low"}
         return {"reasoning_effort": GLM_EFFORTS.get(kwargs.get("reasoning_effort"), "max")}
-    if model in (MINICPM_MODEL, QWEN36_MODEL, QWEN35_122B_MODEL, ORNITH_35B_MODEL, *NEMOTRON_MODELS,
-                 DOTS3_MODEL):
+    if model in (MINICPM_MODEL, QWEN36_MODEL, QWEN35_122B_MODEL, ORNITH_35B_MODEL, HOLO4_35B_MODEL,
+                 *NEMOTRON_MODELS, *NEMOTRON35_VL_MODELS, DOTS3_MODEL):
         # Nemotron's template also accepts low_effort and truncate_history_thinking (default True:
         # older reasoning is dropped from the prompt); both stay at their defaults. Ornith's has only
         # this switch and renders every earlier reasoning block (no preserve_thinking gate).

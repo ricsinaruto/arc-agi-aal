@@ -280,8 +280,8 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
         speculative = validate_speculative(speculative)
     if type(reclaim_skipped_blocks) is not bool:
         raise ValueError('reclaim_skipped_blocks must be boolean')
-    if type(cpu_gib) is not int or not 0 <= cpu_gib <= 32:
-        raise ValueError('Arena CPU cache must be 0..32 GiB')
+    if type(cpu_gib) is not int or not 0 <= cpu_gib <= 64:
+        raise ValueError('Arena CPU cache must be 0..64 GiB')
     if graph_capture_size is not None:
         if type(graph_capture_size) is not int or not 1 <= graph_capture_size <= 256:
             raise ValueError('Arena CUDA graph capture size must be an integer in 1..256')
@@ -292,7 +292,12 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
 
     def wrapped_extract(*args, **kwargs):
         result = extract(*args, **kwargs)
-        apply(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working)
+        if cpu_gib:  # the hybrid-cache offloading connector (arc_infra.arc_offload_runtime)
+            target = recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages/vllm/arc_offload.py'
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes((Path(__file__).parents[1] / 'arc_infra/arc_offload_runtime.py').read_bytes())
+        apply(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working,
+              **({'state_cotenant': True} if prefix_cache and prefix_cache.get('state_cotenant') else {}))
         if reclaim_skipped_blocks:
             apply_reclamation(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working)
         if prefix_cache is not None:
@@ -391,8 +396,11 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
             argv.append('--cudagraph-metrics')
         if cpu_gib:
             argv.extend(['--kv-transfer-config', json.dumps({
-                'kv_connector': 'OffloadingConnector', 'kv_role': 'kv_both',
-                'kv_connector_extra_config': {'cpu_bytes_to_use': cpu_gib * 1024**3},
+                'kv_connector': 'ArcOffloadingConnector', 'kv_connector_module_path': 'vllm.arc_offload',
+                'kv_role': 'kv_both',
+                # offload_prompt_only (pinned default True) would leave each reply's KV off the host: a restored
+                # conversation would miss its previous reply (throughput arm, 16 Oct)
+                'kv_connector_extra_config': {'cpu_bytes_to_use': cpu_gib * 1024**3, 'offload_prompt_only': False},
             }), '--no-disable-hybrid-kv-cache-manager'])
         if speculative is not None:
             if '--speculative-config' in argv:
@@ -552,6 +560,10 @@ def main():
     p.add_argument('--study', required=True)
     args = p.parse_args()
     study = json.loads(Path(args.study).read_text())
+    if (study.get('arc2') or {}).get('nested_mask'):  # an ARC-AGI-2 L4 bundle's nested mask, served on one card
+        from arc2.l4_serving import nest_overlay
+
+        nest_overlay(study, Path(args.study).parent.parent)
     settings = study['cache_experiment']
     validate_settings(settings)
     # Serving A/B bench (26 September): an explicit KV byte allocation from the trial's server environment;

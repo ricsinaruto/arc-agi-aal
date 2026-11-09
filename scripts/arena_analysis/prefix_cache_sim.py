@@ -62,6 +62,11 @@ def overlay(args):
                "mamba_demote_superseded": "demote" in args.patches}
     if "tail" in args.patches:
         options["request_end_tail"] = True
+    for name, key in (("keepboundary", "tail_keep_boundary"), ("keepalive", "tail_keepalive")):
+        if name in args.patches:
+            options[key] = True
+    if "tick" in args.patches:
+        options["admission_tick"] = args.tick_seconds
     if any(options.values()):
         print(prefix_cache_patch.apply(out, out, options))
 
@@ -130,6 +135,10 @@ def run(a):
     from vllm.v1.request import Request
 
     s = make_scheduler(a)
+    if a.step_seconds is not None and getattr(s.kv_cache_manager, "_arc_tail", None) is not None:
+        s.kv_cache_manager._arc_tail.clock = lambda: step * a.step_seconds
+    if a.step_seconds is not None and hasattr(s, "_arc_clock"):  # admission_tick
+        s._arc_clock = lambda: step * a.step_seconds
     hash_fn = get_hash_fn_by_name("sha256")
     init_none_hash(hash_fn)
     unit = a.hash_unit or a.block  # --prefix-match-unit (hero-v2 precheck): hashes every `unit` tokens
@@ -159,7 +168,7 @@ def run(a):
         prompt = game["tokens"] + new
         req = Request(f"g{game['id']}-r{game['n']}", prompt, SamplingParams(max_tokens=len(reply), ignore_eos=True),
                       None, block_hasher=hasher)
-        game["active"] = {"req": req, "reply": reply, "emitted": 0, "P": len(prompt)}
+        game["active"] = {"req": req, "reply": reply, "emitted": 0, "P": len(prompt), "submitted": step}
         s.add_request(req)
 
     groups = s.kv_cache_config.kv_cache_groups
@@ -174,6 +183,7 @@ def run(a):
     running_col, checks = {}, Counter()
     seqs = {}  # request id -> its full token sequence (prompt + planned reply)
     queue, step = deque(), 0
+    waits, follow = [], []  # steps in the waiting queue: every request, follow-ups only
 
     def same_prefix(seq, rid, n):
         return seqs[seq][:n] == seqs[rid][:n]
@@ -217,6 +227,20 @@ def run(a):
             break
         if s.has_requests():
             so = s.schedule()
+            # Admission: steps a request waited in the queue; steps that compute prompt tokens next to a decode.
+            for new in so.scheduled_new_reqs:
+                game = games[int(new.req_id.split("-")[0][1:])]
+                waits.append(step - game["active"]["submitted"])
+                if game["n"]:
+                    follow.append(waits[-1])
+            kinds = set()
+            for rid, count in so.num_scheduled_tokens.items():
+                req = s.requests.get(rid)
+                if req is not None:
+                    kinds.add(req.num_computed_tokens - count < req.num_prompt_tokens - 1)
+            checks["schedule_steps"] += 1
+            checks["prompt_steps"] += True in kinds
+            checks["prompt_steps_beside_decode"] += kinds == {True, False}
             # Worker order: zero new blocks, run the queued copies, then the forward.
             for block_id in so.new_block_ids_to_zero or ():
                 slots.pop(block_id, None)
@@ -292,7 +316,7 @@ def run(a):
                     game["tokens"] = list(act["req"].prompt_token_ids) + act["reply"]
                     game["n"] += 1
                     game["active"] = None
-                    game["wait"] = a.gap
+                    game["wait"] = a.idle_gap if game["id"] < a.idle_games else a.gap
         if step > 500000:
             raise SystemExit("no progress")
     pool = s.kv_cache_manager.block_pool
@@ -301,12 +325,19 @@ def run(a):
                   free_queue_dups=len(free_ids) - len(set(free_ids)), free_blocks=pool.get_num_free_blocks(),
                   prefix_hit_tokens=sum(v for v in hits.values() if v))
     labels, short, short_unit, above = Counter(), 0, 0, 0
+    # Per group of games (idle = the long-tool games, others = the churning ones): follow-up requests, tokens of the
+    # previous request's sequence that were not served, requests that lost at least one block of it, and requests
+    # served from the shared system prefix or less.
+    groups_report = {name: Counter() for name in ("idle", "others")}
     for game in games:
         log = game["log"]
         for n in range(1, len(log)):
             p, r = log[n - 1], log[n]
             ideal = min(p["P"] + p["G"], r["P"] - 1) // B * B
             short += max(0, ideal - r["H"])
+            report = groups_report["idle" if game["id"] < a.idle_games else "others"]
+            lost = max(0, min(p["P"] + p["G"], r["P"] - 1) - r["H"])
+            report.update(requests=1, lost_tokens=lost, lost_a_block=lost >= B, from_system_prefix=r["H"] <= a.system)
             # With a fine unit the previous prompt's last unit boundary is cached too (its partial tail).
             ideal_unit = max(ideal, min(p["P"], r["P"] - 1) // unit * unit)
             short_unit += max(0, ideal_unit - r["H"])
@@ -317,9 +348,18 @@ def run(a):
                    else "earlier_request" if n >= 2 and r["H"] in (log[n - 2]["P"] // B * B,
                                                                   (log[n - 2]["P"] + log[n - 2]["G"]) // B * B)
                    else "other"] += 1
+    if waits:
+        ordered = sorted(waits)
+        checks.update(admissions=len(waits), wait_steps_mean=round(sum(waits) / len(waits), 2),
+                      wait_steps_p95=ordered[int(0.95 * (len(ordered) - 1))], wait_steps_max=ordered[-1],
+                      follow_wait_steps_max=max(follow, default=0))
+    if hasattr(s, "_arc_admit_stats"):
+        checks.update({"tick_" + k: v for k, v in s._arc_admit_stats.items()})
     tail = getattr(s.kv_cache_manager, "_arc_tail", None)
     if tail is not None:
         checks.update({"tail_" + k: v for k, v in tail.stats.items()})
+    if a.idle_games:
+        print({name: dict(c) for name, c in groups_report.items()})
     print({"hit_vs_ideal": dict(labels), "shortfall_tokens": short, "hash_unit": unit,
            "shortfall_vs_unit_ideal": short_unit, "hit_tokens_above_block_ideal": above, "steps": step,
            **dict(checks)})
@@ -331,7 +371,9 @@ def main():
     o = sub.add_parser("overlay")
     o.add_argument("--runtime", required=True, help="site-packages directory holding the pinned vllm package")
     o.add_argument("--out", required=True)
-    o.add_argument("patches", nargs="*", choices=("reclaim", "align", "keep", "demote", "tail"))
+    o.add_argument("patches", nargs="*", choices=("reclaim", "align", "keep", "demote", "tail", "keepboundary", "keepalive",
+                                                 "tick"))
+    o.add_argument("--tick-seconds", type=float, default=2.0, help="admission_tick seconds (patch 'tick')")
     r = sub.add_parser("run")
     r.add_argument("--block", type=int, default=64)
     r.add_argument("--blocks", type=int, default=700)
@@ -345,6 +387,9 @@ def main():
     r.add_argument("--new-abs", type=int, nargs=2, default=(20, 140))
     r.add_argument("--reply-abs", type=int, nargs=2, default=(30, 160))
     r.add_argument("--seed", type=int, default=0)
+    r.add_argument("--idle-games", type=int, default=0, help="the first N games wait --idle-gap steps (a long tool)")
+    r.add_argument("--idle-gap", type=int, default=0)
+    r.add_argument("--step-seconds", type=float, default=None, help="tail index clock: seconds per step")
     r.add_argument("--sync", action="store_true")
     r.add_argument("--demote-min", type=int, default=None)
     r.add_argument("--tail-placement", choices=("front", "back", "swap"), default=None,

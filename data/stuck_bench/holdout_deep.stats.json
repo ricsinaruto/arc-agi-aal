@@ -1,0 +1,1395 @@
+{
+ "table": [
+  {
+   "id": "bp35-L1",
+   "game": "bp35-0a0ad940",
+   "level": 1,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 6,
+   "cleared": 6,
+   "hard": false,
+   "tokens": [
+    50398,
+    51003,
+    54374,
+    65646,
+    81106,
+    85233
+   ]
+  },
+  {
+   "id": "bp35-L2",
+   "game": "bp35-0a0ad940",
+   "level": 2,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 1,
+   "cleared": 4,
+   "hard": true,
+   "tokens": [
+    48605,
+    108784,
+    277204,
+    388325,
+    737726,
+    799684
+   ]
+  },
+  {
+   "id": "bp35-L3",
+   "game": "bp35-0a0ad940",
+   "level": 3,
+   "attempts": 4,
+   "counted": 4,
+   "cleared_within": 2,
+   "cleared": 4,
+   "hard": true,
+   "tokens": [
+    36675,
+    69411,
+    145667,
+    403173
+   ]
+  },
+  {
+   "id": "bp35-L4",
+   "game": "bp35-0a0ad940",
+   "level": 4,
+   "attempts": 4,
+   "counted": 3,
+   "cleared_within": 1,
+   "cleared": 2,
+   "hard": true,
+   "tokens": [
+    47980,
+    62850,
+    144560,
+    232953
+   ]
+  },
+  {
+   "id": "bp35-L5",
+   "game": "bp35-0a0ad940",
+   "level": 5,
+   "attempts": 2,
+   "counted": 2,
+   "cleared_within": 1,
+   "cleared": 1,
+   "hard": true,
+   "tokens": [
+    66220,
+    485574
+   ]
+  },
+  {
+   "id": "bp35-L6",
+   "game": "bp35-0a0ad940",
+   "level": 6,
+   "attempts": 1,
+   "counted": 1,
+   "cleared_within": 0,
+   "cleared": 0,
+   "hard": false,
+   "tokens": [
+    491333
+   ]
+  },
+  {
+   "id": "dc22-L1",
+   "game": "dc22-fdcac232",
+   "level": 1,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 5,
+   "cleared": 5,
+   "hard": false,
+   "tokens": [
+    26396,
+    29778,
+    32936,
+    39933,
+    40905
+   ]
+  },
+  {
+   "id": "dc22-L2",
+   "game": "dc22-fdcac232",
+   "level": 2,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 5,
+   "cleared": 5,
+   "hard": false,
+   "tokens": [
+    25864,
+    28941,
+    34418,
+    37844,
+    43428
+   ]
+  },
+  {
+   "id": "dc22-L3",
+   "game": "dc22-fdcac232",
+   "level": 3,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 4,
+   "cleared": 5,
+   "hard": false,
+   "tokens": [
+    34487,
+    40195,
+    48204,
+    53333,
+    158822
+   ]
+  },
+  {
+   "id": "dc22-L4",
+   "game": "dc22-fdcac232",
+   "level": 4,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 5,
+   "cleared": 5,
+   "hard": false,
+   "tokens": [
+    42519,
+    62477,
+    67805,
+    97090,
+    99299
+   ]
+  },
+  {
+   "id": "dc22-L5",
+   "game": "dc22-fdcac232",
+   "level": 5,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 0,
+   "cleared": 0,
+   "hard": true,
+   "tokens": [
+    447152,
+    468712,
+    623348,
+    634497,
+    646671
+   ]
+  },
+  {
+   "id": "g50t-L1",
+   "game": "g50t-5849a774",
+   "level": 1,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 4,
+   "cleared": 5,
+   "hard": false,
+   "tokens": [
+    58914,
+    88067,
+    92511,
+    99073,
+    102813
+   ]
+  },
+  {
+   "id": "g50t-L2",
+   "game": "g50t-5849a774",
+   "level": 2,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 5,
+   "cleared": 5,
+   "hard": false,
+   "tokens": [
+    17398,
+    19968,
+    29692,
+    49921,
+    50254
+   ]
+  },
+  {
+   "id": "g50t-L3",
+   "game": "g50t-5849a774",
+   "level": 3,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 2,
+   "cleared": 4,
+   "hard": true,
+   "tokens": [
+    36712,
+    53065,
+    109721,
+    160238,
+    589942
+   ]
+  },
+  {
+   "id": "g50t-L4",
+   "game": "g50t-5849a774",
+   "level": 4,
+   "attempts": 4,
+   "counted": 4,
+   "cleared_within": 1,
+   "cleared": 3,
+   "hard": true,
+   "tokens": [
+    30911,
+    178793,
+    182285,
+    321364
+   ]
+  },
+  {
+   "id": "g50t-L5",
+   "game": "g50t-5849a774",
+   "level": 5,
+   "attempts": 3,
+   "counted": 3,
+   "cleared_within": 2,
+   "cleared": 2,
+   "hard": false,
+   "tokens": [
+    24201,
+    83954,
+    318212
+   ]
+  },
+  {
+   "id": "g50t-L6",
+   "game": "g50t-5849a774",
+   "level": 6,
+   "attempts": 2,
+   "counted": 2,
+   "cleared_within": 0,
+   "cleared": 1,
+   "hard": true,
+   "tokens": [
+    309631,
+    508803
+   ]
+  },
+  {
+   "id": "g50t-L7",
+   "game": "g50t-5849a774",
+   "level": 7,
+   "attempts": 1,
+   "counted": 1,
+   "cleared_within": 0,
+   "cleared": 0,
+   "hard": false,
+   "tokens": [
+    178752
+   ]
+  },
+  {
+   "id": "ka59-L1",
+   "game": "ka59-38d34dbb",
+   "level": 1,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 6,
+   "cleared": 6,
+   "hard": false,
+   "tokens": [
+    17916,
+    21550,
+    24820,
+    31053,
+    32531,
+    50755
+   ]
+  },
+  {
+   "id": "ka59-L2",
+   "game": "ka59-38d34dbb",
+   "level": 2,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 6,
+   "cleared": 6,
+   "hard": false,
+   "tokens": [
+    28192,
+    36953,
+    57759,
+    66545,
+    68775,
+    69344
+   ]
+  },
+  {
+   "id": "ka59-L3",
+   "game": "ka59-38d34dbb",
+   "level": 3,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 6,
+   "cleared": 6,
+   "hard": false,
+   "tokens": [
+    26340,
+    28835,
+    34554,
+    52037,
+    56500,
+    59013
+   ]
+  },
+  {
+   "id": "ka59-L4",
+   "game": "ka59-38d34dbb",
+   "level": 4,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 6,
+   "cleared": 6,
+   "hard": false,
+   "tokens": [
+    29088,
+    32862,
+    60022,
+    61327,
+    68058,
+    91428
+   ]
+  },
+  {
+   "id": "ka59-L5",
+   "game": "ka59-38d34dbb",
+   "level": 5,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 6,
+   "cleared": 6,
+   "hard": false,
+   "tokens": [
+    11921,
+    16725,
+    18231,
+    19123,
+    23250,
+    37008
+   ]
+  },
+  {
+   "id": "ka59-L6",
+   "game": "ka59-38d34dbb",
+   "level": 6,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 1,
+   "cleared": 6,
+   "hard": true,
+   "tokens": [
+    52748,
+    125126,
+    154100,
+    157374,
+    219330,
+    321312
+   ]
+  },
+  {
+   "id": "ka59-L7",
+   "game": "ka59-38d34dbb",
+   "level": 7,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 0,
+   "cleared": 0,
+   "hard": true,
+   "tokens": [
+    237423,
+    356066,
+    456583,
+    479740,
+    483705,
+    556568
+   ]
+  },
+  {
+   "id": "lf52-L1",
+   "game": "lf52-271a04aa",
+   "level": 1,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 6,
+   "cleared": 6,
+   "hard": false,
+   "tokens": [
+    5526,
+    9075,
+    10053,
+    13380,
+    16153,
+    21755
+   ]
+  },
+  {
+   "id": "lf52-L2",
+   "game": "lf52-271a04aa",
+   "level": 2,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 3,
+   "cleared": 6,
+   "hard": true,
+   "tokens": [
+    34063,
+    72676,
+    84505,
+    119122,
+    169987,
+    426051
+   ]
+  },
+  {
+   "id": "lf52-L3",
+   "game": "lf52-271a04aa",
+   "level": 3,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 2,
+   "cleared": 6,
+   "hard": true,
+   "tokens": [
+    94501,
+    98555,
+    111953,
+    132798,
+    133735,
+    401703
+   ]
+  },
+  {
+   "id": "lf52-L4",
+   "game": "lf52-271a04aa",
+   "level": 4,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 0,
+   "cleared": 5,
+   "hard": true,
+   "tokens": [
+    130872,
+    205137,
+    206229,
+    219795,
+    249287,
+    281007
+   ]
+  },
+  {
+   "id": "lf52-L5",
+   "game": "lf52-271a04aa",
+   "level": 5,
+   "attempts": 5,
+   "counted": 4,
+   "cleared_within": 0,
+   "cleared": 3,
+   "hard": true,
+   "tokens": [
+    48847,
+    113304,
+    231736,
+    247359,
+    276220
+   ]
+  },
+  {
+   "id": "lf52-L6",
+   "game": "lf52-271a04aa",
+   "level": 6,
+   "attempts": 3,
+   "counted": 3,
+   "cleared_within": 0,
+   "cleared": 0,
+   "hard": true,
+   "tokens": [
+    135522,
+    181349,
+    266010
+   ]
+  },
+  {
+   "id": "m0r0-L1",
+   "game": "m0r0-492f87ba",
+   "level": 1,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 5,
+   "cleared": 6,
+   "hard": false,
+   "tokens": [
+    16282,
+    19838,
+    42988,
+    45458,
+    48142,
+    109903
+   ]
+  },
+  {
+   "id": "m0r0-L2",
+   "game": "m0r0-492f87ba",
+   "level": 2,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 6,
+   "cleared": 6,
+   "hard": false,
+   "tokens": [
+    15175,
+    20671,
+    21429,
+    26798,
+    27179,
+    33460
+   ]
+  },
+  {
+   "id": "m0r0-L3",
+   "game": "m0r0-492f87ba",
+   "level": 3,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 5,
+   "cleared": 6,
+   "hard": false,
+   "tokens": [
+    34011,
+    38915,
+    46156,
+    60940,
+    70768,
+    242284
+   ]
+  },
+  {
+   "id": "m0r0-L4",
+   "game": "m0r0-492f87ba",
+   "level": 4,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 6,
+   "cleared": 6,
+   "hard": false,
+   "tokens": [
+    12982,
+    13157,
+    18663,
+    27147,
+    32422,
+    43100
+   ]
+  },
+  {
+   "id": "m0r0-L5",
+   "game": "m0r0-492f87ba",
+   "level": 5,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 6,
+   "cleared": 6,
+   "hard": false,
+   "tokens": [
+    18214,
+    32687,
+    42069,
+    49910,
+    57661,
+    84366
+   ]
+  },
+  {
+   "id": "m0r0-L6",
+   "game": "m0r0-492f87ba",
+   "level": 6,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 3,
+   "cleared": 6,
+   "hard": true,
+   "tokens": [
+    47789,
+    50200,
+    69537,
+    100607,
+    110399,
+    240374
+   ]
+  },
+  {
+   "id": "r11l-L1",
+   "game": "r11l-495a7899",
+   "level": 1,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 6,
+   "cleared": 6,
+   "hard": false,
+   "tokens": [
+    8380,
+    8779,
+    10771,
+    14826,
+    25317,
+    41894
+   ]
+  },
+  {
+   "id": "r11l-L2",
+   "game": "r11l-495a7899",
+   "level": 2,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 4,
+   "cleared": 6,
+   "hard": false,
+   "tokens": [
+    43903,
+    64065,
+    68183,
+    86679,
+    125542,
+    796520
+   ]
+  },
+  {
+   "id": "r11l-L3",
+   "game": "r11l-495a7899",
+   "level": 3,
+   "attempts": 6,
+   "counted": 5,
+   "cleared_within": 5,
+   "cleared": 5,
+   "hard": false,
+   "tokens": [
+    16345,
+    17117,
+    22995,
+    51976,
+    59997,
+    92410
+   ]
+  },
+  {
+   "id": "r11l-L4",
+   "game": "r11l-495a7899",
+   "level": 4,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 5,
+   "cleared": 5,
+   "hard": false,
+   "tokens": [
+    14201,
+    15261,
+    17883,
+    20259,
+    38811
+   ]
+  },
+  {
+   "id": "r11l-L5",
+   "game": "r11l-495a7899",
+   "level": 5,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 5,
+   "cleared": 5,
+   "hard": false,
+   "tokens": [
+    35890,
+    50587,
+    64005,
+    74522,
+    87000
+   ]
+  },
+  {
+   "id": "r11l-L6",
+   "game": "r11l-495a7899",
+   "level": 6,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 4,
+   "cleared": 5,
+   "hard": false,
+   "tokens": [
+    21994,
+    39050,
+    44570,
+    87562,
+    198171
+   ]
+  },
+  {
+   "id": "s5i5-L1",
+   "game": "s5i5-18d95033",
+   "level": 1,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 5,
+   "cleared": 5,
+   "hard": false,
+   "tokens": [
+    8055,
+    10392,
+    14063,
+    15057,
+    50145
+   ]
+  },
+  {
+   "id": "s5i5-L2",
+   "game": "s5i5-18d95033",
+   "level": 2,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 2,
+   "cleared": 5,
+   "hard": true,
+   "tokens": [
+    29278,
+    35445,
+    173506,
+    174112,
+    178953
+   ]
+  },
+  {
+   "id": "s5i5-L3",
+   "game": "s5i5-18d95033",
+   "level": 3,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 1,
+   "cleared": 3,
+   "hard": true,
+   "tokens": [
+    31961,
+    181175,
+    446644,
+    477556,
+    811117
+   ]
+  },
+  {
+   "id": "s5i5-L4",
+   "game": "s5i5-18d95033",
+   "level": 4,
+   "attempts": 3,
+   "counted": 3,
+   "cleared_within": 1,
+   "cleared": 1,
+   "hard": true,
+   "tokens": [
+    32631,
+    148798,
+    378271
+   ]
+  },
+  {
+   "id": "s5i5-L5",
+   "game": "s5i5-18d95033",
+   "level": 5,
+   "attempts": 1,
+   "counted": 1,
+   "cleared_within": 1,
+   "cleared": 1,
+   "hard": false,
+   "tokens": [
+    24614
+   ]
+  },
+  {
+   "id": "s5i5-L6",
+   "game": "s5i5-18d95033",
+   "level": 6,
+   "attempts": 1,
+   "counted": 1,
+   "cleared_within": 1,
+   "cleared": 1,
+   "hard": false,
+   "tokens": [
+    49445
+   ]
+  },
+  {
+   "id": "s5i5-L7",
+   "game": "s5i5-18d95033",
+   "level": 7,
+   "attempts": 1,
+   "counted": 1,
+   "cleared_within": 0,
+   "cleared": 0,
+   "hard": false,
+   "tokens": [
+    623143
+   ]
+  },
+  {
+   "id": "sc25-L1",
+   "game": "sc25-635fd71a",
+   "level": 1,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 5,
+   "cleared": 6,
+   "hard": false,
+   "tokens": [
+    17369,
+    29517,
+    29830,
+    29839,
+    58056,
+    102185
+   ]
+  },
+  {
+   "id": "sc25-L2",
+   "game": "sc25-635fd71a",
+   "level": 2,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 6,
+   "cleared": 6,
+   "hard": false,
+   "tokens": [
+    3297,
+    4221,
+    4838,
+    5053,
+    5913,
+    5957
+   ]
+  },
+  {
+   "id": "sc25-L3",
+   "game": "sc25-635fd71a",
+   "level": 3,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 6,
+   "cleared": 6,
+   "hard": false,
+   "tokens": [
+    12394,
+    18150,
+    18988,
+    22688,
+    41930,
+    48645
+   ]
+  },
+  {
+   "id": "sc25-L4",
+   "game": "sc25-635fd71a",
+   "level": 4,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 6,
+   "cleared": 6,
+   "hard": false,
+   "tokens": [
+    11588,
+    49681,
+    56441,
+    65325,
+    86037,
+    89857
+   ]
+  },
+  {
+   "id": "sc25-L5",
+   "game": "sc25-635fd71a",
+   "level": 5,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 3,
+   "cleared": 6,
+   "hard": true,
+   "tokens": [
+    53495,
+    59992,
+    69634,
+    102563,
+    111005,
+    128915
+   ]
+  },
+  {
+   "id": "sc25-L6",
+   "game": "sc25-635fd71a",
+   "level": 6,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 4,
+   "cleared": 6,
+   "hard": false,
+   "tokens": [
+    39936,
+    53070,
+    75015,
+    90968,
+    110542,
+    118583
+   ]
+  },
+  {
+   "id": "sp80-L1",
+   "game": "sp80-589a99af",
+   "level": 1,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 6,
+   "cleared": 6,
+   "hard": false,
+   "tokens": [
+    4492,
+    6052,
+    10311,
+    12420,
+    26070,
+    55253
+   ]
+  },
+  {
+   "id": "sp80-L2",
+   "game": "sp80-589a99af",
+   "level": 2,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 1,
+   "cleared": 4,
+   "hard": true,
+   "tokens": [
+    43988,
+    154534,
+    175515,
+    624429,
+    756956,
+    782442
+   ]
+  },
+  {
+   "id": "sp80-L3",
+   "game": "sp80-589a99af",
+   "level": 3,
+   "attempts": 4,
+   "counted": 4,
+   "cleared_within": 4,
+   "cleared": 4,
+   "hard": false,
+   "tokens": [
+    20926,
+    41240,
+    44408,
+    48348
+   ]
+  },
+  {
+   "id": "sp80-L4",
+   "game": "sp80-589a99af",
+   "level": 4,
+   "attempts": 4,
+   "counted": 4,
+   "cleared_within": 1,
+   "cleared": 3,
+   "hard": true,
+   "tokens": [
+    81984,
+    109955,
+    114573,
+    137961
+   ]
+  },
+  {
+   "id": "sp80-L5",
+   "game": "sp80-589a99af",
+   "level": 5,
+   "attempts": 3,
+   "counted": 3,
+   "cleared_within": 0,
+   "cleared": 0,
+   "hard": true,
+   "tokens": [
+    483616,
+    528524,
+    576968
+   ]
+  },
+  {
+   "id": "su15-L1",
+   "game": "su15-1944f8ab",
+   "level": 1,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 5,
+   "cleared": 5,
+   "hard": false,
+   "tokens": [
+    6576,
+    6923,
+    8873,
+    10151,
+    12537
+   ]
+  },
+  {
+   "id": "su15-L2",
+   "game": "su15-1944f8ab",
+   "level": 2,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 5,
+   "cleared": 5,
+   "hard": false,
+   "tokens": [
+    21683,
+    26788,
+    53865,
+    66386,
+    99436
+   ]
+  },
+  {
+   "id": "su15-L3",
+   "game": "su15-1944f8ab",
+   "level": 3,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 5,
+   "cleared": 5,
+   "hard": false,
+   "tokens": [
+    8781,
+    14767,
+    19920,
+    27499,
+    38010
+   ]
+  },
+  {
+   "id": "su15-L4",
+   "game": "su15-1944f8ab",
+   "level": 4,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 3,
+   "cleared": 5,
+   "hard": false,
+   "tokens": [
+    48289,
+    72833,
+    99753,
+    313299,
+    376187
+   ]
+  },
+  {
+   "id": "su15-L5",
+   "game": "su15-1944f8ab",
+   "level": 5,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 1,
+   "cleared": 3,
+   "hard": true,
+   "tokens": [
+    21002,
+    150944,
+    236704,
+    251272,
+    390306
+   ]
+  },
+  {
+   "id": "su15-L6",
+   "game": "su15-1944f8ab",
+   "level": 6,
+   "attempts": 3,
+   "counted": 3,
+   "cleared_within": 3,
+   "cleared": 3,
+   "hard": false,
+   "tokens": [
+    12175,
+    22090,
+    66606
+   ]
+  },
+  {
+   "id": "su15-L7",
+   "game": "su15-1944f8ab",
+   "level": 7,
+   "attempts": 3,
+   "counted": 3,
+   "cleared_within": 3,
+   "cleared": 3,
+   "hard": false,
+   "tokens": [
+    33703,
+    42984,
+    68740
+   ]
+  },
+  {
+   "id": "su15-L8",
+   "game": "su15-1944f8ab",
+   "level": 8,
+   "attempts": 3,
+   "counted": 3,
+   "cleared_within": 0,
+   "cleared": 2,
+   "hard": true,
+   "tokens": [
+    256626,
+    391390,
+    413146
+   ]
+  },
+  {
+   "id": "su15-L9",
+   "game": "su15-1944f8ab",
+   "level": 9,
+   "attempts": 2,
+   "counted": 2,
+   "cleared_within": 0,
+   "cleared": 0,
+   "hard": true,
+   "tokens": [
+    107752,
+    309629
+   ]
+  },
+  {
+   "id": "tn36-L1",
+   "game": "tn36-ef4dde99",
+   "level": 1,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 6,
+   "cleared": 6,
+   "hard": false,
+   "tokens": [
+    15534,
+    18990,
+    27958,
+    28708,
+    81055,
+    92931
+   ]
+  },
+  {
+   "id": "tn36-L2",
+   "game": "tn36-ef4dde99",
+   "level": 2,
+   "attempts": 6,
+   "counted": 6,
+   "cleared_within": 2,
+   "cleared": 5,
+   "hard": true,
+   "tokens": [
+    36734,
+    66745,
+    240369,
+    326471,
+    375566,
+    714384
+   ]
+  },
+  {
+   "id": "tn36-L3",
+   "game": "tn36-ef4dde99",
+   "level": 3,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 4,
+   "cleared": 5,
+   "hard": false,
+   "tokens": [
+    6637,
+    10986,
+    42037,
+    66947,
+    115348
+   ]
+  },
+  {
+   "id": "tn36-L4",
+   "game": "tn36-ef4dde99",
+   "level": 4,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 4,
+   "cleared": 4,
+   "hard": false,
+   "tokens": [
+    22840,
+    27408,
+    44282,
+    95566,
+    317581
+   ]
+  },
+  {
+   "id": "tn36-L5",
+   "game": "tn36-ef4dde99",
+   "level": 5,
+   "attempts": 4,
+   "counted": 4,
+   "cleared_within": 2,
+   "cleared": 3,
+   "hard": true,
+   "tokens": [
+    14092,
+    20246,
+    121067,
+    210994
+   ]
+  },
+  {
+   "id": "tn36-L6",
+   "game": "tn36-ef4dde99",
+   "level": 6,
+   "attempts": 3,
+   "counted": 3,
+   "cleared_within": 2,
+   "cleared": 3,
+   "hard": false,
+   "tokens": [
+    34188,
+    62785,
+    214656
+   ]
+  },
+  {
+   "id": "tn36-L7",
+   "game": "tn36-ef4dde99",
+   "level": 7,
+   "attempts": 3,
+   "counted": 3,
+   "cleared_within": 3,
+   "cleared": 3,
+   "hard": false,
+   "tokens": [
+    36450,
+    39851,
+    52322
+   ]
+  },
+  {
+   "id": "tr87-L1",
+   "game": "tr87-cd924810",
+   "level": 1,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 5,
+   "cleared": 5,
+   "hard": false,
+   "tokens": [
+    26868,
+    31480,
+    33059,
+    36871,
+    62223
+   ]
+  },
+  {
+   "id": "tr87-L2",
+   "game": "tr87-cd924810",
+   "level": 2,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 5,
+   "cleared": 5,
+   "hard": false,
+   "tokens": [
+    7912,
+    14671,
+    37330,
+    37710,
+    48096
+   ]
+  },
+  {
+   "id": "tr87-L3",
+   "game": "tr87-cd924810",
+   "level": 3,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 5,
+   "cleared": 5,
+   "hard": false,
+   "tokens": [
+    3941,
+    9167,
+    9551,
+    9552,
+    9787
+   ]
+  },
+  {
+   "id": "tr87-L4",
+   "game": "tr87-cd924810",
+   "level": 4,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 5,
+   "cleared": 5,
+   "hard": false,
+   "tokens": [
+    4570,
+    4599,
+    4952,
+    5104,
+    6899
+   ]
+  },
+  {
+   "id": "tr87-L5",
+   "game": "tr87-cd924810",
+   "level": 5,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 4,
+   "cleared": 5,
+   "hard": false,
+   "tokens": [
+    9737,
+    22549,
+    26645,
+    29075,
+    110748
+   ]
+  },
+  {
+   "id": "tr87-L6",
+   "game": "tr87-cd924810",
+   "level": 6,
+   "attempts": 5,
+   "counted": 5,
+   "cleared_within": 3,
+   "cleared": 4,
+   "hard": false,
+   "tokens": [
+    23672,
+    27501,
+    34933,
+    283340,
+    414309
+   ]
+  }
+ ],
+ "failures": []
+}

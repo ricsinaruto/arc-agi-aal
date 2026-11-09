@@ -80,7 +80,8 @@ def verify_model(path, manifest, cache=None):
     mtp_count = sum('mtp' in name.lower() for name in index)
     if (config['architectures'] != [profile.architecture]
             or (config.get('quantization_config') or {}).get('quant_method') != profile.quant_method
-            or config.get('text_config', config)['max_position_embeddings'] != (profile.declared_context or profile.native_context)
+            or (config.get('text_config') or config.get('llm_config') or config)['max_position_embeddings']
+            != (profile.declared_context or profile.native_context)
             or mtp_count != profile.mtp_tensors):
         raise RuntimeError('Candidate architecture, quantization, context or MTP inventory changed')
     if profile.quant_method is None and config.get('dtype', config.get('torch_dtype')) != 'bfloat16':
@@ -244,13 +245,27 @@ def start(study, working, input_root):
                   reclaim_skipped_blocks=settings.get('reclaim_skipped_blocks', False),
                   **candidate_configure_options(study, lab))
         configure_candidate(recipe, profile, lab.get('kv_cache_dtype'))
-        record['runtime'] = recipe.verify_and_extract_runtime(
-            recipe.resolve_runtime_dir(), full_layer_hashes=False, scan_extracted_caches=False)
-        # Hash-verified shared runtime files, not a candidate PLE module.
-        record['unused_flash_runtime_patch'] = recipe.patch_ple_layer()
-        tuning = recipe.resolve_vllm_tuning()
-        env, record['runtime_environment'] = recipe.runtime_environment(
-            deep_preload_validation=False, tuning=tuning)
+        if profile.runtime == 'stock':
+            # Stock vLLM (arena.stock_serving): the candidate's own command on the pinned stock runtime, under the
+            # recipe's process ownership; none of the fork's runtime, patches or environment.
+            from . import stock_serving
+
+            python = stock_serving.runtime(input_root, profile.stock_dataset, profile.stock_sha256)
+            server = study['server']
+            recipe.server_command = lambda model_dir, **_: stock_serving.command(
+                python, model_dir, profile, server, recipe.HOST, recipe.PORT)
+            record['runtime'] = {'stock': str(python), 'dataset': profile.stock_dataset,
+                                 'sha256': profile.stock_sha256}
+            tuning = recipe.resolve_vllm_tuning()
+            env = stock_serving.environment(profile)
+        else:
+            record['runtime'] = recipe.verify_and_extract_runtime(
+                recipe.resolve_runtime_dir(), full_layer_hashes=False, scan_extracted_caches=False)
+            # Hash-verified shared runtime files, not a candidate PLE module.
+            record['unused_flash_runtime_patch'] = recipe.patch_ple_layer()
+            tuning = recipe.resolve_vllm_tuning()
+            env, record['runtime_environment'] = recipe.runtime_environment(
+                deep_preload_validation=False, tuning=tuning)
         record['tuning'] = tuning
         record['stages'][stage] = time.monotonic() - started
         stage = 'model_startup'
@@ -259,6 +274,11 @@ def start(study, working, input_root):
                                             timeout=study['startup_timeout_seconds'],
                                             base_url=recipe.BASE_URL, profile=profile))
         record['server_identity'] = recipe.update_ready_identity(identity)
+        if profile.runtime == 'stock':  # the gate's layout from the stock server's own KV pool
+            from . import stock_serving
+
+            (working / stock_serving.LAYOUT_LOG).write_text(
+                stock_serving.layout_line(recipe.SERVER_LOG, profile.native_context) + '\n')
         stage = 'native_context_preflight'
         cfg = Config(model=profile.model, model_revision=profile.revision, reasoning_effort=profile.effort,
                      context_window=profile.native_context,
