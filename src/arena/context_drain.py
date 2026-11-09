@@ -45,7 +45,20 @@ DEFAULTS = {
 BOOLEANS = ("coalesce", "middle_truncation", "drop_malformed", "note")
 # v7.1: ``keep_tokens`` drains to this many tokens instead of ``drain_tokens`` below the budget (no
 # half-budget cap); absent unless set, so earlier builds record the same block.
-OPTIONAL = {"keep_tokens": None}
+OPTIONAL = {"keep_tokens": None, "jitter": None}
+# v9: ``jitter`` {"low", "high", "seed"} replaces the fixed trigger by a new draw at every drain,
+# uniform in [low, high] prompt tokens and seeded from (seed, game, drain index); with ``keep_tokens`` every drain
+# leaves that many tokens (drains T - keep). Absent unless set, so earlier builds record the same block.
+JITTER_KEYS = {"low", "high", "seed"}
+
+
+def trigger_draw(game, index, low, high, seed=0):
+    """The drain trigger for ``game``'s drain number ``index`` (0 = its first): uniform integer in [low, high], a pure
+    function of (seed, game, index) (sha256; no process RNG, so a rerun replays the same draws)."""
+    import hashlib
+
+    digest = hashlib.sha256(f"{int(seed)}|{game}|{int(index)}".encode()).digest()
+    return int(low) + int.from_bytes(digest[:8], "big") * (int(high) - int(low) + 1) // 2 ** 64
 
 
 def settings(value):
@@ -68,6 +81,14 @@ def settings(value):
             raise ValueError(f"drain_half {key} is a non-negative integer")
     if "keep_tokens" in result and (type(result["keep_tokens"]) is not int or result["keep_tokens"] < 1024):
         raise ValueError("drain_half keep_tokens is an integer >= 1024")
+    jitter = result.get("jitter")
+    if jitter is not None:
+        if not isinstance(jitter, dict) or set(jitter) - JITTER_KEYS or not {"low", "high"} <= set(jitter):
+            raise ValueError(f"drain_half jitter is a dict with low, high (and seed); got {jitter!r}")
+        if not all(type(jitter.get(k, 0)) is int for k in JITTER_KEYS) or not 1024 <= jitter["low"] <= jitter["high"]:
+            raise ValueError("drain_half jitter low/high/seed are integers with 1024 <= low <= high")
+        if not result.get("keep_tokens") or result["keep_tokens"] >= jitter["low"]:
+            raise ValueError("drain_half jitter needs keep_tokens below jitter low (the post-drain size)")
     if result["tool_output_tokens"] < 64:
         raise ValueError("drain_half tool_output_tokens is at least 64 (the public loop's floor)")
     if result["turn_cap"] and result["turn_drain"] >= result["turn_cap"]:

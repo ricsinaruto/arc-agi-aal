@@ -169,6 +169,13 @@ class GameRecord:
     context_evictions: int = 0
     priority_queued: int | None = None
     priority_queued_score: int | None = None
+    # Level cap (9 October; ``priority.level_cap_tokens``): capped on the current level (reset by a clear), the tokens
+    # on the level at which its present grant ends, and the run's gameplay tokens when it was last parked while capped.
+    level_capped: bool = False
+    level_cap_limit: float = 0.0
+    level_cap_parked_total: float | None = None
+    level_started_requests: int = 0
+    level_cap_request_limit: int = 0
 
     def note_compaction(self):
         """Agents call this right after a summary compaction (``compactions`` already counted), before the next
@@ -262,6 +269,7 @@ class GameRecord:
         self.level_started_active = active
         self.level_started_budget = budget_time
         self.allowance_base = 0.0  # a new clear: a fresh allowance from the level's start
+        self.level_started_requests = len(self.requests)
         self.level_started_wall = wall_seconds
         self.actions_on_level = 0
         self.actions_since_novel = 0
@@ -288,6 +296,9 @@ class GameRecord:
 
     def spent_on_level(self):
         return self.clock.budget_seconds() - self.level_started_budget
+
+    def requests_on_level(self):
+        return len(self.requests) - self.level_started_requests
 
     def tokens_on_level(self):
         return self.clock.completion_tokens() - self.level_started_tokens
@@ -524,6 +535,11 @@ class Scheduler:
         self.priority_decisions = []
         self.priority_counts = {"first_window": 0, "handover": 0, "handover_kept": 0, "finished": 0,
                                 "compaction": 0, "drain": 0, "eviction_not_active": 0}
+        # Level cap: levels capped, capped games parked for an uncapped one, returns to an otherwise idle slot, grants
+        # extended in place (nobody better waited), rotations between capped games, caps lifted by a clear, and one
+        # slot's share of the run's gameplay tokens while capped games sat parked (the tokens the cap freed).
+        self.level_cap_counts = {"capped": 0, "parked": 0, "returns": 0, "kept": 0, "rotations": 0, "lifted": 0}
+        self.level_cap_freed = 0.0
         self.priority_fade_wall = None
         if budget_policy == "priority":
             from .priority import settings as priority_settings
@@ -536,6 +552,8 @@ class Scheduler:
                 raise ValueError("The priority policy keeps the readmissions default and has no lane, pool, ranking, "
                                  "blocks, stall parking or opening")
             self.priority_cfg = priority_settings(priority)
+            if self.priority_cfg["level_cap_tokens"] and not self.token_clock:
+                raise ValueError("priority.level_cap_tokens needs the token budget clock")
         elif priority is not None:
             raise ValueError("priority settings require the priority budget policy")
         if budget_policy not in ("incremental", "fixed-2x", "index", "commit", "deep-explore", "depthwise",
@@ -881,15 +899,47 @@ class Scheduler:
             self._record(game, "finish", "finished", extra={"finished_reason": reason, "was": was})
             return
         if self.priority_cfg is not None:
+            self._level_cap_settle(game)
             # Priority: "finished" frees the slot (the game's own reason is kept beside it); the tick refills it.
             self._record(game, "finish", "finished", extra={"finished_reason": reason, "was": was})
             return
         self._record(game, "finish", reason)
 
+    KNOB_CAP = 64  # max_num_seqs of the served stacks; the KV gate still admits by blocks
+
+    def _live_knobs(self):
+        """Live admission knob (checklist item 5, 30 Oct): {"active_limit": N} in $ARENA_KNOBS, re-read on change."""
+        import json
+        import os
+
+        path = os.environ.get("ARENA_KNOBS")
+        if not path:
+            return
+        try:
+            mtime = os.stat(path).st_mtime
+        except OSError:
+            return
+        if mtime == getattr(self, "_knob_mtime", None):
+            return
+        self._knob_mtime = mtime
+        try:
+            with open(path) as handle:
+                want = int(json.load(handle)["active_limit"])
+        except Exception as exc:  # noqa: BLE001 - a bad knob file never stops play
+            if self.log:
+                self.log({"event": "knobs", "error": repr(exc)[:200]})
+            return
+        new = max(1, min(want, self.KNOB_CAP))
+        if new != self.active_limit:
+            old, self.active_limit = self.active_limit, new
+            if self.log:
+                self.log({"event": "knobs", "active_limit": new, "was": old, "requested": want})
+
     def tick(self):
         """Apply the rules once; safe to call every second and after level or finish events."""
         if self._closed:
             return
+        self._live_knobs()
         for game in self.games:
             if game.state != "finished" and game.finished_reason is not None:
                 self.finish(game, game.finished_reason)
@@ -1335,10 +1385,61 @@ class Scheduler:
             return game.priority_queued_score, {"queued_score": True}
         return score(game, self.priority_cfg, *self._priority_now())
 
-    def _priority_rank(self, candidates):
+    def _priority_rank(self, candidates, holder=None):
         """Candidates ``[(game, value, details, arrival)]`` best first: highest value, then the earlier arrival (their
-        heap's sequence; unstarted games arrive in roster order)."""
-        return sorted(candidates, key=lambda c: (-c[1], c[3]))
+        heap's sequence; unstarted games arrive in roster order). Level-capped games come after every uncapped one,
+        fewest tokens on the level first; ``holder`` (a capped game inside its grant) leads the capped ones."""
+        def key(c):
+            game = c[0]
+            if not game.level_capped:
+                return (0, -c[1], c[3])
+            return (1, -1.0 if game is holder else game.spent_on_level(), c[3])
+
+        return sorted(candidates, key=key)
+
+    # --- level cap (priority.level_cap_tokens) ---------------------------------------------
+
+    def _gameplay_tokens(self):
+        return sum(g.clock.budget_seconds() for g in self.games)
+
+    def _level_cap_over(self, game):
+        """At an eviction: cap ``game`` if its level reached a cap (tokens or requests); True when no grant is left."""
+        cap, cap_requests = self.priority_cfg["level_cap_tokens"], self.priority_cfg["level_cap_requests"]
+        if not cap and not cap_requests:
+            return False
+        spent, asked = game.spent_on_level(), game.requests_on_level()
+        if not game.level_capped and ((cap and spent >= cap) or (cap_requests and asked >= cap_requests)):
+            game.level_capped = True
+            game.level_cap_limit = spent
+            game.level_cap_request_limit = asked
+            self.level_cap_counts["capped"] += 1
+            self._priority_note("level_capped", game, tokens_on_level=int(spent), requests_on_level=asked, cap=cap,
+                                cap_requests=cap_requests)
+        return game.level_capped and bool((cap and spent >= game.level_cap_limit)
+                                          or (cap_requests and asked >= game.level_cap_request_limit))
+
+    def _level_cap_grant(self, game):
+        game.level_cap_limit = game.spent_on_level() + self.priority_cfg["level_cap_grant_tokens"]
+        game.level_cap_request_limit = game.requests_on_level() + self.priority_cfg["level_cap_grant_requests"]
+
+    def _level_cap_settle(self, game):
+        """A capped game leaves the queue (admitted or cap lifted): book the tokens its absence freed."""
+        if game.level_cap_parked_total is not None:
+            self.level_cap_freed += (self._gameplay_tokens() - game.level_cap_parked_total) / max(self.active_limit, 1)
+            game.level_cap_parked_total = None
+
+    def level_cap_progress(self):
+        """Live counters (inside ``priority_progress``): ``capped`` levels capped so far, ``parked_now`` capped games
+        waiting, ``returns`` admissions of a capped game to a slot nothing uncapped wanted, ``tokens_freed`` one slot's
+        share of the run's gameplay tokens while capped games waited."""
+        total = self._gameplay_tokens()
+        waiting = [g for g in self.games if g.level_capped and g.state == "parked" and g.finished_reason is None]
+        open_share = sum(total - g.level_cap_parked_total for g in waiting if g.level_cap_parked_total is not None)
+        return {"cap": self.priority_cfg["level_cap_tokens"], "grant": self.priority_cfg["level_cap_grant_tokens"],
+                "cap_requests": self.priority_cfg["level_cap_requests"],
+                **self.level_cap_counts, "parked_now": len(waiting),
+                "active_now": sum(g.level_capped and g.state == "active" for g in self.games),
+                "tokens_freed": int(self.level_cap_freed + open_share / max(self.active_limit, 1))}
 
     def _priority_candidates(self):
         out = []
@@ -1361,7 +1462,14 @@ class Scheduler:
         reason = "first_window" if game.readmissions == 0 else freed
         game.priority_queued = None
         game.priority_queued_score = None
-        self.admit(game, reason, None, extra={"freed": freed, "priority": value})
+        extra = {"freed": freed, "priority": value}
+        if game.level_capped:
+            # Nothing uncapped waits: the slot would idle. A further grant on the capped level.
+            self._level_cap_settle(game)
+            self._level_cap_grant(game)
+            self.level_cap_counts["returns"] += 1
+            extra.update(level_cap_return=True, tokens_on_level=int(game.spent_on_level()))
+        self.admit(game, reason, None, extra=extra)
         game.admit_tokens = game.clock.completion_tokens()
         self.priority_counts[reason] += 1
         return reason
@@ -1408,9 +1516,20 @@ class Scheduler:
         self.priority_seq += 1
         value, info = self.priority_value(game, fresh=True)
         candidates = self._priority_candidates()
-        ranked = self._priority_rank(candidates + [(game, value, info, self.priority_seq)])
+        over = self._level_cap_over(game)
+        ranked = self._priority_rank(candidates + [(game, value, info, self.priority_seq)],
+                                     holder=None if over else game)
         best, best_value, best_details, _ = ranked[0]
         top = [{"game": g.game_id, "priority": v} for g, v, _, _ in ranked[:3]]
+        if game.level_capped:
+            extra["level_cap"] = True
+            extra["tokens_on_level"] = int(game.spent_on_level())
+            if best is game and over:
+                self._level_cap_grant(game)  # nobody better waits: a further grant in place
+                self.level_cap_counts["kept"] += 1
+            elif best is not game:
+                self.level_cap_counts["rotations" if best.level_capped else "parked"] += 1
+                game.level_cap_parked_total = self._gameplay_tokens()
         if best is game:
             self.priority_counts["handover_kept"] += 1
             self._record(game, "grant", "handover", extra={"kept": True, "eviction": kind, "priority": value})
@@ -1419,7 +1538,8 @@ class Scheduler:
             return
         game.priority_queued = self.priority_seq
         game.priority_queued_score = value
-        self.park(game, "handover", extra={"eviction": kind, "priority": value, "to": best.game_id})
+        self.park(game, "handover", extra={"eviction": kind, "priority": value, "to": best.game_id,
+                                           **({"level_cap": True} if game.level_capped else {})})
         reason = self._priority_admit(best, best_value, best_details, "handover")
         self._priority_note("handover", game, eviction=kind, priority=value, **info, to=best.game_id,
                             to_priority=best_value, to_reason=reason, waiting=len(candidates), top=top, **extra)
@@ -1429,7 +1549,8 @@ class Scheduler:
         waiting = self.priority_waiting()
         return {"active": len(self.active()), "slots": self.active_limit, "waiting": len(waiting),
                 "unstarted": sum(g.readmissions == 0 for g in waiting), **self.priority_counts,
-                "tail_fade_wall_seconds": self.priority_fade_wall}
+                "tail_fade_wall_seconds": self.priority_fade_wall,
+                **({"level_cap": self.level_cap_progress()} if self.priority_cfg["level_cap_tokens"] or self.priority_cfg["level_cap_requests"] else {})}
 
     def priority_summary(self):
         games = {}
@@ -1442,6 +1563,7 @@ class Scheduler:
                 "kept": sum(e["event"] == "grant" and e["reason"] == "handover" for e in g.admissions),
                 "compactions": g.compactions, "context_drains": g.context_drains,
                 "context_evictions": g.context_evictions, "priority": value, **details,
+                **({"level_capped": True, "tokens_on_level": int(g.spent_on_level())} if g.level_capped else {}),
                 "finished_reason": g.finished_reason}
         ranked = self._priority_rank(self._priority_candidates())
         return {"settings": dict(self.priority_cfg), "counts": dict(self.priority_counts),
@@ -2086,6 +2208,13 @@ class Scheduler:
             self._blocks_level(game)
             return
         if self.priority_cfg is not None:
+            if game.level_capped:
+                # A clear lifts the cap: the new level counts from zero.
+                game.level_capped = False
+                game.level_cap_limit = 0.0
+                self._level_cap_settle(game)
+                self.level_cap_counts["lifted"] += 1
+                self._priority_note("level_cap_lifted", game)
             return  # no level budgets: the level, actions and tokens enter the game's score at its next handover
         if self.deep is not None:
             self._deep_level(game)

@@ -109,6 +109,8 @@ def apply(site, output, mask):
     site = Path(site)
     helper = Path(__file__).with_name('expert_prune_runtime.py').read_bytes()
     settings = {'experts': mask['experts'], 'fraction': mask['fraction'], 'pruned': mask['pruned']}
+    if mask.get('drop_layers'):
+        settings['drop_layers'] = sorted(int(x) for x in mask['drop_layers'])  # depth cut
     if mask.get('stall_dump_seconds'):
         settings['stall_dump_seconds'] = int(mask['stall_dump_seconds'])  # diagnostics only
     settings = (json.dumps(settings, sort_keys=True) + '\n').encode()

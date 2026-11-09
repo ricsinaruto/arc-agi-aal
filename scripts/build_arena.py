@@ -1012,8 +1012,8 @@ def build(name, *, smoke=False, output=None, dependencies=False, cache_variant=N
             # submitting); the hidden rerun is unchanged (it plays for the whole envelope).
             # Up to 8 h (four- and eight-hour Modal runs of the competition bundle; a Kaggle saved
             # version of 28,800 s plus setup still fits the 12 h kernel limit).
-            if not 300 <= int(preview_seconds) <= 28800:
-                raise ValueError('The public preview must be 300-28800 seconds')
+            if not 300 <= int(preview_seconds) <= 32400:
+                raise ValueError('The public preview must be 300-32400 seconds')
             study['competition']['preview_seconds'] = int(preview_seconds)
             # The bootstrap budgets each preview trial by the study wall (lane-v1 preview skipped its
             # trial: 1,780 s left < 3,600 + 300); the hidden rerun recomputes its wall from the envelope.

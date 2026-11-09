@@ -248,11 +248,10 @@ def open_arcade(study, games_dir, output):
                 for i, game in enumerate(games)
             ], indent=2))
         owner = ScorecardOwner(arcade, output)
-        if server is not None and (settings.get('research_clones') or (settings.get('preview_live_score') and (
-                not is_rerun() or is_rehearsal(study)))):
-            # Live progress reads (ScorecardOwner.peek_score): research clones, or a preview / rerun rehearsal (owner
-            # 25 Oct: Nebius 9 h kf runs) of a competition bundle built with preview_live_score; monitoring only.
-            # Never the hidden gateway (no local server there).
+        if server is not None and (settings.get('research_clones')
+                                   or (settings.get('preview_live_score') and not is_rerun())):
+            # Live progress reads (ScorecardOwner.peek_score): research clones, or a Modal preview test of a
+            # competition bundle built with preview_live_score; never the hidden gateway (no local server there).
             owner.local_gateway = server
         yield resolved, owner
     finally:

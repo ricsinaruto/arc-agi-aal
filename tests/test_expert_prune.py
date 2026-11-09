@@ -586,3 +586,15 @@ def test_memory_watch_logs_growth_and_heartbeats_only_when_installed():
     assert [e["event"] for e in events] == ["installed", "heartbeat", "growth"]
     assert events[2]["reserved_delta_mib"] == 512 and events[2]["tokens"] == 4097 and events[2]["encoder_inputs"] == 2
     assert events[2]["max_request_tokens"] == 4096
+
+
+def test_the_mask_drop_layers_reach_the_worker_settings(tmp_path, monkeypatch):
+    mask = {**patch.load_mask(ROOT / "data/expert_prune/prune12.json"), "drop_layers": [44, 4]}
+    site = tmp_path / "site"
+    for t in patch.TARGETS:
+        (site / t["relative"]).parent.mkdir(parents=True, exist_ok=True)
+        (site / t["relative"]).write_text("x\n")
+    fake = tuple({**t, "sha256": hashlib.sha256(b"x\n").hexdigest(), "edits": []} for t in patch.TARGETS)
+    monkeypatch.setattr(patch, "TARGETS", fake)
+    patch.apply(site, tmp_path / "out", mask)
+    assert json.loads((site / patch.SETTINGS).read_text())["drop_layers"] == [4, 44]

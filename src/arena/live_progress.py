@@ -21,6 +21,9 @@ ENGINE = {"generated_tokens": "vllm:generation_tokens_total", "running": "vllm:n
           "waiting": "vllm:num_requests_waiting", "kv_cache_fraction": "vllm:kv_cache_usage_perc",
           "preemptions": "vllm:num_preemptions_total"}
 RATE_WINDOW_SECONDS = 60
+HIT_WINDOW_SECONDS = 300
+PREFIX_QUERIES = "vllm:prefix_cache_queries_total"
+PREFIX_HITS = ("vllm:prefix_cache_hits_total", "vllm:external_prefix_cache_hits_total")  # GPU + CPU tier
 
 
 def settings(spec):
@@ -51,6 +54,16 @@ def read_score(arc, card, roster):
             "top": sorted(((round(v, 3), k) for k, v in scores.items() if v > 0), reverse=True)[:8]}
 
 
+def prefix_hit(base, now):
+    """Token-weighted prefix hit between two counter samples (GPU + CPU tier); None if the counters are missing."""
+    try:
+        queries = now[PREFIX_QUERIES] - base[PREFIX_QUERIES]
+        hits = sum(now.get(k, 0) - base.get(k, 0) for k in PREFIX_HITS)
+        return round(hits / queries, 4) if queries > 0 else None
+    except (KeyError, TypeError):
+        return None
+
+
 def engine_snapshot(samples, window=RATE_WINDOW_SECONDS):
     """Counters of the last engine sample and the generation rate over the last ``window`` s and since the start."""
     if not samples:
@@ -68,6 +81,10 @@ def engine_snapshot(samples, window=RATE_WINDOW_SECONDS):
         span = last["elapsed_seconds"] - base["elapsed_seconds"]
         if span > 0 and key in metrics and key in base["metrics"]:
             result[label] = round((metrics[key] - base["metrics"][key]) / span, 1)
+    base = next((s for s in reversed(samples) if last["elapsed_seconds"] - s["elapsed_seconds"] >= HIT_WINDOW_SECONDS),
+                first)
+    result["prefix_hit_recent"] = prefix_hit(base["metrics"], metrics)
+    result["prefix_hit_mean"] = prefix_hit(first["metrics"], metrics)
     if ENGINE["preemptions"] in first["metrics"] and ENGINE["preemptions"] in metrics:
         result["preemptions"] = metrics[ENGINE["preemptions"]] - first["metrics"][ENGINE["preemptions"]]
     return result
@@ -175,7 +192,9 @@ def summary_line(progress):
             "completion_tokens": live.get("completion_tokens"),
             "tok_s_recent": engine.get("tokens_per_second_recent"), "tok_s_mean": engine.get("tokens_per_second_mean"),
             "running": engine.get("running"), "waiting": engine.get("waiting"),
-            "kv": engine.get("kv_cache_fraction"), "preemptions": engine.get("preemptions"),
+            "kv": engine.get("kv_cache_fraction"), "prefix_hit": engine.get("prefix_hit_recent"),
+            "prefix_hit_mean": engine.get("prefix_hit_mean"),
+            "preemptions": engine.get("preemptions"),
             "host_peak": (live.get("host") or {}).get("peak"),
             "loop_rule": progress.get("loop_rule"),
             "top_levels": dict(list((live.get("levels_by_game") or {}).items())[:6])}

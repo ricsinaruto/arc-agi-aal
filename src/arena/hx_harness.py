@@ -49,10 +49,18 @@ DEFAULTS = {
                                 # 3: economy plus a lean-reasoning line after it
     "memo_once": 0,             # 1: show the notes line only when it changed, after a drain/compaction or on a new level
                                 # (0: every user turn, which repeats ~250-500 tokens per turn into the history)
+    "reflect_skip_death": 0,    # 1 (prompt audit item 6): no STEP BACK on a death turn and no deaths trigger (the
+                                # death turn has its own text)
+    "memo_style": 0,            # 1 (hx7 trim bed, arm F): one playbook text of 5,000 characters in place of the note
+                                # slots; it is what survives a trim (``trim.summary: playbook``), not shown per turn
+                                # 2 (v8.2): the playbook replaces note() and the notes block: no length limit, shown
+                                # in full after every context cut and at a level start, a receipt line per write
+    "memo_limits": 0,           # 1 (item 8): the system line states the 12 x 400 limits and note() prints a cut or
+                                # a dropped key
     "economy_spend": 0,         # 1: the per-turn line also reports the requests, generated tokens and active seconds
                                 # spent since the previous turn (in-run feedback on deliberation cost)
 }
-ZERO_OK = ("economy_spend", "memo_once")
+ZERO_OK = ("economy_spend", "memo_once", "reflect_skip_death", "memo_limits", "memo_style")
 BORDER = 4  # the interior rule of dfr_harness gameplay_changed (timer bars sit in the outer ring)
 
 
@@ -136,6 +144,80 @@ MEMO_SYSTEM = (
     "- Notes that outlive the context: `note(key, text)` stores a short entry (mechanics, goal, controls, what "
     "failed and why, what worked); every user turn shows your notes, also after the conversation history is cut "
     "and on later levels. Keep them current: they are your long-term memory of this game.\n"
+)
+# After Retrodict's playbook.md (externals/Retrodict/src/arc3/prompts.py:32-56).
+PLAYBOOK_CHARS = 5000
+PLAYBOOK_SYSTEM = (
+    "- Your playbook: to keep requests short the conversation is cut from time to time: everything except the "
+    "newest few messages is dropped, and your reasoning in the dropped part is gone. What survives is the python "
+    "session and your playbook. `playbook(text)` replaces it (at most 5,000 characters); `playbook()` returns it. "
+    "Write it as a briefing for yourself after the cut, in two parts. Working model: the controls, the mechanics "
+    "and the objective as you now understand them, each point marked `checked` (you saw it in `transitions`) or "
+    "`assumed`; do not build a long plan on assumed points, and when the evidence contradicts a point or a plan "
+    "built on it turns out impossible, that point is what is wrong: re-derive it instead of adding a mechanic to "
+    "rescue it. Working memory: the level, where things are, your plan and next step, and one `ruled out: ...` "
+    "line per idea this level's evidence has falsified. Rewrite it whenever you settle or drop something; at the "
+    "end of a level fold what you learned into the working model and clear the working memory. Keep it a "
+    "briefing, not a journal.\n"
+)
+# v8.2: the memory framing, and the playbook without note() and without a length limit.
+PLAYBOOK_OPEN_SYSTEM = (
+    "- Memory: to keep requests short the oldest part of the conversation is dropped from time to time, and your "
+    "reasoning in the dropped part is gone. Three things survive every cut: your playbook (your conclusions), "
+    "`history` and `transitions` (every action and board of this game) and your python session (the variables and "
+    "functions you defined). Before you spend an action to test something, check whether `history` already answers "
+    "it.\n"
+    "- Your playbook: `playbook(text)` replaces it and `playbook()` returns it. It has no length limit, but it is "
+    "shown to you in full after every cut and at the start of each level, so write it as a briefing for yourself, "
+    "not a journal. Two parts. Working model: the controls, the mechanics and the objective as you now understand "
+    "them, each point marked `checked` (you saw it in `transitions`) or `assumed`; do not build a long plan on "
+    "assumed points, and when the evidence contradicts a point or a plan built on it turns out impossible, that "
+    "point is what is wrong: re-derive it instead of adding a mechanic to rescue it. Working memory: the level, "
+    "where things are, your plan and next step, and one `ruled out: ...` line per idea this level's evidence has "
+    "falsified. Rewrite it whenever you settle or drop something; at the end of a level fold what you learned into "
+    "the working model and clear the working memory.\n"
+)
+PLAYBOOK_SHOWN = "Your playbook, as you last wrote it:\n\n"
+PLAYBOOK_OPEN_DUE = ("The oldest part of the conversation will be dropped soon and you have not written your "
+                     "playbook since the last cut. If it is out of date, rewrite it now with `playbook(text)`.")
+
+
+def playbook_block(state):
+    """Style 2: the playbook as a cut note and a level start show it."""
+    text = str((state or {}).get("playbook") or "").strip()
+    return PLAYBOOK_SHOWN + text if text else PLAYBOOK_EMPTY
+
+
+PLAYBOOK_HANDOFF = (
+    "[Context cut] The conversation before the messages below was dropped to keep requests short. Your python "
+    "session is unchanged. Your playbook, as you last wrote it:\n\n"
+)
+PLAYBOOK_EMPTY = "(You have not written a playbook yet. Write one with `playbook(text)`.)"
+PLAYBOOK_NOTES = "(No playbook yet; these are your note() entries.)\n"
+PLAYBOOK_LEVEL = ("Level cleared. Before acting on the new level, rewrite your playbook: fold what this level taught "
+                  "you into the working model and clear the working memory.")
+PLAYBOOK_DUE = ("The conversation will be cut soon; only your playbook and the newest messages survive. If the "
+                "playbook is out of date, rewrite it now with `playbook(text)`.")
+
+
+def playbook_text(state):
+    """What a trim carries: the playbook, else the note entries, else a line saying there is none."""
+    state = state or {}
+    text = str(state.get("playbook") or "").strip()
+    if text:
+        return text
+    notes = state.get("notes") or {}
+    if notes:
+        return PLAYBOOK_NOTES + "\n".join(f"- {key}: {value}" for key, value in notes.items())
+    return PLAYBOOK_EMPTY
+
+
+MEMO_LIMITS_SYSTEM = (
+    "- Notes that outlive the context: `note(key, text)` stores an entry (mechanics, goal, controls, what failed and "
+    "why, what worked); at most 12 entries of 400 characters: a longer text is cut and a 13th key drops the oldest "
+    "entry (`note(key)` deletes one, the same key replaces it). Your notes are shown when they change, after the "
+    "conversation history is cut and on later levels. Keep them current: they are your long-term memory of this "
+    "game.\n"
 )
 KIT_SYSTEM = (
     "- Built-in board helpers (use them instead of writing your own parsers): `crop(r0, r1, c0, c1, frame=None)` "
@@ -275,7 +357,9 @@ def system_prompt(text, block):
         section += TOOLBOX_SYSTEM
     extra = ((PROBE_SYSTEM if block["probe"] else "") + (KIT_SYSTEM if block["kit"] else "")
              + (LATTICE_SYSTEM if block["lattice"] else "") + (AUTOPILOT_SYSTEM if block["autopilot"] else "")
-             + (WORLDMODEL_SYSTEM if block["worldmodel"] else "") + (MEMO_SYSTEM if block["memo"] else "")
+             + (WORLDMODEL_SYSTEM if block["worldmodel"] else "") + ((PLAYBOOK_OPEN_SYSTEM if block["memo_style"] == 2 else PLAYBOOK_SYSTEM if block["memo_style"]
+                 else MEMO_LIMITS_SYSTEM if block["memo_limits"] else MEMO_SYSTEM)
+                if block["memo"] else "")
              + (PERCEIVE_SYSTEM if block["perceive"] else ""))
     if extra:
         if not section:
@@ -289,6 +373,7 @@ def system_prompt(text, block):
 
 CHILD_BLOCK = r'''
     _HX = {"tools": {}, "observers": {}, "out": {}, "out_step": None, "errors": 0, "loops": 0, "loop_actions": 0,
+           "playbook": "", "playbook_step": None, "playbook_writes": 0,
            "sim": None, "sim_report": None, "sim_seen": 0, "notes": {}}
     _HX_OBS_CHARS = __HX_OBS_CHARS__
     _HX_FLAGS = __HX_FLAGS__
@@ -765,10 +850,31 @@ CHILD_BLOCK = r'''
         if text is None:
             _HX["notes"].pop(key, None)
         else:
-            _HX["notes"][key] = " ".join(str(text).split())[:400]
+            text = " ".join(str(text).split())
+            if len(text) > 400 and _HX_FLAGS.get("memo_limits"):
+                print("[note] %r was cut from %d to 400 characters" % (key, len(text)))
+            _HX["notes"][key] = text[:400]
             while len(_HX["notes"]) > 12:
-                _HX["notes"].pop(next(iter(_HX["notes"])))
+                dropped = next(iter(_HX["notes"]))
+                _HX["notes"].pop(dropped)
+                if _HX_FLAGS.get("memo_limits"):
+                    print("[note] 12 entries at most: the oldest, %r, was dropped" % dropped)
         return dict(_HX["notes"])
+
+    def playbook(text=None):
+        """Your playbook: playbook(text) replaces it, playbook() returns it. It is what survives when the
+        conversation is cut."""
+        if text is not None:
+            text = str(text).strip()
+            if _HX_FLAGS.get("playbook_open"):
+                print("[playbook] saved, %d characters" % len(text))
+            elif len(text) > 5000:
+                print("[playbook] cut from %d to 5,000 characters; write a shorter one" % len(text))
+                text = text[:5000]
+            _HX["playbook"] = text
+            _HX["playbook_writes"] += 1
+            _HX["playbook_step"] = getattr(runtime_globals.get("current_frame"), "step", None)
+        return _HX["playbook"]
 
     _hx_refresh_inner = _refresh_state
 
@@ -788,8 +894,10 @@ CHILD_BLOCK = r'''
             runtime_globals.update(autopilot=autopilot, explore=explore)
         if _HX_FLAGS["worldmodel"]:
             runtime_globals.update(check_sim=check_sim, register_sim=register_sim, plan=plan)
-        if _HX_FLAGS["memo"]:
+        if _HX_FLAGS["memo"] and not _HX_FLAGS.get("playbook_open"):
             runtime_globals["note"] = note
+        if _HX_FLAGS.get("memo_style"):
+            runtime_globals["playbook"] = playbook
 
     def _hx_take():
         if _HX["sim"] is not None:
@@ -801,7 +909,8 @@ CHILD_BLOCK = r'''
                 "observers": {k: {"note": v["note"]} for k, v in _HX["observers"].items()},
                 "out": dict(_HX["out"]), "out_step": _HX["out_step"], "errors": _HX["errors"],
                 "loops": _HX["loops"], "loop_actions": _HX["loop_actions"], "sim": _HX["sim_report"],
-                "notes": dict(_HX["notes"])}
+                "playbook": _HX["playbook"], "playbook_step": _HX["playbook_step"],
+                "playbook_writes": _HX["playbook_writes"], "notes": dict(_HX["notes"])}
 
 '''
 ANCHOR = "    request = initial\n    while True:\n"
@@ -817,7 +926,9 @@ def with_toolbox(bootstrap, block):
         raise ValueError("hx_harness: the toolbox code is already installed")
     if bootstrap.count(ANCHOR) != 1:
         raise ValueError("hx_harness: pinned Duck sandbox loop changed")
-    flags = {key: bool(block[key]) for key in ("toolbox", "probe", "kit", "lattice", "autopilot", "worldmodel", "memo")}
+    flags = {key: bool(block[key]) for key in ("toolbox", "probe", "kit", "lattice", "autopilot", "worldmodel", "memo",
+                                               "memo_limits", "memo_style")}
+    flags["playbook_open"] = block["memo_style"] == 2
     child = CHILD_BLOCK.replace("__HX_OBS_CHARS__", str(int(block["observer_chars"]))).replace(
         "__HX_FLAGS__", repr(flags))
     text = bootstrap.replace(ANCHOR, child.lstrip("\n") + ANCHOR, 1)
@@ -827,7 +938,7 @@ def with_toolbox(bootstrap, block):
     if text.count(RUNTIME_NAMES) == 1:  # the fixes loop's inventory skips runtime names
         text = text.replace(RUNTIME_NAMES, RUNTIME_NAMES + ", " + HX_RUNTIME_NAMES
                             + ', "probe", "crop", "objects", "at", "changes", "lattice", "autopilot", "explore", '
-                            '"check_sim", "register_sim", "plan", "note"', 1)
+                            '"check_sim", "register_sim", "plan", "note", "playbook"', 1)
     return text
 
 
@@ -896,6 +1007,7 @@ class Reflector:
         self.deaths_noticed = 0
         self.revisit_noticed = 0
         self.streak_noticed = 0
+        self.died_now = False  # a death among the entries of the latest update (reflect_skip_death)
 
     def update(self, history, results, levels, requests, tokens):
         """Consume the new history entries; ``levels`` = levels cleared now."""
@@ -907,6 +1019,7 @@ class Reflector:
                 self.boards[_hash(history[-1].frame.grid)] += 1
                 self.seen = len(history)
         previous = history[self.seen - 1].frame.grid if 0 < self.seen <= len(history) else None
+        deaths_before = self.deaths
         for index in range(self.seen, len(history)):
             entry = history[index]
             grid = entry.frame.grid
@@ -927,6 +1040,7 @@ class Reflector:
                 self.no_change = 0 if changed else self.no_change + 1
             self.boards[_hash(grid)] += 1
             previous = grid
+        self.died_now = self.deaths > deaths_before
         self.seen = len(history)
         self.requests = requests - self.requests0
         self.tokens = tokens - self.tokens0
@@ -942,7 +1056,10 @@ class Reflector:
         b = self.block
         if self.last_notice is not None and self.requests - self.last_notice < b["reflect_min_gap"]:
             return None
-        if self.deaths >= b["reflect_deaths"] and self.deaths > self.deaths_noticed:
+        if b["reflect_skip_death"]:
+            if self.died_now:
+                return None
+        elif self.deaths >= b["reflect_deaths"] and self.deaths > self.deaths_noticed:
             return "deaths"
         if self.no_change >= b["reflect_no_change"] and self.no_change >= self.streak_noticed + b["reflect_no_change"]:
             return "no_change"

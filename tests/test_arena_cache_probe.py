@@ -8,7 +8,7 @@ from arena import cache_probe
 from arena.cache import BlockBudget
 
 
-@pytest.mark.parametrize('failure,cpu_gib', [(None, 0), (None, 16), ('count', 0), ('preempt', 0), ('no_load', 16), ('empty', 0)])
+@pytest.mark.parametrize('failure,cpu_gib', [(None, 0), (None, 16), ('count', 0), ('preempt', 0), ('no_load', 16), ('empty', 0), ('empty_allowed', 0)])
 async def test_probe_requires_exact_count_no_preemptions_and_real_offload(monkeypatch, tmp_path, failure, cpu_gib):
     layout = {'schema': 1, 'num_blocks': 100, 'max_model_len': 262144, 'lookahead': 3,
               'costs': [{'tokens': 262144, 'blocks': 20, 'groups': [20]}]}
@@ -25,7 +25,7 @@ async def test_probe_requires_exact_count_no_preemptions_and_real_offload(monkey
             return httpx.Response(200, json={'usage': {'prompt_tokens': 101 if failure == 'count' else 100,
                                                      'completion_tokens': 3},
                                             'choices': [{'finish_reason': 'stop', 'message':
-                                                {'content': None, 'reasoning': 'A colored image.'} if failure == 'empty'
+                                                {'content': None, 'reasoning': 'A colored image.'} if failure in ('empty', 'empty_allowed')
                                                 else {'content': 'A colored image.'}}]})
         if path == '/reset_prefix_cache':
             resets.append(request.url.params['reset_external'])
@@ -56,6 +56,8 @@ async def test_probe_requires_exact_count_no_preemptions_and_real_offload(monkey
     monkeypatch.setattr(cache_probe, 'GpuMonitor', Monitor)
     monkeypatch.setattr(cache_probe, 'wait_idle', idle)
     study = {'kv_margin': 0.9, 'generation_slots': 25, 'cache_experiment': {'cpu_cache_gib': cpu_gib}}
+    if failure == 'empty_allowed':
+        study['probe_allow_empty'], failure = True, None
     if failure:
         with pytest.raises(RuntimeError):
             await cache_probe.run(tmp_path, study, 'http://local/v1')

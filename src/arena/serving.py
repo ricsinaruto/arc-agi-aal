@@ -292,7 +292,8 @@ def configure(recipe, working, *, cpu_gib=0, graph_capture_size=None, reclaim_sk
 
     def wrapped_extract(*args, **kwargs):
         result = extract(*args, **kwargs)
-        apply(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working)
+        apply(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working,
+              **({'state_cotenant': True} if prefix_cache and prefix_cache.get('state_cotenant') else {}))
         if reclaim_skipped_blocks:
             apply_reclamation(recipe.RUNTIME_ROOT / 'usr/local/lib/python3.12/dist-packages', working)
         if prefix_cache is not None:

@@ -536,3 +536,77 @@ async def test_a_server_error_is_retried_with_backoff_and_logged(tmp_path, monke
     codes = iter([400])
     assert (await agent.with_server_retries(call, {"x": 1})).status_code == 400 and agent.server_error_retries == 4
     assert agent.result()["server_error_retries"] == 4
+
+
+# --- v9 drain jitter --------------------------------------------------------------------------------
+
+JITTER = {"keep_tokens": 64_000, "jitter": {"low": 90_000, "high": 134_000, "seed": 9}}
+
+
+def test_jitter_settings_are_validated():
+    assert cd.settings(JITTER)["jitter"] == JITTER["jitter"] and "jitter" not in cd.settings(True)
+    for bad in ({"jitter": {"low": 90_000, "high": 134_000}},  # no keep_tokens
+                {"keep_tokens": 95_000, "jitter": {"low": 90_000, "high": 134_000}},  # keep above low
+                {"keep_tokens": 64_000, "jitter": {"low": 134_000, "high": 90_000}},
+                {"keep_tokens": 64_000, "jitter": {"low": 90_000}},
+                {"keep_tokens": 64_000, "jitter": {"low": 90_000, "high": 134_000, "bogus": 1}},
+                {"keep_tokens": 64_000, "jitter": {"low": 90_000.0, "high": 134_000}}):
+        with pytest.raises(ValueError):
+            cd.settings(bad)
+
+
+def test_trigger_draws_are_reproducible_uniform_and_per_game_and_index():
+    draws = [cd.trigger_draw(f"k{g:03d}", i, 90_000, 134_000, 9) for g in range(110) for i in range(40)]
+    assert draws == [cd.trigger_draw(f"k{g:03d}", i, 90_000, 134_000, 9) for g in range(110) for i in range(40)]
+    assert min(draws) >= 90_000 and max(draws) <= 134_000
+    assert abs(np.mean(draws) - 112_000) < 600 and abs(np.std(draws) - 44_000 / 12 ** 0.5) < 600
+    assert len(set(draws)) > 4000  # games and indices draw differently
+    assert cd.trigger_draw("k000", 0, 90_000, 134_000, 9) != cd.trigger_draw("k000", 0, 90_000, 134_000, 10)
+    assert cd.trigger_draw("a", 0, 5_000, 5_000) == 5_000
+
+
+def test_jitter_drains_at_each_drawn_trigger_to_the_kept_size(tmp_path):
+    from test_arena_duck import arena_agent
+
+    from arena.duck import ArenaTransferDuckAgent
+
+    agent, _, game, _ = arena_agent(tmp_path, None, ArenaTransferDuckAgent, window=65536)
+    agent.apply_context_drain({**JITTER, "note": False})
+    key = getattr(game, "game_id", None) or agent.game_id
+    t0, t1 = (cd.trigger_draw(key, i, 90_000, 134_000, 9) for i in (0, 1))
+
+    class Analyzer:
+        @staticmethod
+        def _estimate_request_input_tokens(messages, tools=None):
+            return sized(messages)
+
+    def measure(messages, tools):
+        return 2000 + sized(messages)
+
+    window_budget = 134_144  # 151,040 - 16,384 - 512
+    reserve = agent.carried_reserve()
+
+    def at(tokens):
+        n = (tokens - 2000 - 1000) // 5000
+        history = [*blocks(n), msg("user", 1000 + (tokens - 2000 - 1000) % 5000, "obs-now")]
+        return [{"role": "system", "content": "s"}, *history]
+
+    below = at(t0 - reserve)  # at the trigger: no drain
+    assert measure(below, None) == t0 - reserve
+    assert agent.drain_context(Analyzer(), below, None, measure, window_budget) is below
+    over = at(t0 - reserve + 6000)
+    out = agent.drain_context(Analyzer(), over, None, measure, window_budget)
+    assert 64_000 - 5000 < measure(out, None) <= 64_000 and out[-1]["content"] == "obs-now"
+    event = events_of(agent, "context_drain")[0]
+    assert event["trigger_tokens"] == t0 and event["drain_index"] == 0 and event["target"] == 64_000
+    assert event["budget"] == t0 - reserve and event["tokens_after"] == measure(out, None)
+    assert [(d["drain_index"], d["trigger_tokens"]) for d in events_of(agent, "drain_trigger")] == [(0, t0)]
+    # the next drain fires at its own draw
+    again = at(t1 - reserve + 6000)
+    out2 = agent.drain_context(Analyzer(), again, None, measure, window_budget)
+    assert measure(out2, None) <= 64_000 and events_of(agent, "context_drain")[1]["trigger_tokens"] == t1
+    assert agent.drain_stats["drains"] == 2 and agent.drain_stats["triggers"][:2] == [t0, t1]
+    assert [(d["drain_index"], d["trigger_tokens"]) for d in events_of(agent, "drain_trigger")] == [(0, t0), (1, t1)]
+    # never above the window's own budget (here 50,000, under every draw): it drains there, to at most that budget
+    out3 = agent.drain_context(Analyzer(), at(60_000), None, measure, 50_000)
+    assert measure(out3, None) <= 50_000 and events_of(agent, "context_drain")[2]["budget"] == 50_000

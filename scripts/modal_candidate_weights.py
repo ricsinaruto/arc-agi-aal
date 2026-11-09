@@ -84,8 +84,7 @@ def reserve(run_id, gib, extra):
         fcntl.flock(file, fcntl.LOCK_EX)
         data = json.load(file)
         bound, storage = bound_usd(data, gib)
-        from arc_infra.runops.records import row_cost
-        committed = data["infrastructure_reserve_usd"] + sum(row_cost(r)[0] for r in data["runs"])
+        committed = data["infrastructure_reserve_usd"] + sum(r["charged_bound_usd"] for r in data["runs"])
         if committed + bound > data["cap_usd"]:
             raise RuntimeError(f"Spend cap: ${committed:.2f} + ${bound:.2f} required")
         if any(r["run_id"] == run_id for r in data["runs"]):
