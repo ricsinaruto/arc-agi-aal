@@ -29,6 +29,7 @@ class TransferDuckAgent(DuckAgent):
                 if knowledge.get(key)
             ]
             retained = {key: knowledge.get(key, "") for key in RETAINED_ON_GAME_OVER}
+            before_findings = knowledge.get("recent_findings", "") or ""
             original_update()
             if summary.get("run_complete"):
                 if cross_level == automatic_note:
@@ -38,6 +39,14 @@ class TransferDuckAgent(DuckAgent):
                 # v5: a GAME_OVER restarts the level, not the model's understanding of it.
                 knowledge.update(retained)
                 knowledge["current_plan"] = ""
+                if self.fix("findings_keep"):
+                    # The model's own line stays (a line the harness wrote earlier does not); the user turn's
+                    # GAME_OVER line is the notice, for that turn only.
+                    knowledge["recent_findings"] = "" if before_findings.startswith("GAME_OVER at step ") else before_findings
+                    self.workspace.append(
+                        "knowledge_retained", step=self.steps,
+                        keys=sorted(k for k, v in {**retained, "recent_findings": knowledge["recent_findings"]}.items() if v))
+                    return
                 actions = ", ".join(str(a) for a in (summary.get("executed_actions") or [])[-10:])
                 mechanics = "The mechanics above still hold; revise the plan and avoid that sequence."
                 if self.fix("prompt_text") and not any(retained.values()):

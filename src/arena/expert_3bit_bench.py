@@ -89,9 +89,9 @@ class Run:
             a, b = bounds[e], bounds[e + 1]
             if a == b:
                 continue
-            y = xf[token[a:b]] @ gate_up[e].t()
+            y = xf[token[a:b]] @ gate_up[e].to(self.dev).t()  # host-resident under --low-memory
             h = torch.nn.functional.silu(y[:, :INTER]) * y[:, INTER:]
-            out.index_add_(0, token[a:b], (h @ down[e].t()) * weight[a:b].unsqueeze(1))
+            out.index_add_(0, token[a:b], (h @ down[e].to(self.dev).t()) * weight[a:b].unsqueeze(1))
         return out
 
     # ------------------------------------------------------------------ marlin (served)
@@ -182,17 +182,17 @@ class Run:
         torch, tm = self.torch, self.tm
         from humming import ops
 
-        s2 = tm.scale2_of(weight, "int3")
+        s2 = torch.cat([tm.scale2_of(weight[s:s + 64].to(self.dev), "int3") for s in range(0, E, 64)])
         packed, scales, deqs = [], [], []
         for s in range(0, E, 64):
-            deq, sc = tm.rtn(weight[s:s + 64], s2[s:s + 64], "int3", group, SEARCH)
+            deq, sc = tm.rtn(weight[s:s + 64].to(self.dev), s2[s:s + 64], "int3", group, SEARCH)
             div = tm.divisor(sc, s2[s:s + 64], group)
             codes = (deq / div).round().to(torch.int32) + 4
             if int(codes.min()) < 0 or int(codes.max()) > 7:
                 raise ValueError("int3 codes out of range")
             packed.append(ops.pack_weight(codes.contiguous(), 3))
             scales.append(sc.to(torch.float8_e4m3fn))
-            deqs.append(deq)
+            deqs.append(deq.cpu() if self.args.low_memory else deq)
             del codes, div
         return ({"weight": torch.cat(packed), "weight_scale": torch.cat(scales), "weight_scale_2": s2.float()},
                 torch.cat(deqs))
@@ -234,6 +234,14 @@ class Run:
             log({"timing": row})
         return rows
 
+    def dequantize(self, packed, scale, scale_2):
+        """Float32 weights of the served NVFP4 tensors; under --low-memory 32 experts at a time, kept on the host
+        (a 22 GiB card cannot hold one layer in float32 next to the unpacking's temporaries)."""
+        if not self.args.low_memory:
+            return self.qm.dequantize(packed, scale, scale_2)
+        return self.torch.cat([self.qm.dequantize(packed[s:s + 32], scale[s:s + 32], scale_2[s:s + 32]).cpu()
+                               for s in range(0, E, 32)])
+
     # ------------------------------------------------------------------ one layer
     def layer(self, layer):
         torch, qm = self.torch, self.qm
@@ -242,8 +250,8 @@ class Run:
         t0 = time.time()
         served = self.load_served(layer)
         x, ids, wts = self.load_rows(layer)
-        w13 = qm.dequantize(served["w13"], served["w13_sf"], served["s2_gate"])
-        w2 = qm.dequantize(served["w2"], served["w2_sf"], served["s2_down"])
+        w13 = self.dequantize(served["w13"], served["w13_sf"], served["s2_gate"])
+        w2 = self.dequantize(served["w2"], served["w2_sf"], served["s2_down"])
         res["load_seconds"] = round(time.time() - t0, 1)
         check = torch.linspace(0, x.shape[0] - 1, 256, device=self.dev).round().long()
         xc, idc, wc = x[check].contiguous(), ids[check].contiguous(), wts[check].contiguous()
@@ -339,6 +347,8 @@ def main(argv=None):
     ap.add_argument("--zp", type=int, default=0)
     ap.add_argument("--out", required=True)
     ap.add_argument("--deadline-seconds", type=float, default=1500)
+    ap.add_argument("--low-memory", action="store_true",
+                    help="24 GB cards (ARC-AGI-2 arm, L4): the int3 reference weights stay in host memory")
     args = ap.parse_args(argv)
     args.groups = [int(g) for g in args.groups.split(",") if g]
     run = Run(args)
